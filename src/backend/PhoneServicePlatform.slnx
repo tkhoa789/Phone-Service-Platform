@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="PSP.API/PSP.API.csproj" />
+  <Project Path="PSP.Application/PSP.Application.csproj" />
+  <Project Path="PSP.Domain/PSP.Domain.csproj" />
+  <Project Path="PSP.Infrastructure/PSP.Infrastructure.csproj" />
+</Solution>
