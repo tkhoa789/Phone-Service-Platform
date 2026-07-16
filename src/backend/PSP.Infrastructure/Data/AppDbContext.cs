@@ -89,6 +89,15 @@ public class AppDbContext : DbContext
         // Áp dụng Fluent API Configurations từ assemblies
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
+        // Cấu hình Precision và Scale mặc định cho mọi kiểu decimal (tránh lỗi truncation)
+        foreach (var property in modelBuilder.Model.GetEntityTypes()
+            .SelectMany(t => t.GetProperties())
+            .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
+        {
+            property.SetPrecision(18);
+            property.SetScale(2);
+        }
+
         // Tắt Cascade Delete toàn cục
         var cascadeFKs = modelBuilder.Model.GetEntityTypes()
             .SelectMany(t => t.GetForeignKeys())

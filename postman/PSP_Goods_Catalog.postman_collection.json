@@ -1,0 +1,1944 @@
+{
+  "info": {
+    "name": "PSP - Goods Catalog Subsystem (All Modules)",
+    "description": "Bộ test API tích hợp hoàn thiện cho phân hệ Hàng hóa (Thương hiệu, Danh mục, Nhà cung cấp, Sản phẩm & Biến thể) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chạy kịch bản đăng nhập để lấy Token.\n3. Chạy tuần tự các thư mục 1 -> 2 -> 3 -> 4. Các biến ID trung gian được tự động trích xuất và chia sẻ chéo để đảm bảo tính toàn vẹn dữ liệu.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "brandId1",
+      "value": ""
+    },
+    {
+      "key": "brandId2",
+      "value": ""
+    },
+    {
+      "key": "parentCategoryId",
+      "value": ""
+    },
+    {
+      "key": "childCategoryId",
+      "value": ""
+    },
+    {
+      "key": "tempCategoryId",
+      "value": ""
+    },
+    {
+      "key": "tempChildCategoryId",
+      "value": ""
+    },
+    {
+      "key": "supplierId1",
+      "value": ""
+    },
+    {
+      "key": "supplierId2",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "variantId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 0. Auth",
+      "item": [
+        {
+          "name": "Đăng nhập hệ thống (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Có accessToken', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "console.log('✅ Đăng nhập thành công, đã lưu Token.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏷️ 1. Brand (Thương hiệu)",
+      "item": [
+        {
+          "name": "[200] Tạo thương hiệu Apple",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('brandId1', b.data);",
+                  "console.log('Saved brandId1:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPLE\",\n  \"name\": \"Apple Inc.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Brand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo thương hiệu Samsung",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('brandId2', b.data);",
+                  "console.log('Saved brandId2:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SAMSUNG\",\n  \"name\": \"Samsung Electronics\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Brand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo thương hiệu trùng lặp Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi trùng lặp', () => pm.expect(b.code).to.eql('CONFLICT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPLE\",\n  \"name\": \"Apple duplication\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Brand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết thương hiệu 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng Code', () => pm.expect(b.data.code).to.eql('APPLE'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Brand/{{brandId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand",
+                "{{brandId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách tất cả thương hiệu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Brand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật thương hiệu 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{brandId2}}\",\n  \"name\": \"Samsung Retail Store\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Brand/{{brandId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand",
+                "{{brandId2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa thương hiệu 2 (Soft Delete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Brand/{{brandId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand",
+                "{{brandId2}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📁 2. Category (Danh mục)",
+      "item": [
+        {
+          "name": "[200] Tạo danh mục cha (SmartPhone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('parentCategoryId', b.data);",
+                  "console.log('Saved parentCategoryId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"MOBILE\",\n  \"name\": \"Điện thoại thông minh\",\n  \"parentId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo danh mục con (iPhone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('childCategoryId', b.data);",
+                  "console.log('Saved childCategoryId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"IPHONE\",\n  \"name\": \"iPhone\",\n  \"parentId\": \"{{parentCategoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo danh mục tạm để xóa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('tempCategoryId', b.data);",
+                  "console.log('Saved tempCategoryId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"TEMP_CAT\",\n  \"name\": \"Danh mục tạm để xóa\",\n  \"parentId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo danh mục con tạm để xóa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('tempChildCategoryId', b.data);",
+                  "console.log('Saved tempChildCategoryId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"TEMP_CHILD_CAT\",\n  \"name\": \"Danh mục con tạm\",\n  \"parentId\": \"{{tempCategoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết danh mục con (chứa ParentName)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tên danh mục con', () => pm.expect(b.data.name).to.eql('iPhone'));",
+                  "pm.test('Có tên danh mục cha', () => pm.expect(b.data.parentName).to.eql('Điện thoại thông minh'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{childCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{childCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách tất cả danh mục",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật tên danh mục con",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{childCategoryId}}\",\n  \"name\": \"iPhone (Apple Devices)\",\n  \"parentId\": \"{{parentCategoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{childCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{childCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Cập nhật - Chọn chính mình làm cha (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có thông báo lỗi hợp lệ', () => pm.expect(b.message).to.include('chính danh mục này'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{childCategoryId}}\",\n  \"name\": \"iPhone\",\n  \"parentId\": \"{{childCategoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{childCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{childCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Cập nhật - Lỗi vòng lặp phân cấp (Chọn con làm cha)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có thông báo lỗi vòng lặp', () => pm.expect(b.message).to.include('Lỗi vòng lặp'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{parentCategoryId}}\",\n  \"name\": \"Điện thoại thông minh\",\n  \"parentId\": \"{{childCategoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{parentCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{parentCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Xóa danh mục cha khi đang chứa danh mục con (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi chứa danh mục con', () => pm.expect(b.message).to.include('chứa các danh mục con'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{tempCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{tempCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa danh mục con tạm (Thành công)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{tempChildCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{tempChildCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa danh mục cha tạm (Thành công)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{tempCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{tempCategoryId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚚 3. Supplier (Nhà cung cấp)",
+      "item": [
+        {
+          "name": "[200] Tạo nhà cung cấp 1 (Apple Vietnam)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('supplierId1', b.data);",
+                  "console.log('Saved supplierId1:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPL_VN\",\n  \"name\": \"Apple Store Viet Nam\",\n  \"phone\": \"18001127\",\n  \"email\": \"supplier-vn@apple.com\",\n  \"address\": \"Quan 1, TP. HCM\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Supplier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo nhà cung cấp 2 (Samsung Retail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('supplierId2', b.data);",
+                  "console.log('Saved supplierId2:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SAMS_RET\",\n  \"name\": \"Samsung Retail Services\",\n  \"phone\": \"19006060\",\n  \"email\": \"retail@samsung.com\",\n  \"address\": \"Quan 3, TP. HCM\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Supplier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo nhà cung cấp trùng Code (APPL_VN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi trùng lặp', () => pm.expect(b.code).to.eql('CONFLICT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPL_VN\",\n  \"name\": \"Apple duplication\",\n  \"phone\": \"18001127\",\n  \"email\": \"supplier-vn@apple.com\",\n  \"address\": \"Quan 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Supplier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Tạo nhà cung cấp thiếu thông tin bắt buộc (Name)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi Validation', () => pm.expect(b.code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"NEW_SUP\",\n  \"name\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Supplier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết nhà cung cấp 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng Code', () => pm.expect(b.data.code).to.eql('APPL_VN'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Supplier/{{supplierId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier",
+                "{{supplierId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy tất cả nhà cung cấp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Supplier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật nhà cung cấp 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{supplierId1}}\",\n  \"name\": \"Apple Store Vietnam Limited\",\n  \"phone\": \"18001127\",\n  \"email\": \"vietnam@apple.com\",\n  \"address\": \"Quan 1, TP. HCM\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Supplier/{{supplierId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier",
+                "{{supplierId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa nhà cung cấp 2 (Samsung Retail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Supplier/{{supplierId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier",
+                "{{supplierId2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[404] Lấy chi tiết nhà cung cấp 2 sau khi xóa (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi NOT_FOUND', () => pm.expect(b.code).to.eql('NOT_FOUND'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Supplier/{{supplierId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier",
+                "{{supplierId2}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 4. Product (Sản phẩm & Biến thể)",
+      "item": [
+        {
+          "name": "[200] Tạo dòng sản phẩm (iPhone 16 Pro Max)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('productId', b.data);",
+                  "console.log('Saved productId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{parentCategoryId}}\",\n  \"brandId\": \"{{brandId1}}\",\n  \"code\": \"IPHONE_16_PM\",\n  \"name\": \"iPhone 16 Pro Max\",\n  \"description\": \"Apple smartphone flagship 2024\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo dòng sản phẩm trùng Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi trùng lặp', () => pm.expect(b.code).to.eql('CONFLICT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{parentCategoryId}}\",\n  \"brandId\": \"{{brandId1}}\",\n  \"code\": \"IPHONE_16_PM\",\n  \"name\": \"iPhone 16 Pro Max duplication\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết dòng sản phẩm (Chưa có biến thể)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng Code', () => pm.expect(b.data.code).to.eql('IPHONE_16_PM'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Product/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "{{productId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo biến thể 1 (Màu Titan Sa Mạc)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('variantId', b.data);",
+                  "console.log('Saved variantId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"sku\": \"IP16PM-256-DESERT\",\n  \"name\": \"iPhone 16 Pro Max 256GB Titan Sa Mạc\",\n  \"color\": \"Titan Sa Mạc\",\n  \"capacity\": \"256GB\",\n  \"costPrice\": 30000000.00,\n  \"salePrice\": 34990000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product/Variant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "Variant"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo biến thể trùng SKU",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi trùng SKU', () => pm.expect(b.code).to.eql('CONFLICT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"sku\": \"IP16PM-256-DESERT\",\n  \"name\": \"iPhone 16 Pro Max duplicate SKU\",\n  \"costPrice\": 30000000.00,\n  \"salePrice\": 34990000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product/Variant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "Variant"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết dòng sản phẩm (Đã có 1 biến thể)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có 1 biến thể con', () => pm.expect(b.data.variants).to.be.an('array').that.has.lengthOf(1));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Product/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "{{productId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Xóa sản phẩm cha khi còn biến thể con (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi còn biến thể con', () => pm.expect(b.message).to.include('còn các biến thể con'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Product/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "{{productId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật biến thể sản phẩm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{variantId}}\",\n  \"name\": \"iPhone 16 Pro Max 256GB Desert Titanium Limited\",\n  \"color\": \"Desert Titanium\",\n  \"capacity\": \"256GB\",\n  \"costPrice\": 30500000.00,\n  \"salePrice\": 35490000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product/Variant/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "Variant",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa biến thể sản phẩm (Thành công)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Product/Variant/{{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "Variant",
+                "{{variantId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa sản phẩm cha (Thành công sau khi biến thể đã bị xóa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Product/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "{{productId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] DỌN DẸP - Xóa danh mục con chính",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{childCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{childCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] DỌN DẸP - Xóa danh mục cha chính",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Category/{{parentCategoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category",
+                "{{parentCategoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] DỌN DẸP - Xóa thương hiệu chính",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Brand/{{brandId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand",
+                "{{brandId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] DỌN DẸP - Xóa nhà cung cấp chính",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Supplier/{{supplierId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier",
+                "{{supplierId1}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
