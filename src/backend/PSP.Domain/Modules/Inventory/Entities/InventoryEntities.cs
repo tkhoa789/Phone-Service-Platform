@@ -25,14 +25,12 @@ public class WarehouseEntity : BaseEntity
 /// Tồn kho (số lượng sản phẩm theo warehouse + variant).
 /// Tham chiếu: ERD.md - Section 3.2.
 /// </summary>
-public class InventoryEntity
+public class InventoryEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WarehouseId { get; set; }
     public Guid ProductVariantId { get; set; }
     public int Quantity { get; set; }
     public int MinimumStock { get; set; }
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
     public WarehouseEntity Warehouse { get; set; } = null!;
@@ -44,14 +42,12 @@ public class InventoryEntity
 /// Tuân thủ BR-INV-03: Sản phẩm điện thoại bắt buộc quản lý theo IMEI.
 /// Tham chiếu: ERD.md - Section 3.2.
 /// </summary>
-public class ImeiEntity
+public class ImeiEntity : BaseEntity
 {
     public string Imei { get; set; } = string.Empty;
     public Guid ProductVariantId { get; set; }
     public Guid? WarehouseId { get; set; }
     public ImeiStatus Status { get; set; } = ImeiStatus.InStock;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
     public ProductVariantEntity ProductVariant { get; set; } = null!;
@@ -79,9 +75,8 @@ public class PurchaseOrderEntity : BaseEntity
 /// <summary>
 /// Chi tiết phiếu nhập kho.
 /// </summary>
-public class PurchaseOrderItemEntity
+public class PurchaseOrderItemEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid PurchaseOrderId { get; set; }
     public Guid ProductVariantId { get; set; }
     public int Quantity { get; set; }
@@ -109,9 +104,8 @@ public class WarehouseTransferEntity : BaseEntity
     public ICollection<WarehouseTransferItemEntity> Items { get; set; } = new List<WarehouseTransferItemEntity>();
 }
 
-public class WarehouseTransferItemEntity
+public class WarehouseTransferItemEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TransferId { get; set; }
     public Guid ProductVariantId { get; set; }
     public int Quantity { get; set; }
@@ -136,9 +130,8 @@ public class StockTakeEntity : BaseEntity
     public ICollection<StockTakeItemEntity> Items { get; set; } = new List<StockTakeItemEntity>();
 }
 
-public class StockTakeItemEntity
+public class StockTakeItemEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid StockTakeId { get; set; }
     public Guid ProductVariantId { get; set; }
     public int SystemQuantity { get; set; }

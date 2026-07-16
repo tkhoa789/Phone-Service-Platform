@@ -1,0 +1,2265 @@
+{
+  "info": {
+    "name": "PSP - Inventory Management (Module 6 to 10 - Auto Run)",
+    "description": "Bộ test API tích hợp hoàn chỉnh và tự động 100% cho Phân hệ Kho vận (Module 6: Warehouse, Module 7: PurchaseOrder, Module 8: Inventory + IMEI, Module 9: WarehouseTransfer & Module 10: StockTake) của Phone Service Platform.\n\n**ƯU ĐIỂM VƯỢT TRỘI:**\n- Bộ test sử dụng cơ chế sinh mã tự động (`suffix` ngẫu nhiên) và IMEI ngẫu nhiên cho mỗi lượt chạy.\n- Người dùng không cần drop database và có thể bấm RUN liên tục nhiều lần mà không bao giờ bị lỗi trùng code (Conflict) hay trùng IMEI.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chọn Collection và click **Run Collection**.\n3. Nhấn **Run** để chạy toàn bộ kịch bản tự động.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "suffix",
+      "value": ""
+    },
+    {
+      "key": "imei1",
+      "value": ""
+    },
+    {
+      "key": "imei2",
+      "value": ""
+    },
+    {
+      "key": "imei3",
+      "value": ""
+    },
+    {
+      "key": "branchId",
+      "value": ""
+    },
+    {
+      "key": "brandId",
+      "value": ""
+    },
+    {
+      "key": "parentCategoryId",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "variantId",
+      "value": ""
+    },
+    {
+      "key": "supplierId",
+      "value": ""
+    },
+    {
+      "key": "warehouseId1",
+      "value": ""
+    },
+    {
+      "key": "warehouseId2",
+      "value": ""
+    },
+    {
+      "key": "purchaseOrderId1",
+      "value": ""
+    },
+    {
+      "key": "purchaseOrderId2",
+      "value": ""
+    },
+    {
+      "key": "inventoryId",
+      "value": ""
+    },
+    {
+      "key": "transferId",
+      "value": ""
+    },
+    {
+      "key": "stockTakeId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 0. Auth",
+      "item": [
+        {
+          "name": "Đăng nhập hệ thống (Admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Sinh hậu tố ngẫu nhiên để tránh trùng lặp dữ liệu",
+                  "const suffix = Math.floor(Math.random() * 1000000);",
+                  "pm.collectionVariables.set('suffix', suffix);",
+                  "",
+                  "// Sinh 3 mã IMEI ngẫu nhiên hợp lệ",
+                  "const genImei = () => '358901' + Math.floor(100000000 + Math.random() * 900000000);",
+                  "pm.collectionVariables.set('imei1', genImei());",
+                  "pm.collectionVariables.set('imei2', genImei());",
+                  "pm.collectionVariables.set('imei3', genImei());",
+                  "console.log('Generated Suffix:', suffix);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Có accessToken', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "console.log('✅ Đăng nhập thành công, đã lưu Token.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 1. Preparation",
+      "item": [
+        {
+          "name": "Lấy chi nhánh gieo sẵn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('branchId', b.data[0].id);",
+                  "console.log('Saved branchId:', b.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Branch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Branch"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo thương hiệu Apple",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('brandId', b.data);",
+                  "console.log('Saved brandId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPLE_{{suffix}}\",\n  \"name\": \"Apple Inc. {{suffix}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Brand",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Brand"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo danh mục cha (SmartPhone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('parentCategoryId', b.data);",
+                  "console.log('Saved parentCategoryId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"MOBILE_{{suffix}}\",\n  \"name\": \"Điện thoại thông minh {{suffix}}\",\n  \"parentId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo dòng sản phẩm (iPhone 16 Pro Max)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('productId', b.data);",
+                  "console.log('Saved productId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{parentCategoryId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"code\": \"IPHONE_16_PM_{{suffix}}\",\n  \"name\": \"iPhone 16 Pro Max {{suffix}}\",\n  \"description\": \"Flagship 2024\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo biến thể (Màu Titan Sa Mạc)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('variantId', b.data);",
+                  "console.log('Saved variantId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"sku\": \"IP16PM-256-DESERT-{{suffix}}\",\n  \"name\": \"iPhone 16 Pro Max 256GB Titan Sa Mạc {{suffix}}\",\n  \"color\": \"Titan Sa Mạc\",\n  \"capacity\": \"256GB\",\n  \"costPrice\": 30000000.00,\n  \"salePrice\": 34990000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Product/Variant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Product",
+                "Variant"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo nhà cung cấp (Apple Vietnam)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('supplierId', b.data);",
+                  "console.log('Saved supplierId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPL_VN_{{suffix}}\",\n  \"name\": \"Apple Vietnam Local {{suffix}}\",\n  \"phone\": \"18001127\",\n  \"email\": \"vn_{{suffix}}@apple.com\",\n  \"address\": \"Quan 1, HCM\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Supplier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Supplier"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 2. Warehouse CRUD",
+      "item": [
+        {
+          "name": "[200] Tạo kho hàng chính (Kho Quận 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('warehouseId1', b.data);",
+                  "console.log('Saved warehouseId1:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q1_{{suffix}}\",\n  \"name\": \"Kho Quận 1 {{suffix}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo kho hàng phụ (Kho Quận 3)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('warehouseId2', b.data);",
+                  "console.log('Saved warehouseId2:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q3_{{suffix}}\",\n  \"name\": \"Kho Quận 3 {{suffix}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo kho trùng Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q1_{{suffix}}\",\n  \"name\": \"Kho trùng Code\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết kho hàng 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng Code', () => pm.expect(b.data.code).to.eql('KHO_Q1_' + pm.collectionVariables.get('suffix')));",
+                  "pm.test('Có tên chi nhánh', () => pm.expect(b.data.branchName).to.not.be.empty);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId1}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚚 3. PurchaseOrder Flow",
+      "item": [
+        {
+          "name": "[200] Tạo phiếu nhập kho (Draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo PO thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('purchaseOrderId1', b.data);",
+                  "console.log('Saved purchaseOrderId1:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId1}}\",\n  \"code\": \"PO_2026_001_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 2,\n      \"unitPrice\": 30000000.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo phiếu nhập trùng Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId1}}\",\n  \"code\": \"PO_2026_001_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 1,\n      \"unitPrice\": 30000000.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết phiếu nhập (Draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng tổng tiền', () => pm.expect(parseFloat(b.data.totalAmount)).to.eql(60000000.00));",
+                  "pm.test('Trạng thái Draft', () => pm.expect(b.data.status).to.eql('Draft'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật số lượng nhập kho",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{purchaseOrderId1}}\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId1}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 3,\n      \"unitPrice\": 30000000.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Hoàn tất phiếu nhập - Thiếu IMEI (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi thiếu IMEI', () => pm.expect(b.message).to.include('yêu cầu đúng 3 mã IMEI'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{purchaseOrderId1}}\",\n  \"variantImeis\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imeis\": [\n        \"{{imei1}}\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId1}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId1}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Hoàn tất phiếu nhập - Thành công",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{purchaseOrderId1}}\",\n  \"variantImeis\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imeis\": [\n        \"{{imei1}}\",\n        \"{{imei2}}\",\n        \"{{imei3}}\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId1}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId1}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Kiểm tra Trạng thái sau khi nhập",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Trạng thái Received', () => pm.expect(b.data.status).to.eql('Received'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo PO 2 & Hoàn tất trùng IMEI (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('purchaseOrderId2', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId1}}\",\n  \"code\": \"PO_2026_002_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 1,\n      \"unitPrice\": 30000000.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Hoàn tất PO 2 - Trùng IMEI",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi trùng IMEI', () => pm.expect(b.message).to.include('đã tồn tại trên hệ thống'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{purchaseOrderId2}}\",\n  \"variantImeis\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imeis\": [\n        \"{{imei1}}\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId2}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId2}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Xóa phiếu nhập đã nhận hàng (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Xóa kho hàng khi có phiếu nhập liên kết (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Dọn dẹp PO 2 (Hủy & Xóa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "PurchaseOrder",
+                "{{purchaseOrderId2}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 4. Inventory & IMEI Operations",
+      "item": [
+        {
+          "name": "[200] Lấy danh sách số dư Tồn kho",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có dữ liệu tồn kho', () => pm.expect(b.data.length).to.be.above(0));",
+                  "pm.test('Số lượng tồn = 3', () => pm.expect(b.data[0].quantity).to.eql(3));",
+                  "pm.collectionVariables.set('inventoryId', b.data[0].id);",
+                  "console.log('Saved inventoryId:', b.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory?warehouseId={{warehouseId1}}&productVariantId={{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId1}}"
+                },
+                {
+                  "key": "productVariantId",
+                  "value": "{{variantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật định mức tồn tối thiểu (Min Stock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "4"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/{{inventoryId}}/min-stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "{{inventoryId}}",
+                "min-stock"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Kiểm tra Cảnh báo tồn thấp (Low Stock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Nằm trong danh sách cảnh báo (3 <= 4)', () => pm.expect(b.data.length).to.be.above(0));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/low-stock/warehouse/{{warehouseId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "low-stock",
+                "warehouse",
+                "{{warehouseId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tra cứu chi tiết một mã IMEI",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng IMEI', () => pm.expect(b.data.imei).to.eql(pm.collectionVariables.get('imei1')));",
+                  "pm.test('Trạng thái InStock', () => pm.expect(b.data.status).to.eql('InStock'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/imei/{{imei1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "imei",
+                "{{imei1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách IMEI trong kho",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đủ 3 mã IMEI đã gieo', () => pm.expect(b.data.length).to.eql(3));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/imeis?warehouseId={{warehouseId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "imeis"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật trạng thái IMEI sang Sửa chữa",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "\"Repairing\""
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/imei/{{imei1}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "imei",
+                "{{imei1}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tra cứu lại IMEI sau khi cập nhật",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đã đổi sang Repairing', () => pm.expect(b.data.status).to.eql('Repairing'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/imei/{{imei1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "imei",
+                "{{imei1}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔄 5. WarehouseTransfer Flow",
+      "item": [
+        {
+          "name": "[200] Tạo phiếu điều chuyển (Pending)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo Transfer thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('transferId', b.data);",
+                  "console.log('Saved transferId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWarehouseId\": \"{{warehouseId1}}\",\n  \"toWarehouseId\": \"{{warehouseId2}}\",\n  \"code\": \"TR_2026_001_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/WarehouseTransfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "WarehouseTransfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo phiếu chuyển trùng Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWarehouseId\": \"{{warehouseId1}}\",\n  \"toWarehouseId\": \"{{warehouseId2}}\",\n  \"code\": \"TR_2026_001_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/WarehouseTransfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "WarehouseTransfer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết phiếu chuyển (Pending)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Trạng thái Pending', () => pm.expect(b.data.status).to.eql('Pending'));",
+                  "pm.test('Có thông tin kho xuất/nhận', () => {\n    pm.expect(b.data.fromWarehouseName).to.not.be.empty;\n    pm.expect(b.data.toWarehouseName).to.not.be.empty;\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/WarehouseTransfer/{{transferId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "WarehouseTransfer",
+                "{{transferId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xuất giao hàng điều chuyển (InTransit)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/WarehouseTransfer/{{transferId}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "WarehouseTransfer",
+                "{{transferId}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Hoàn tất nhận hàng - Sai IMEI kho nguồn (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{transferId}}\",\n  \"variantImeis\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imeis\": [\n        \"358901123456789\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/WarehouseTransfer/{{transferId}}/receive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "WarehouseTransfer",
+                "{{transferId}}",
+                "receive"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Hoàn tất nhận hàng - Hợp lệ (Thành công)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{transferId}}\",\n  \"variantImeis\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imeis\": [\n        \"{{imei2}}\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/WarehouseTransfer/{{transferId}}/receive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "WarehouseTransfer",
+                "{{transferId}}",
+                "receive"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Kiểm tra Tồn kho nguồn sau khi chuyển",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Số lượng tồn giảm còn 2', () => pm.expect(b.data[0].quantity).to.eql(2));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory?warehouseId={{warehouseId1}}&productVariantId={{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId1}}"
+                },
+                {
+                  "key": "productVariantId",
+                  "value": "{{variantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Kiểm tra Tồn kho đích sau khi chuyển",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Số lượng tồn tăng lên 1', () => pm.expect(b.data[0].quantity).to.eql(1));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory?warehouseId={{warehouseId2}}&productVariantId={{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId2}}"
+                },
+                {
+                  "key": "productVariantId",
+                  "value": "{{variantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tra cứu vị trí mới của IMEI",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đã đổi sang kho 2', () => pm.expect(b.data.warehouseId).to.eql(pm.collectionVariables.get('warehouseId2')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/imei/{{imei2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "imei",
+                "{{imei2}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔍 6. StockTake Flow",
+      "item": [
+        {
+          "name": "[200] Tạo phiếu kiểm kê kho (Draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo StockTake thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('stockTakeId', b.data);",
+                  "console.log('Saved stockTakeId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": \"{{warehouseId1}}\",\n  \"code\": \"ST_2026_001_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"actualQuantity\": 1,\n      \"note\": \"Thất thoát tạm thời 1 chiếc máy\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/StockTake",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "StockTake"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo phiếu kiểm kê trùng Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": \"{{warehouseId1}}\",\n  \"code\": \"ST_2026_001_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"actualQuantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/StockTake",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "StockTake"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết phiếu kiểm kê (Draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Trạng thái Draft', () => pm.expect(b.data.status).to.eql('Draft'));",
+                  "pm.test('Kiểm tra chênh lệch', () => {\n    pm.expect(b.data.items[0].systemQuantity).to.eql(2);\n    pm.expect(b.data.items[0].actualQuantity).to.eql(1);\n    pm.expect(b.data.items[0].difference).to.eql(-1);\n});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/StockTake/{{stockTakeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "StockTake",
+                "{{stockTakeId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Bắt đầu kiểm kê kho (InProgress)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/StockTake/{{stockTakeId}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "StockTake",
+                "{{stockTakeId}}",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Hoàn tất kiểm kê - Thiếu IMEI đối soát (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{stockTakeId}}\",\n  \"variantImeis\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/StockTake/{{stockTakeId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "StockTake",
+                "{{stockTakeId}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Hoàn tất kiểm kê - Thành công",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{stockTakeId}}\",\n  \"variantImeis\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imeis\": [\n        \"{{imei1}}\"\n      ]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/StockTake/{{stockTakeId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "StockTake",
+                "{{stockTakeId}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Kiểm tra Tồn kho sau kiểm kê",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Số lượng tồn đã cân bằng về 1', () => pm.expect(b.data[0].quantity).to.eql(1));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory?warehouseId={{warehouseId1}}&productVariantId={{variantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory"
+              ],
+              "query": [
+                {
+                  "key": "warehouseId",
+                  "value": "{{warehouseId1}}"
+                },
+                {
+                  "key": "productVariantId",
+                  "value": "{{variantId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tra cứu IMEI mất mát sau kiểm kê",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đã đổi sang Disposed', () => pm.expect(b.data.status).to.eql('Disposed'));",
+                  "pm.test('Không thuộc kho nào', () => pm.expect(b.data.warehouseId).to.be.null);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Inventory/imei/{{imei3}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Inventory",
+                "imei",
+                "{{imei3}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

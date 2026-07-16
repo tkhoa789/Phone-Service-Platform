@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "PSP - Module 6: Warehouse (Kho hàng)",
-    "description": "Bộ test API tích hợp tự động cho Module 6: Warehouse (Kho hàng) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chạy kịch bản đăng nhập để lấy Token.\n3. Lấy thông tin Chi nhánh gieo sẵn.\n4. Thực hiện CRUD và kiểm tra các ràng buộc.",
+    "name": "PSP - Customer Management (Module 11 - Auto Run)",
+    "description": "Bộ kịch bản test tự động 100% cho Phân hệ Khách hàng (Module 11: Customer) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chọn Collection và click **Run Collection**.\n3. Nhấn **Run** để chạy toàn bộ kịch bản tự động.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,15 +18,15 @@
       "value": ""
     },
     {
-      "key": "branchId",
+      "key": "suffix",
       "value": ""
     },
     {
-      "key": "warehouseId1",
+      "key": "phone",
       "value": ""
     },
     {
-      "key": "warehouseId2",
+      "key": "customerId",
       "value": ""
     }
   ],
@@ -37,6 +37,19 @@
         {
           "name": "Đăng nhập hệ thống (Admin)",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Sinh số điện thoại ngẫu nhiên bằng cách ghép 0987 và 6 số ngẫu nhiên",
+                  "const randomNum = Math.floor(100000 + Math.random() * 900000);",
+                  "pm.collectionVariables.set('suffix', randomNum);",
+                  "pm.collectionVariables.set('phone', '0987' + randomNum);",
+                  "console.log('Generated Phone:', '0987' + randomNum);"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -80,10 +93,10 @@
       ]
     },
     {
-      "name": "🏢 1. Preparation",
+      "name": "👤 1. Customer CRUD",
       "item": [
         {
-          "name": "Lấy danh sách Chi nhánh gieo sẵn",
+          "name": "[200] Tạo khách hàng mới (Thành công)",
           "event": [
             {
               "listen": "test",
@@ -91,54 +104,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('Có ít nhất 1 chi nhánh', () => pm.expect(b.data.length).to.be.above(0));",
-                  "pm.collectionVariables.set('branchId', b.data[0].id);",
-                  "console.log('Saved branchId:', b.data[0].id);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Branch",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Branch"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🏠 2. Warehouse",
-      "item": [
-        {
-          "name": "[200] Tạo kho hàng chính (Kho Quận 1)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Tạo thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
-                  "pm.collectionVariables.set('warehouseId1', b.data);",
-                  "console.log('Saved warehouseId1:', b.data);"
+                  "pm.test('Tạo hồ sơ thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('customerId', b.data);",
+                  "console.log('Saved customerId:', b.data);"
                 ],
                 "type": "text/javascript"
               }
@@ -164,70 +132,21 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q1\",\n  \"name\": \"Kho Quận 1\"\n}"
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn A {{suffix}}\",\n  \"phone\": \"{{phone}}\",\n  \"email\": \"vana_{{suffix}}@example.com\",\n  \"address\": \"123 Đường Lê Lợi, Quận 1\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/Warehouse",
+              "raw": "{{baseUrl}}/Customer",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse"
+                "Customer"
               ]
             }
           }
         },
         {
-          "name": "[200] Tạo kho hàng phụ (Kho Quận 3)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('warehouseId2', b.data);",
-                  "console.log('Saved warehouseId2:', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q3\",\n  \"name\": \"Kho Quận 3\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Warehouse",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Warehouse"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[409] Tạo kho hàng trùng Code",
+          "name": "[409] Tạo khách hàng trùng số điện thoại (Lỗi)",
           "event": [
             {
               "listen": "test",
@@ -235,7 +154,7 @@
                 "exec": [
                   "pm.test('Status 409', () => pm.response.to.have.status(409));",
                   "const b = pm.response.json();",
-                  "pm.test('Lỗi Conflict', () => pm.expect(b.code).to.eql('CONFLICT'));"
+                  "pm.test('Báo lỗi trùng số điện thoại', () => pm.expect(b.message).to.include('đã được đăng ký'));"
                 ],
                 "type": "text/javascript"
               }
@@ -261,69 +180,21 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q1\",\n  \"name\": \"Kho Quận 1 Trùng Lặp\"\n}"
+              "raw": "{\n  \"fullName\": \"Trần Thị B {{suffix}}\",\n  \"phone\": \"{{phone}}\",\n  \"email\": \"vtb_{{suffix}}@example.com\",\n  \"address\": \"456 Đường Lê Lợi, Quận 1\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/Warehouse",
+              "raw": "{{baseUrl}}/Customer",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse"
+                "Customer"
               ]
             }
           }
         },
         {
-          "name": "[400] Tạo kho hàng thiếu thông tin (Name)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test('Lỗi Validation', () => pm.expect(b.code).to.eql('VALIDATION_ERROR'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_ERR\",\n  \"name\": \"\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Warehouse",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Warehouse"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Lấy chi tiết kho hàng 1",
+          "name": "[200] Tra cứu khách hàng theo ID",
           "event": [
             {
               "listen": "test",
@@ -331,8 +202,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('Đúng Code', () => pm.expect(b.data.code).to.eql('KHO_Q1'));",
-                  "pm.test('Có BranchName', () => pm.expect(b.data.branchName).to.not.be.empty);"
+                  "pm.test('Đúng họ tên', () => pm.expect(b.data.fullName).to.eql('Nguyễn Văn A ' + pm.collectionVariables.get('suffix')));",
+                  "pm.test('Mã khách hàng tự sinh có dạng KH-', () => pm.expect(b.data.code).to.include('KH-'));"
                 ],
                 "type": "text/javascript"
               }
@@ -351,19 +222,19 @@
             },
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Warehouse/{{warehouseId1}}",
+              "raw": "{{baseUrl}}/Customer/{{customerId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse",
-                "{{warehouseId1}}"
+                "Customer",
+                "{{customerId}}"
               ]
             }
           }
         },
         {
-          "name": "[200] Lấy toàn bộ danh sách kho hàng",
+          "name": "[200] Tra cứu khách hàng theo Số điện thoại",
           "event": [
             {
               "listen": "test",
@@ -371,7 +242,7 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('Dữ liệu là mảng', () => pm.expect(b.data).to.be.an('array'));"
+                  "pm.test('Đúng họ tên', () => pm.expect(b.data.fullName).to.eql('Nguyễn Văn A ' + pm.collectionVariables.get('suffix')));"
                 ],
                 "type": "text/javascript"
               }
@@ -390,58 +261,20 @@
             },
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Warehouse",
+              "raw": "{{baseUrl}}/Customer/phone/{{phone}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse"
+                "Customer",
+                "phone",
+                "{{phone}}"
               ]
             }
           }
         },
         {
-          "name": "[200] Lấy kho hàng theo chi nhánh",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Dữ liệu là mảng', () => pm.expect(b.data).to.be.an('array'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Warehouse/branch/{{branchId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Warehouse",
-                "branch",
-                "{{branchId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Cập nhật tên kho hàng 2",
+          "name": "[200] Cập nhật thông tin khách hàng",
           "event": [
             {
               "listen": "test",
@@ -473,28 +306,31 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{warehouseId2}}\",\n  \"name\": \"Kho Quận 3 Cập Nhật\"\n}"
+              "raw": "{\n  \"id\": \"{{customerId}}\",\n  \"fullName\": \"Nguyễn Văn A (Updated) {{suffix}}\",\n  \"phone\": \"{{phone}}\",\n  \"email\": \"vana_updated_{{suffix}}@example.com\",\n  \"address\": \"456 Đường Nguyễn Huệ, Quận 1\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "raw": "{{baseUrl}}/Customer/{{customerId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse",
-                "{{warehouseId2}}"
+                "Customer",
+                "{{customerId}}"
               ]
             }
           }
         },
         {
-          "name": "[400] Cập nhật - Lỗi ID URL không khớp Body",
+          "name": "[200] Tìm kiếm khách hàng theo từ khóa",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tìm thấy khách hàng', () => pm.expect(b.data.length).to.be.above(0));",
+                  "pm.test('Họ tên đã cập nhật thành công', () => pm.expect(b.data[0].fullName).to.include('(Updated)'));"
                 ],
                 "type": "text/javascript"
               }
@@ -511,31 +347,26 @@
                 }
               ]
             },
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id\": \"{{warehouseId1}}\",\n  \"name\": \"Kho Lỗi ID URL\"\n}"
-            },
+            "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "raw": "{{baseUrl}}/Customer?keyword={{phone}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse",
-                "{{warehouseId2}}"
+                "Customer"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "{{phone}}"
+                }
               ]
             }
           }
         },
         {
-          "name": "[200] Xóa kho hàng 2 (Thành công)",
+          "name": "[200] Xóa khách hàng (Xóa mềm)",
           "event": [
             {
               "listen": "test",
@@ -560,19 +391,19 @@
             },
             "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "raw": "{{baseUrl}}/Customer/{{customerId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse",
-                "{{warehouseId2}}"
+                "Customer",
+                "{{customerId}}"
               ]
             }
           }
         },
         {
-          "name": "[404] Lấy chi tiết kho hàng 2 sau khi xóa (Lỗi)",
+          "name": "[404] Tra cứu lại khách hàng sau khi xóa (Lỗi)",
           "event": [
             {
               "listen": "test",
@@ -597,13 +428,13 @@
             },
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "raw": "{{baseUrl}}/Customer/{{customerId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse",
-                "{{warehouseId2}}"
+                "Customer",
+                "{{customerId}}"
               ]
             }
           }

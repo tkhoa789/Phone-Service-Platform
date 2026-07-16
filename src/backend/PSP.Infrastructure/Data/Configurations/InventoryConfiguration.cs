@@ -57,14 +57,28 @@ public class InventoryConfiguration : IEntityTypeConfiguration<InventoryEntity>
     }
 }
 
-/// <summary>
-/// Cấu hình cho bảng Imeis (Mã định danh thiết bị).
-/// </summary>
 public class ImeiConfiguration : IEntityTypeConfiguration<ImeiEntity>
 {
     public void Configure(EntityTypeBuilder<ImeiEntity> builder)
     {
-        builder.HasKey(e => e.Imei);
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.Imei)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.HasIndex(e => e.Imei)
+            .IsUnique();
+
+        builder.HasOne(e => e.ProductVariant)
+            .WithMany(v => v.Imeis)
+            .HasForeignKey(e => e.ProductVariantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.Warehouse)
+            .WithMany(w => w.Imeis)
+            .HasForeignKey(e => e.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -103,4 +117,34 @@ public class StockTakeItemConfiguration : IEntityTypeConfiguration<StockTakeItem
         builder.HasOne(e => e.StockTake).WithMany(s => s.Items).HasForeignKey(e => e.StockTakeId);
     }
 }
+
+/// <summary>
+/// Cấu hình cho bảng PurchaseOrders (Phiếu nhập kho).
+/// </summary>
+public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrderEntity>
+{
+    public void Configure(EntityTypeBuilder<PurchaseOrderEntity> builder)
+    {
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.Code)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.HasIndex(e => e.Code)
+            .IsUnique();
+
+        builder.HasOne(e => e.Supplier)
+            .WithMany()
+            .HasForeignKey(e => e.SupplierId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.Warehouse)
+            .WithMany()
+            .HasForeignKey(e => e.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+
 

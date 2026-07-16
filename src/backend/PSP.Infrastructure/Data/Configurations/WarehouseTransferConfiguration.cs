@@ -8,6 +8,15 @@ public class WarehouseTransferConfiguration : IEntityTypeConfiguration<Warehouse
 {
     public void Configure(EntityTypeBuilder<WarehouseTransferEntity> builder)
     {
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.Code)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.HasIndex(e => e.Code)
+            .IsUnique();
+
         builder.HasOne(e => e.FromWarehouse)
             .WithMany()
             .HasForeignKey(e => e.FromWarehouseId)

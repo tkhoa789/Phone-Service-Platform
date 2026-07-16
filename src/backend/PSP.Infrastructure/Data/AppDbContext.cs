@@ -49,8 +49,11 @@ public class AppDbContext : DbContext
     public DbSet<InventoryEntity> Inventories => Set<InventoryEntity>();
     public DbSet<ImeiEntity> Imeis => Set<ImeiEntity>();
     public DbSet<PurchaseOrderEntity> PurchaseOrders => Set<PurchaseOrderEntity>();
+    public DbSet<PurchaseOrderItemEntity> PurchaseOrderItems => Set<PurchaseOrderItemEntity>();
     public DbSet<WarehouseTransferEntity> WarehouseTransfers => Set<WarehouseTransferEntity>();
+    public DbSet<WarehouseTransferItemEntity> WarehouseTransferItems => Set<WarehouseTransferItemEntity>();
     public DbSet<StockTakeEntity> StockTakes => Set<StockTakeEntity>();
+    public DbSet<StockTakeItemEntity> StockTakeItems => Set<StockTakeItemEntity>();
 
     // Customer
     public DbSet<CustomerEntity> Customers => Set<CustomerEntity>();

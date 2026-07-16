@@ -48,7 +48,11 @@ public class GlobalExceptionMiddleware
 
         var response = ApiResponse<object>.Fail(code, message);
 
-        var result = JsonSerializer.Serialize(response);
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var result = JsonSerializer.Serialize(response, options);
         return context.Response.WriteAsync(result);
     }
 }
