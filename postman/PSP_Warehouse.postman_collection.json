@@ -1,0 +1,614 @@
+{
+  "info": {
+    "name": "PSP - Module 6: Warehouse (Kho hàng)",
+    "description": "Bộ test API tích hợp tự động cho Module 6: Warehouse (Kho hàng) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chạy kịch bản đăng nhập để lấy Token.\n3. Lấy thông tin Chi nhánh gieo sẵn.\n4. Thực hiện CRUD và kiểm tra các ràng buộc.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "branchId",
+      "value": ""
+    },
+    {
+      "key": "warehouseId1",
+      "value": ""
+    },
+    {
+      "key": "warehouseId2",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 0. Auth",
+      "item": [
+        {
+          "name": "Đăng nhập hệ thống (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Có accessToken', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "console.log('✅ Đăng nhập thành công, đã lưu Token.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 1. Preparation",
+      "item": [
+        {
+          "name": "Lấy danh sách Chi nhánh gieo sẵn",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có ít nhất 1 chi nhánh', () => pm.expect(b.data.length).to.be.above(0));",
+                  "pm.collectionVariables.set('branchId', b.data[0].id);",
+                  "console.log('Saved branchId:', b.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Branch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Branch"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 2. Warehouse",
+      "item": [
+        {
+          "name": "[200] Tạo kho hàng chính (Kho Quận 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('warehouseId1', b.data);",
+                  "console.log('Saved warehouseId1:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q1\",\n  \"name\": \"Kho Quận 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Tạo kho hàng phụ (Kho Quận 3)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('warehouseId2', b.data);",
+                  "console.log('Saved warehouseId2:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q3\",\n  \"name\": \"Kho Quận 3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo kho hàng trùng Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lỗi Conflict', () => pm.expect(b.code).to.eql('CONFLICT'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_Q1\",\n  \"name\": \"Kho Quận 1 Trùng Lặp\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Tạo kho hàng thiếu thông tin (Name)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lỗi Validation', () => pm.expect(b.code).to.eql('VALIDATION_ERROR'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"code\": \"KHO_ERR\",\n  \"name\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết kho hàng 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đúng Code', () => pm.expect(b.data.code).to.eql('KHO_Q1'));",
+                  "pm.test('Có BranchName', () => pm.expect(b.data.branchName).to.not.be.empty);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy toàn bộ danh sách kho hàng",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Dữ liệu là mảng', () => pm.expect(b.data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy kho hàng theo chi nhánh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Dữ liệu là mảng', () => pm.expect(b.data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/branch/{{branchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "branch",
+                "{{branchId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật tên kho hàng 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{warehouseId2}}\",\n  \"name\": \"Kho Quận 3 Cập Nhật\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Cập nhật - Lỗi ID URL không khớp Body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{warehouseId1}}\",\n  \"name\": \"Kho Lỗi ID URL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa kho hàng 2 (Thành công)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[404] Lấy chi tiết kho hàng 2 sau khi xóa (Lỗi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/Warehouse/{{warehouseId2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Warehouse",
+                "{{warehouseId2}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -4,6 +4,51 @@ using PSP.Domain.Modules.Inventory.Entities;
 
 namespace PSP.Infrastructure.Data.Configurations;
 
+/// <summary>
+/// Cấu hình Fluent API cho thực thể WarehouseEntity (Kho hàng).
+/// Định nghĩa các ràng buộc khoá chính, kiểu dữ liệu, index độc nhất và mối quan hệ với chi nhánh.
+/// </summary>
+public class WarehouseConfiguration : IEntityTypeConfiguration<WarehouseEntity>
+{
+    public void Configure(EntityTypeBuilder<WarehouseEntity> builder)
+    {
+        // 1. Chỉ định khóa chính cho bảng Warehouses
+        builder.HasKey(e => e.Id);
+
+        // 2. Cấu hình thuộc tính Code (Mã kho)
+        // - Kiểu dữ liệu VARCHAR(30) trên Database
+        // - Bắt buộc nhập (IsRequired)
+        builder.Property(e => e.Code)
+            .HasMaxLength(30)
+            .IsRequired();
+
+        // 3. Cấu hình thuộc tính Name (Tên kho)
+        // - Kiểu dữ liệu VARCHAR(100) trên Database
+        // - Bắt buộc nhập (IsRequired)
+        builder.Property(e => e.Name)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // 4. Thiết lập Unique Index cho Code
+        // - Chặn việc tạo 2 kho hàng có trùng mã Code
+        builder.HasIndex(e => e.Code)
+            .IsUnique();
+
+        // 5. Cấu hình mối quan hệ 1-N giữa Warehouse và Branch
+        // - Một kho hàng (Warehouse) thuộc về một chi nhánh (Branch)
+        // - Một chi nhánh có thể quản lý nhiều kho hàng (b.Warehouses)
+        // - Sử dụng khóa ngoại BranchId
+        // - Khi xóa Chi nhánh, chặn xóa (DeleteBehavior.Restrict) nếu kho hàng vẫn tồn tại để bảo vệ dữ liệu.
+        builder.HasOne(e => e.Branch)
+            .WithMany(b => b.Warehouses)
+            .HasForeignKey(e => e.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+/// <summary>
+/// Cấu hình cho bảng Inventories (Tồn kho).
+/// </summary>
 public class InventoryConfiguration : IEntityTypeConfiguration<InventoryEntity>
 {
     public void Configure(EntityTypeBuilder<InventoryEntity> builder)
@@ -12,6 +57,9 @@ public class InventoryConfiguration : IEntityTypeConfiguration<InventoryEntity>
     }
 }
 
+/// <summary>
+/// Cấu hình cho bảng Imeis (Mã định danh thiết bị).
+/// </summary>
 public class ImeiConfiguration : IEntityTypeConfiguration<ImeiEntity>
 {
     public void Configure(EntityTypeBuilder<ImeiEntity> builder)
@@ -20,6 +68,9 @@ public class ImeiConfiguration : IEntityTypeConfiguration<ImeiEntity>
     }
 }
 
+/// <summary>
+/// Cấu hình cho bảng PurchaseOrderItems (Chi tiết phiếu nhập).
+/// </summary>
 public class PurchaseOrderItemConfiguration : IEntityTypeConfiguration<PurchaseOrderItemEntity>
 {
     public void Configure(EntityTypeBuilder<PurchaseOrderItemEntity> builder)
@@ -29,6 +80,9 @@ public class PurchaseOrderItemConfiguration : IEntityTypeConfiguration<PurchaseO
     }
 }
 
+/// <summary>
+/// Cấu hình cho bảng WarehouseTransferItems (Chi tiết chuyển kho).
+/// </summary>
 public class WarehouseTransferItemConfiguration : IEntityTypeConfiguration<WarehouseTransferItemEntity>
 {
     public void Configure(EntityTypeBuilder<WarehouseTransferItemEntity> builder)
@@ -38,6 +92,9 @@ public class WarehouseTransferItemConfiguration : IEntityTypeConfiguration<Wareh
     }
 }
 
+/// <summary>
+/// Cấu hình cho bảng StockTakeItems (Chi tiết kiểm kho).
+/// </summary>
 public class StockTakeItemConfiguration : IEntityTypeConfiguration<StockTakeItemEntity>
 {
     public void Configure(EntityTypeBuilder<StockTakeItemEntity> builder)
@@ -46,3 +103,4 @@ public class StockTakeItemConfiguration : IEntityTypeConfiguration<StockTakeItem
         builder.HasOne(e => e.StockTake).WithMany(s => s.Items).HasForeignKey(e => e.StockTakeId);
     }
 }
+
