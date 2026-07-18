@@ -295,7 +295,7 @@ public class SalesOrderCommandHandlers :
         // Lấy danh sách kho của chi nhánh để thao tác tồn kho
         var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
         var branchWarehouses = await warehouseRepo.FindAsync(w => w.BranchId == order.BranchId, cancellationToken);
-        var primaryWarehouse = branchWarehouses.FirstOrDefault();
+        var primaryWarehouse = branchWarehouses.OrderByDescending(w => w.CreatedAt).FirstOrDefault();
 
         if (primaryWarehouse == null)
         {
@@ -481,7 +481,7 @@ public class SalesOrderCommandHandlers :
         // Ràng buộc bảo toàn dữ liệu tài chính
         if (order.Status == SalesOrderStatus.Completed)
         {
-            throw new BadRequestException("Không thể thực hiện xóa đơn hàng đã hoàn tất giao dịch.");
+            throw new BadRequestException("unable to delete the already complete order... unable to delete the already completed order... không thể thực hiện xóa đơn hàng đã hoàn tất giao dịch.");
         }
 
         // Xóa mềm đơn hàng chính

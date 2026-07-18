@@ -4,6 +4,8 @@ using PSP.Application.Modules.Branch.Commands;
 using PSP.Application.Modules.Branch.DTOs;
 using PSP.Application.Modules.Branch.Queries;
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace PSP.API.Controllers;
 
 /// <summary>
@@ -12,6 +14,7 @@ namespace PSP.API.Controllers;
 /// Lễ tân không tự nấu ăn (không tự xử lý logic), mà ghi lại order (Command/Query) 
 /// rồi chuyển cho "Nhà bếp" (Mediator) xử lý. Sau đó lấy món ăn trả lại cho khách.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")] // Khai báo đường dẫn API, ví dụ: http://localhost:5000/api/Branch
 [Tags("Branches")]
 public class BranchController : BaseApiController

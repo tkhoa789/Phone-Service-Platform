@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "PSP - Customer Management (Module 11 - Auto Run)",
+    "name": "PSP_04_Customer",
     "description": "Bộ kịch bản test tự động 100% cho Phân hệ Khách hàng (Module 11: Customer) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chọn Collection và click **Run Collection**.\n3. Nhấn **Run** để chạy toàn bộ kịch bản tự động.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "PSP - Sales & Billing Master (Modules 12, 13, 14 - Unified Auto Run)",
-    "description": "Kịch bản tích hợp tự động hoàn chỉnh từ đầu đến cuối (End-to-End) cho toàn bộ Phân hệ Bán hàng & Thanh toán (Modules 12, 13, 14) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chọn Collection và click **Run Collection**.\n3. Nhấn **Run** để chạy toàn bộ kịch bản tự động.",
+    "name": "PSP_01_Foundation",
+    "description": "Bộ test API đầy đủ cho Phone Service Platform.\n\n**CÁCH DÙNG:**\n1. Import file này vào Postman\n2. Chạy folder Auth trước → Token tự động lưu\n3. Chạy tiếp Branch → User\n\nMọi token đều tự động gắn sau khi Login thành công.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -18,98 +18,407 @@
       "value": ""
     },
     {
-      "key": "suffix",
+      "key": "branchId",
       "value": ""
     },
     {
-      "key": "customerId",
+      "key": "userId",
       "value": ""
     },
     {
-      "key": "brandId",
-      "value": ""
+      "key": "branchCode1",
+      "value": "CN-Q3-{{suffix}}"
     },
     {
-      "key": "categoryId",
-      "value": ""
+      "key": "branchCode2",
+      "value": "CN-Q5-{{suffix}}"
     },
     {
-      "key": "productId",
-      "value": ""
+      "key": "branchEmail1",
+      "value": "q3-{{suffix}}@psp.com"
     },
     {
-      "key": "variantId",
-      "value": ""
+      "key": "branchEmail1Updated",
+      "value": "q3-updated-{{suffix}}@psp.com"
     },
     {
-      "key": "warehouseId",
-      "value": ""
+      "key": "branchEmail2",
+      "value": "q5-{{suffix}}@psp.com"
     },
     {
-      "key": "supplierId",
-      "value": ""
+      "key": "nvUsername",
+      "value": "nhanvien01-{{suffix}}"
     },
     {
-      "key": "purchaseOrderId",
-      "value": ""
+      "key": "nvEmail",
+      "value": "nv01-{{suffix}}@psp.com"
     },
     {
-      "key": "promotionId",
-      "value": ""
+      "key": "nvEmailUpdated",
+      "value": "nv01-updated-{{suffix}}@psp.com"
     },
     {
-      "key": "voucherId",
-      "value": ""
+      "key": "nvPhone",
+      "value": "0988{{suffix}}"
     },
     {
-      "key": "voucherCode",
-      "value": ""
+      "key": "nvPhoneUpdated",
+      "value": "0989{{suffix}}"
     },
     {
-      "key": "salesOrderId",
-      "value": ""
-    },
-    {
-      "key": "invoiceId",
-      "value": ""
-    },
-    {
-      "key": "cashMethodId",
-      "value": "30000000-0000-0000-0000-000000000001"
-    },
-    {
-      "key": "bankMethodId",
-      "value": "30000000-0000-0000-0000-000000000002"
+      "key": "duplicateEmail",
+      "value": "trung-{{suffix}}@psp.com"
     }
   ],
   "item": [
     {
-      "name": "🔐 0. Auth",
+      "name": "🔐 1. Auth",
       "item": [
         {
-          "name": "Đăng nhập hệ thống (Admin)",
+          "name": "[200] Login thành công",
           "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "const randomNum = Math.floor(100000 + Math.random() * 900000);",
-                  "pm.collectionVariables.set('suffix', randomNum);",
-                  "pm.collectionVariables.set('voucherCode', 'MASTER_VOUCH_' + randomNum);",
-                  "console.log('Master Suffix:', randomNum);"
-                ],
-                "type": "text/javascript"
-              }
-            },
             {
               "listen": "test",
               "script": {
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.test('Có Token', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Có accessToken', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.test('Có refreshToken', () => pm.expect(b.data.refreshToken).to.not.be.empty);",
+                  "pm.test('Có roles', () => pm.expect(b.data.roles).to.be.an('array').with.lengthOf.above(0));",
+                  "pm.test('Có permissions', () => pm.expect(b.data.permissions).to.be.an('array').with.lengthOf.above(0));",
+                  "pm.test('user.username = admin', () => pm.expect(b.data.user.username).to.eql('admin'));",
                   "pm.collectionVariables.set('accessToken', b.data.accessToken);",
-                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);"
+                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "console.log('✅ Token saved. Roles:', b.data.roles);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[401] Login - Sai mật khẩu",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "const b = pm.response.json();",
+                  "pm.test('Không phải SUCCESS', () => pm.expect(b.code).to.not.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"SaiMatKhau\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[401] Login - Username không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"khongtontai\",\n  \"password\": \"abc123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Login - Thiếu username & password (Validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có thông báo lỗi', () => pm.expect(b.message).to.not.be.empty);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"\",\n  \"password\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Nhận token mới', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "console.log('✅ Token rotation thành công!');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "refresh-token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Refresh Token - Thiếu token (Validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "refresh-token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Logout thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "const oldRefresh = pm.collectionVariables.get('refreshToken');",
+                  "pm.collectionVariables.set('revokedRefreshToken', oldRefresh);",
+                  "pm.collectionVariables.set('accessToken', '');",
+                  "pm.collectionVariables.set('refreshToken', '');",
+                  "console.log('✅ Đã logout. Token bị xóa.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[401] Logout - Không có token (Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"token-nao-do\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "logout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "⚙️ RE-LOGIN (lấy token lại để test tiếp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const b = pm.response.json();",
+                  "if (b.data) {",
+                  "  pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "  console.log('✅ Re-login thành công. Sẵn sàng test Branch/User.');",
+                  "}"
                 ],
                 "type": "text/javascript"
               }
@@ -142,10 +451,10 @@
       ]
     },
     {
-      "name": "🛠️ 1. Catalog & Inventory Setup",
+      "name": "🏢 2. Branch (Chi nhánh)",
       "item": [
         {
-          "name": "Tạo Brand mới",
+          "name": "[200] Tạo chi nhánh mới",
           "event": [
             {
               "listen": "test",
@@ -153,7 +462,10 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.collectionVariables.set('brandId', b.data);"
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Trả về Guid', () => pm.expect(b.data).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.collectionVariables.set('branchId', b.data);",
+                  "console.log('✅ BranchId lưu:', b.data);"
                 ],
                 "type": "text/javascript"
               }
@@ -179,29 +491,29 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"BR_M_{{suffix}}\",\n  \"name\": \"Brand Master {{suffix}}\"\n}"
+              "raw": "{\n  \"code\": \"{{branchCode1}}\",\n  \"name\": \"Chi nhánh Quận 3\",\n  \"address\": \"456 Võ Văn Tần, Quận 3, TP.HCM\",\n  \"phone\": \"0909876543\",\n  \"email\": \"{{branchEmail1}}\",\n  \"status\": 0\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/Brand",
+              "raw": "{{baseUrl}}/Branch",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Brand"
+                "Branch"
               ]
             }
           }
         },
         {
-          "name": "Tạo Category mới",
+          "name": "[400] Tạo chi nhánh - Thiếu tên (Validation)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
                   "const b = pm.response.json();",
-                  "pm.collectionVariables.set('categoryId', b.data);"
+                  "pm.test('Có thông báo lỗi validation', () => pm.expect(b.message).to.not.be.empty);"
                 ],
                 "type": "text/javascript"
               }
@@ -227,29 +539,27 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"CAT_M_{{suffix}}\",\n  \"name\": \"Category Master {{suffix}}\",\n  \"parentId\": null\n}"
+              "raw": "{\n  \"code\": \"\",\n  \"name\": \"\",\n  \"address\": \"\",\n  \"phone\": \"\",\n  \"email\": \"\",\n  \"status\": 0\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/Category",
+              "raw": "{{baseUrl}}/Branch",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Category"
+                "Branch"
               ]
             }
           }
         },
         {
-          "name": "Tạo Product mới",
+          "name": "[400] Tạo chi nhánh - SĐT sai định dạng (Validation)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('productId', b.data);"
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
                 ],
                 "type": "text/javascript"
               }
@@ -275,21 +585,57 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"code\": \"P_M_{{suffix}}\",\n  \"name\": \"Sản phẩm Master {{suffix}}\",\n  \"description\": \"Sản phẩm test\"\n}"
+              "raw": "{\n  \"code\": \"CN-TEST\",\n  \"name\": \"Test Branch\",\n  \"address\": \"123 ABC\",\n  \"phone\": \"abc-not-phone\",\n  \"status\": 0\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/Product",
+              "raw": "{{baseUrl}}/Branch",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Product"
+                "Branch"
               ]
             }
           }
         },
         {
-          "name": "Tạo Product Variant mới (Đơn giá 500,000đ)",
+          "name": "[401] Tạo chi nhánh - Không có token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"CN-NOLOGIN\",\n  \"name\": \"No Login Branch\",\n  \"address\": \"123 ABC\",\n  \"phone\": \"0901234567\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Branch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Branch"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách chi nhánh",
           "event": [
             {
               "listen": "test",
@@ -297,7 +643,9 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.collectionVariables.set('variantId', b.data);"
+                  "pm.test('data là array', () => pm.expect(b.data).to.be.an('array'));",
+                  "pm.test('Có ít nhất 1 chi nhánh (Trụ sở)', () => pm.expect(b.data.length).to.be.above(0));",
+                  "console.log('Tổng chi nhánh:', b.data.length);"
                 ],
                 "type": "text/javascript"
               }
@@ -314,31 +662,20 @@
                 }
               ]
             },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"sku\": \"SKU_M_{{suffix}}\",\n  \"name\": \"Biến thể Master {{suffix}}\",\n  \"color\": \"Xám Titan\",\n  \"capacity\": \"512GB\",\n  \"costPrice\": 300000,\n  \"salePrice\": 500000\n}"
-            },
+            "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Product/variant",
+              "raw": "{{baseUrl}}/Branch",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Product",
-                "variant"
+                "Branch"
               ]
             }
           }
         },
         {
-          "name": "Tạo Warehouse mới",
+          "name": "[200] Lấy chi tiết chi nhánh theo ID",
           "event": [
             {
               "listen": "test",
@@ -346,7 +683,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.collectionVariables.set('warehouseId', b.data);"
+                  "pm.test('Có Id trong response', () => pm.expect(b.data.id).to.not.be.empty);",
+                  "pm.test('Có Name', () => pm.expect(b.data.name).to.not.be.empty);"
                 ],
                 "type": "text/javascript"
               }
@@ -363,38 +701,27 @@
                 }
               ]
             },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"branchId\": \"00000000-0000-0000-0000-000000000001\",\n  \"code\": \"W_M_{{suffix}}\",\n  \"name\": \"Kho hàng Master {{suffix}}\"\n}"
-            },
+            "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Warehouse",
+              "raw": "{{baseUrl}}/Branch/{{branchId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Warehouse"
+                "Branch",
+                "{{branchId}}"
               ]
             }
           }
         },
         {
-          "name": "Tạo Supplier mới",
+          "name": "[404] Lấy chi tiết chi nhánh - ID không tồn tại",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('supplierId', b.data);"
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
                 ],
                 "type": "text/javascript"
               }
@@ -411,30 +738,21 @@
                 }
               ]
             },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"SUP_M_{{suffix}}\",\n  \"name\": \"Nhà cung cấp Master {{suffix}}\",\n  \"phone\": \"0966223344\",\n  \"email\": \"sup_master_{{suffix}}@example.com\",\n  \"address\": \"456 Lê Hồng Phong\"\n}"
-            },
+            "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/Supplier",
+              "raw": "{{baseUrl}}/Branch/00000000-0000-0000-0000-000000000000",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Supplier"
+                "Branch",
+                "00000000-0000-0000-0000-000000000000"
               ]
             }
           }
         },
         {
-          "name": "Tạo Phiếu nhập kho (Số lượng 10)",
+          "name": "[200] Cập nhật chi nhánh",
           "event": [
             {
               "listen": "test",
@@ -442,53 +760,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "pm.collectionVariables.set('purchaseOrderId', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"supplierId\": \"{{supplierId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"code\": \"PO_M_{{suffix}}\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"quantity\": 10,\n      \"unitPrice\": 300000\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/PurchaseOrder",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "PurchaseOrder"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Hoàn tất Phiếu nhập kho (Seeding tồn kho thực tế = 10)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Cập nhật thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('data = true', () => pm.expect(b.data).to.be.true);"
                 ],
                 "type": "text/javascript"
               }
@@ -514,227 +787,22 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{purchaseOrderId}}\",\n  \"status\": \"Received\",\n  \"variantImeis\": []\n}"
+              "raw": "{\n  \"id\": \"{{branchId}}\",\n  \"name\": \"Chi nhánh Quận 3 (Đã cập nhật)\",\n  \"address\": \"789 Điện Biên Phủ, Quận 3, TP.HCM\",\n  \"phone\": \"0909999999\",\n  \"email\": \"{{branchEmail1Updated}}\",\n  \"status\": 0\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId}}/complete",
+              "raw": "{{baseUrl}}/Branch/{{branchId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "PurchaseOrder",
-                "{{purchaseOrderId}}",
-                "complete"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📢 2. Customer & Promotions Setup",
-      "item": [
-        {
-          "name": "Tạo Khách hàng mới",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('customerId', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Khách hàng Master {{suffix}}\",\n  \"phone\": \"0977{{suffix}}\",\n  \"email\": \"customer_master_{{suffix}}@example.com\",\n  \"address\": \"Q5, TPHCM\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Customer",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Customer"
+                "Branch",
+                "{{branchId}}"
               ]
             }
           }
         },
         {
-          "name": "Tạo Chương trình Khuyến mãi mới",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('promotionId', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"PROMO_MASTER_{{suffix}}\",\n  \"name\": \"Khuyến mãi thu đông {{suffix}}\",\n  \"type\": \"DIRECT_VALUE\",\n  \"value\": 50000,\n  \"startDate\": \"2026-07-01T00:00:00Z\",\n  \"endDate\": \"2026-08-31T23:59:59Z\",\n  \"isActive\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Promotion",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Promotion"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Tạo Voucher giảm giá 50k (đơn tối thiểu 400k)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('voucherId', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"promotionId\": \"{{promotionId}}\",\n  \"code\": \"{{voucherCode}}\",\n  \"discountAmount\": 50000,\n  \"minOrderValue\": 400000,\n  \"expiryDate\": \"2026-08-30T00:00:00Z\",\n  \"usageLimit\": 3\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Voucher",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Voucher"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "⚖️ 3. Voucher Validation Checks",
-      "item": [
-        {
-          "name": "[200] Validate Voucher thành công (Đủ giá trị tối thiểu)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Khả dụng', () => pm.expect(b.code).to.eql('SUCCESS'));",
-                  "pm.test('Số tiền giảm 50k', () => pm.expect(b.data.discountAmount).to.eql(50000));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Voucher/validate?code={{voucherCode}}&orderValue=600000",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Voucher",
-                "validate"
-              ],
-              "query": [
-                {
-                  "key": "code",
-                  "value": "{{voucherCode}}"
-                },
-                {
-                  "key": "orderValue",
-                  "value": "600000"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "[400] Validate Voucher thất bại (Chưa đạt giá trị tối thiểu)",
+          "name": "[400] Cập nhật - ID URL ≠ ID Body",
           "event": [
             {
               "listen": "test",
@@ -742,679 +810,7 @@
                 "exec": [
                   "pm.test('Status 400', () => pm.response.to.have.status(400));",
                   "const b = pm.response.json();",
-                  "pm.test('Báo lỗi giá trị tối thiểu', () => pm.expect(b.message).to.include('chưa đạt giá trị tối thiểu'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Voucher/validate?code={{voucherCode}}&orderValue=300000",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Voucher",
-                "validate"
-              ],
-              "query": [
-                {
-                  "key": "code",
-                  "value": "{{voucherCode}}"
-                },
-                {
-                  "key": "orderValue",
-                  "value": "300000"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🛍️ 4. Sales Order Checkout",
-      "item": [
-        {
-          "name": "[200] Tạo đơn hàng mới (Pending) - Áp dụng Voucher",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('salesOrderId', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"voucherCode\": \"{{voucherCode}}\",\n  \"branchId\": \"00000000-0000-0000-0000-000000000001\",\n  \"items\": [\n    {\n      \"productVariantId\": \"{{variantId}}\",\n      \"imei\": null,\n      \"quantity\": 2\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/SalesOrder",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "SalesOrder"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Tra cứu chi tiết đơn hàng (Verify Subtotal/Discount/Total)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Subtotal = 1M (500k * 2)', () => pm.expect(b.data.subtotal).to.eql(1000000));",
-                  "pm.test('Discount = 50k', () => pm.expect(b.data.discount).to.eql(50000));",
-                  "pm.test('Total = 950k', () => pm.expect(b.data.total).to.eql(950000));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/SalesOrder/{{salesOrderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "SalesOrder",
-                "{{salesOrderId}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🧾 5. Billing & Invoice Generation",
-      "item": [
-        {
-          "name": "[200] Xuất Hóa đơn tài chính từ đơn hàng (Issued)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.collectionVariables.set('invoiceId', b.data);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"salesOrderId\": \"{{salesOrderId}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Invoice",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Tra cứu hóa đơn chi tiết",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Tổng tiền hóa đơn đúng 950k', () => pm.expect(b.data.amount).to.eql(950000));",
-                  "pm.test('Trạng thái hóa đơn là Issued', () => pm.expect(b.data.status).to.eql('Issued'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/{{invoiceId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "{{invoiceId}}"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "💳 6. Payment Processing Flow",
-      "item": [
-        {
-          "name": "[200] Thanh toán đợt 1 (Tiền mặt 450,000 VND)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"paymentMethodId\": \"{{cashMethodId}}\",\n  \"code\": \"M_CASH_REF_{{suffix}}\",\n  \"amount\": 450000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/payment",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "payment"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Kiểm tra sau đợt 1 (Vẫn là Issued, dư nợ còn 500k)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Vẫn ở trạng thái Issued', () => pm.expect(b.data.status).to.eql('Issued'));",
-                  "pm.test('Đã trả 450k', () => pm.expect(b.data.payments[0].amount).to.eql(450000));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/{{invoiceId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "{{invoiceId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Thanh toán đợt 2 (Chuyển khoản 500,000 VND - Khớp 100%)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"paymentMethodId\": \"{{bankMethodId}}\",\n  \"code\": \"M_BANK_REF_{{suffix}}\",\n  \"amount\": 500000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/payment",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "payment"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Kiểm tra Hóa đơn sau đợt 2 (Tự động PAID)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Trạng thái hóa đơn là Paid', () => pm.expect(b.data.status).to.eql('Paid'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/{{invoiceId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "{{invoiceId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Kiểm tra Đơn bán hàng (Tự động Completed)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Đơn hàng là Completed', () => pm.expect(b.data.status).to.eql('Completed'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/SalesOrder/{{salesOrderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "SalesOrder",
-                "{{salesOrderId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Kiểm tra Tồn kho thực tế (Dự trừ giảm từ 10 xuống còn 8)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "const inv = b.data.find(x => x.productVariantId === pm.collectionVariables.get('variantId') && x.warehouseId === pm.collectionVariables.get('warehouseId'));",
-                  "pm.test('Số lượng tồn giảm còn 8', () => pm.expect(inv.quantity).to.eql(8));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Inventory?warehouseId={{warehouseId}}&productVariantId={{variantId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Inventory"
-              ],
-              "query": [
-                {
-                  "key": "warehouseId",
-                  "value": "{{warehouseId}}"
-                },
-                {
-                  "key": "productVariantId",
-                  "value": "{{variantId}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Kiểm tra lượt dùng Voucher (Tăng từ 0 lên 1)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Lượt dùng bằng 1', () => pm.expect(b.data.usageCount).to.eql(1));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Voucher/{{voucherId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Voucher",
-                "{{voucherId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[400] Thử thanh toán thêm khi hóa đơn đã Paid (Lỗi khóa hóa đơn)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test('Báo lỗi khóa hóa đơn', () => pm.expect(b.message).to.include('đã được thanh toán đầy đủ'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"paymentMethodId\": \"{{cashMethodId}}\",\n  \"code\": \"EXTRA_MASTER_REF_{{suffix}}\",\n  \"amount\": 10000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/payment",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "payment"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[400] Thử hủy hóa đơn đã thanh toán (Lỗi)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test('Báo lỗi hủy hóa đơn', () => pm.expect(b.message).to.include('đã được thanh toán đầy đủ'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PUT",
-            "url": {
-              "raw": "{{baseUrl}}/Invoice/{{invoiceId}}/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Invoice",
-                "{{invoiceId}}",
-                "cancel"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🗑️ 7. Rollback & Soft Delete Tests",
-      "item": [
-        {
-          "name": "[400] Thử xóa đơn hàng đã Completed (Lỗi chặn xóa để bảo toàn doanh thu)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "const b = pm.response.json();",
-                  "pm.test('Chặn xóa đơn Completed', () => pm.expect(b.message).to.include('không thể thực hiện xóa đơn hàng đã hoàn tất'));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/SalesOrder/{{salesOrderId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "SalesOrder",
-                "{{salesOrderId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Hủy đơn hàng Completed (Simulate Cancel - Hoàn kho 100% & voucher)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                  "pm.test('Lỗi ID không khớp', () => pm.expect(b.message).to.include('không khớp'));"
                 ],
                 "type": "text/javascript"
               }
@@ -1440,23 +836,22 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{salesOrderId}}\",\n  \"status\": \"Cancelled\"\n}"
+              "raw": "{\n  \"id\": \"11111111-1111-1111-1111-111111111111\",\n  \"name\": \"Hack attempt\",\n  \"address\": \"abc\",\n  \"phone\": \"0901234567\",\n  \"status\": 0\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/SalesOrder/{{salesOrderId}}/status",
+              "raw": "{{baseUrl}}/Branch/{{branchId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "SalesOrder",
-                "{{salesOrderId}}",
-                "status"
+                "Branch",
+                "{{branchId}}"
               ]
             }
           }
         },
         {
-          "name": "Kiểm tra hoàn trả Tồn kho thực tế (Hồi phục từ 8 lên lại 10)",
+          "name": "[200] Xóa chi nhánh (Soft Delete)",
           "event": [
             {
               "listen": "test",
@@ -1464,8 +859,8 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
-                  "const inv = b.data.find(x => x.productVariantId === pm.collectionVariables.get('variantId') && x.warehouseId === pm.collectionVariables.get('warehouseId'));",
-                  "pm.test('Tồn kho phục hồi bằng 10', () => pm.expect(inv.quantity).to.eql(10));"
+                  "pm.test('Xóa thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "console.log('⚠️ Đã xóa branch. Tạo lại nếu cần test User.');"
                 ],
                 "type": "text/javascript"
               }
@@ -1482,38 +877,65 @@
                 }
               ]
             },
-            "method": "GET",
+            "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/Inventory?warehouseId={{warehouseId}}&productVariantId={{variantId}}",
+              "raw": "{{baseUrl}}/Branch/{{branchId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "Inventory"
-              ],
-              "query": [
-                {
-                  "key": "warehouseId",
-                  "value": "{{warehouseId}}"
-                },
-                {
-                  "key": "productVariantId",
-                  "value": "{{variantId}}"
-                }
+                "Branch",
+                "{{branchId}}"
               ]
             }
           }
         },
         {
-          "name": "Kiểm tra hoàn lượt dùng Voucher (Giảm từ 1 về lại 0)",
+          "name": "[404] Xóa chi nhánh - ID không tồn tại",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/Branch/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Branch",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "⚙️ Tạo lại branch để test User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
                   "const b = pm.response.json();",
-                  "pm.test('Lượt dùng khôi phục về 0', () => pm.expect(b.data.usageCount).to.eql(0));"
+                  "if (b.data) { pm.collectionVariables.set('branchId', b.data); console.log('✅ BranchId mới:', b.data); }"
                 ],
                 "type": "text/javascript"
               }
@@ -1530,131 +952,612 @@
                 }
               ]
             },
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/Voucher/{{voucherId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Voucher",
-                "{{voucherId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Xóa đơn hàng đã hủy (Xóa mềm)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{branchCode2}}\",\n  \"name\": \"Chi nhánh Quận 5\",\n  \"address\": \"100 Trần Hưng Đạo, Quận 5, TP.HCM\",\n  \"phone\": \"0905555555\",\n  \"email\": \"{{branchEmail2}}\",\n  \"status\": 0\n}"
             },
-            "method": "DELETE",
             "url": {
-              "raw": "{{baseUrl}}/SalesOrder/{{salesOrderId}}",
+              "raw": "{{baseUrl}}/Branch",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "SalesOrder",
-                "{{salesOrderId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Xóa Voucher",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/Voucher/{{voucherId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Voucher",
-                "{{voucherId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "[200] Xóa Promotion",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "DELETE",
-            "url": {
-              "raw": "{{baseUrl}}/Promotion/{{promotionId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "Promotion",
-                "{{promotionId}}"
+                "Branch"
               ]
             }
           }
         }
       ]
+    },
+    {
+      "name": "👤 3. User (Nhân viên)",
+      "item": [
+        {
+          "name": "[200] Tạo nhân viên mới",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Trả về Guid', () => pm.expect(b.data).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.collectionVariables.set('userId', b.data);",
+                  "console.log('✅ UserId lưu:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"username\": \"{{nvUsername}}\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"Nguyễn Văn Nhân Viên\",\n  \"email\": \"{{nvEmail}}\",\n  \"phone\": \"{{nvPhone}}\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[409] Tạo nhân viên - Username trùng lặp",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "const b = pm.response.json();",
+                  "pm.test('Báo lỗi trùng username', () => pm.expect(b.message).to.include('nhanvien01'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"username\": \"{{nvUsername}}\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"Người Trùng Tên\",\n  \"email\": \"{{duplicateEmail}}\",\n  \"phone\": \"0900000000\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[404] Tạo nhân viên - BranchId không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"00000000-0000-0000-0000-000000000000\",\n  \"username\": \"nv_no_branch\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"No Branch User\",\n  \"email\": \"nobranch@psp.com\",\n  \"phone\": \"0911111111\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Tạo nhân viên - Thiếu dữ liệu (Validation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"username\": \"\",\n  \"password\": \"\",\n  \"fullName\": \"\",\n  \"email\": \"\",\n  \"phone\": \"\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách tất cả nhân viên",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('data là array', () => pm.expect(b.data).to.be.an('array'));",
+                  "pm.test('Có ít nhất 2 user (admin + nhanvien01)', () => pm.expect(b.data.length).to.be.at.least(2));",
+                  "console.log('Tổng nhân viên:', b.data.length);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách nhân viên - Lọc theo BranchId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('data là array', () => pm.expect(b.data).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/User?branchId={{branchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "{{branchId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy chi tiết nhân viên theo ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Có username', () => pm.expect(b.data.username).to.eql(pm.variables.replaceIn('{{nvUsername}}')));",
+                  "pm.test('Không có passwordHash', () => pm.expect(b.data.passwordHash).to.be.undefined);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/User/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[404] Lấy chi tiết nhân viên - ID không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/User/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Cập nhật nhân viên",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Cập nhật thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{userId}}\",\n  \"branchId\": \"{{branchId}}\",\n  \"fullName\": \"Nguyễn Văn Nhân Viên (Đã cập nhật)\",\n  \"email\": \"{{nvEmailUpdated}}\",\n  \"phone\": \"{{nvPhoneUpdated}}\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[400] Cập nhật nhân viên - ID URL ≠ ID Body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"11111111-1111-1111-1111-111111111111\",\n  \"branchId\": \"{{branchId}}\",\n  \"fullName\": \"Hack attempt\",\n  \"email\": \"hack@psp.com\",\n  \"phone\": \"0900000000\",\n  \"status\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Đăng nhập bằng tài khoản nhân viên vừa tạo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Nhân viên login được', () => pm.expect(b.data.user.username).to.eql(pm.variables.replaceIn('{{nvUsername}}')));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{nvUsername}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa nhân viên (Soft Delete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Xóa thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/User/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[401] Nhân viên đã xóa - Login thất bại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "console.log('✅ Soft delete hoạt động: Tài khoản xóa không login được nữa.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{nvUsername}}\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('suffix')) {",
+          "    const randomNum = Math.floor(100000 + Math.random() * 900000);",
+          "    pm.collectionVariables.set('suffix', randomNum.toString());",
+          "}"
+        ]
+      }
     }
   ]
 }

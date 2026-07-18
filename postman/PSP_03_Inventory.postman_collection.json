@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "PSP - Inventory Management (Module 6 to 10 - Auto Run)",
+    "name": "PSP_03_Inventory",
     "description": "Bộ test API tích hợp hoàn chỉnh và tự động 100% cho Phân hệ Kho vận (Module 6: Warehouse, Module 7: PurchaseOrder, Module 8: Inventory + IMEI, Module 9: WarehouseTransfer & Module 10: StockTake) của Phone Service Platform.\n\n**ƯU ĐIỂM VƯỢT TRỘI:**\n- Bộ test sử dụng cơ chế sinh mã tự động (`suffix` ngẫu nhiên) và IMEI ngẫu nhiên cho mỗi lượt chạy.\n- Người dùng không cần drop database và có thể bấm RUN liên tục nhiều lần mà không bao giờ bị lỗi trùng code (Conflict) hay trùng IMEI.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chọn Collection và click **Run Collection**.\n3. Nhấn **Run** để chạy toàn bộ kịch bản tự động.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

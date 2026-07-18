@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "PSP - Service Subsystem Master (Modules 15 & 16 - Unified Auto Run)",
+    "name": "PSP_06_Service",
     "description": "Bộ kịch bản test tự động 100% tích hợp cả hai module của Phân hệ Dịch vụ:\n- Module 15: Quản lý sửa chữa (RepairTicket + RepairPart)\n- Module 16: Quản lý bảo hành (WarrantyTicket + WarrantyHistory)\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chọn Collection và click **Run Collection**.\n3. Nhấn **Run** để chạy toàn bộ kịch bản tự động.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -22,11 +22,31 @@
       "value": ""
     },
     {
+      "key": "imei1",
+      "value": "358765432{{suffix}}"
+    },
+    {
+      "key": "imei2",
+      "value": "358765433{{suffix}}"
+    },
+    {
+      "key": "imei3",
+      "value": "358765434{{suffix}}"
+    },
+    {
+      "key": "repairImei",
+      "value": "358765435{{suffix}}"
+    },
+    {
       "key": "brandId",
       "value": ""
     },
     {
       "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "partCategoryId",
       "value": ""
     },
     {
@@ -211,7 +231,7 @@
           }
         },
         {
-          "name": "Tạo Category mới",
+          "name": "Tạo Category Thiết bị mới",
           "event": [
             {
               "listen": "test",
@@ -240,6 +260,48 @@
             "body": {
               "mode": "raw",
               "raw": "{\"code\": \"MOBILE_SRV_{{suffix}}\", \"name\": \"Category Service Master {{suffix}}\", \"parentId\": null}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Category"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo Category Linh kiện mới",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('partCategoryId', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"code\": \"PART_SRV_{{suffix}}\", \"name\": \"Category Parts Master {{suffix}}\", \"parentId\": null}"
             },
             "url": {
               "raw": "{{baseUrl}}/Category",
@@ -366,7 +428,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"categoryId\": \"{{categoryId}}\", \"brandId\": \"{{brandId}}\", \"code\": \"P_SPART_{{suffix}}\", \"name\": \"Linh ki\\u1ec7n m\\u00e0n h\\u00ecnh {{suffix}}\", \"description\": \"M\\u00e0n h\\u00ecnh thay th\\u1ebf\"}"
+              "raw": "{\"categoryId\": \"{{partCategoryId}}\", \"brandId\": \"{{brandId}}\", \"code\": \"P_SPART_{{suffix}}\", \"name\": \"Linh ki\\u1ec7n m\\u00e0n h\\u00ecnh {{suffix}}\", \"description\": \"M\\u00e0n h\\u00ecnh thay th\\u1ebf\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/Product",
@@ -701,7 +763,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"id\": \"{{purchaseOrderId2}}\", \"status\": \"Received\", \"variantImeis\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imeis\": [\"358765432109911\"]}]}"
+              "raw": "{\"id\": \"{{purchaseOrderId2}}\", \"status\": \"Received\", \"variantImeis\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imeis\": [\"{{imei1}}\"]}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId2}}/complete",
@@ -785,7 +847,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"id\": \"{{purchaseOrderId3}}\", \"status\": \"Received\", \"variantImeis\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imeis\": [\"358765432109912\"]}]}"
+              "raw": "{\"id\": \"{{purchaseOrderId3}}\", \"status\": \"Received\", \"variantImeis\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imeis\": [\"{{imei2}}\"]}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId3}}/complete",
@@ -869,7 +931,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"id\": \"{{purchaseOrderId4}}\", \"status\": \"Received\", \"variantImeis\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imeis\": [\"358765432109913\"]}]}"
+              "raw": "{\"id\": \"{{purchaseOrderId4}}\", \"status\": \"Received\", \"variantImeis\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imeis\": [\"{{imei3}}\"]}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/PurchaseOrder/{{purchaseOrderId4}}/complete",
@@ -913,7 +975,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"branchId\": \"00000000-0000-0000-0000-000000000001\", \"voucherCode\": \"\", \"items\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109911\", \"quantity\": 1}]}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"branchId\": \"00000000-0000-0000-0000-000000000001\", \"voucherCode\": \"\", \"items\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{imei1}}\", \"quantity\": 1}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/SalesOrder",
@@ -997,7 +1059,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"branchId\": \"00000000-0000-0000-0000-000000000001\", \"voucherCode\": \"\", \"items\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109913\", \"quantity\": 1}]}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"branchId\": \"00000000-0000-0000-0000-000000000001\", \"voucherCode\": \"\", \"items\": [{\"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{imei3}}\", \"quantity\": 1}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/SalesOrder",
@@ -1087,7 +1149,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109999\", \"problemDescription\": \"M\\u00e0n h\\u00ecnh s\\u1ecdc xanh, h\\u1ecfng c\\u1ea3m \\u1ee9ng.\", \"estimatedCost\": 2200000, \"technicianId\": \"{{adminUserId}}\"}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{repairImei}}\", \"problemDescription\": \"M\\u00e0n h\\u00ecnh s\\u1ecdc xanh, h\\u1ecfng c\\u1ea3m \\u1ee9ng.\", \"estimatedCost\": 2200000, \"technicianId\": \"{{adminUserId}}\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/RepairTicket",
@@ -1430,14 +1492,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109911",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei1}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109911"
+                "{{imei1}}"
               ]
             }
           }
@@ -1471,14 +1533,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109912",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei2}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109912"
+                "{{imei2}}"
               ]
             }
           }
@@ -1512,7 +1574,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109912\", \"note\": \"H\\u1ecfng m\\u00e0n h\\u00ecnh.\"}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{imei2}}\", \"note\": \"H\\u1ecfng m\\u00e0n h\\u00ecnh.\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/WarrantyTicket",
@@ -1554,7 +1616,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109911\", \"note\": \"Ngu\\u1ed3n ch\\u1eadp ch\\u1eddn l\\u00fac l\\u00ean l\\u00fac t\\u1eaft.\"}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{imei1}}\", \"note\": \"Ngu\\u1ed3n ch\\u1eadp ch\\u1eddn l\\u00fac l\\u00ean l\\u00fac t\\u1eaft.\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/WarrantyTicket",
@@ -1577,7 +1639,7 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
                   "pm.test('Trạng thái Received', () => pm.expect(b.data.status).to.eql('Received'));",
-                  "pm.test('Mã IMEI khớp', () => pm.expect(b.data.imei).to.eql('358765432109911'));"
+                  "pm.test('Mã IMEI khớp', () => pm.expect(b.data.imei).to.eql(pm.variables.replaceIn('{{imei1}}')));"
                 ],
                 "type": "text/javascript"
               }
@@ -1635,14 +1697,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109911",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei1}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109911"
+                "{{imei1}}"
               ]
             }
           }
@@ -1716,7 +1778,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"warrantyTicketId\": \"{{warrantyTicketId}}\", \"status\": \"Completed\", \"action\": \"\\u0110\\u1ed5i m\\u00e1y m\\u1edbi\", \"description\": \"L\\u1ed7i ngu\\u1ed3n n\\u1eb7ng h\\u1ecfng mainboard. \\u0110\\u1ed5i m\\u00e1y Samsung m\\u1edbi.\", \"newImei\": \"358765432109912\"}"
+              "raw": "{\"warrantyTicketId\": \"{{warrantyTicketId}}\", \"status\": \"Completed\", \"action\": \"\\u0110\\u1ed5i m\\u00e1y m\\u1edbi\", \"description\": \"L\\u1ed7i ngu\\u1ed3n n\\u1eb7ng h\\u1ecfng mainboard. \\u0110\\u1ed5i m\\u00e1y Samsung m\\u1edbi.\", \"newImei\": \"{{imei2}}\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/WarrantyTicket/{{warrantyTicketId}}/status",
@@ -1741,7 +1803,7 @@
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const b = pm.response.json();",
                   "pm.test('Trạng thái Completed', () => pm.expect(b.data.status).to.eql('Completed'));",
-                  "pm.test('IMEI phiếu chuyển sang máy mới', () => pm.expect(b.data.imei).to.eql('358765432109912'));",
+                  "pm.test('IMEI phiếu chuyển sang máy mới', () => pm.expect(b.data.imei).to.eql(pm.variables.replaceIn('{{imei2}}')));",
                   "pm.test('Có ngày kết thúc EndDate', () => pm.expect(b.data.endDate).to.not.be.null);"
                 ],
                 "type": "text/javascript"
@@ -1800,14 +1862,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109911",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei1}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109911"
+                "{{imei1}}"
               ]
             }
           }
@@ -1840,14 +1902,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109912",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei2}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109912"
+                "{{imei2}}"
               ]
             }
           }
@@ -1925,7 +1987,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109999\", \"problemDescription\": \"Thay loa r\\u00e8.\", \"estimatedCost\": 500000, \"technicianId\": \"{{adminUserId}}\"}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{repairImei}}\", \"problemDescription\": \"Thay loa r\\u00e8.\", \"estimatedCost\": 500000, \"technicianId\": \"{{adminUserId}}\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/RepairTicket",
@@ -2089,7 +2151,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109999\", \"problemDescription\": \"V\\u1ec7 sinh ch\\u00e2n s\\u1ea1c m\\u00e1y.\", \"estimatedCost\": 50000, \"technicianId\": \"{{adminUserId}}\"}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{repairImei}}\", \"problemDescription\": \"V\\u1ec7 sinh ch\\u00e2n s\\u1ea1c m\\u00e1y.\", \"estimatedCost\": 50000, \"technicianId\": \"{{adminUserId}}\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/RepairTicket",
@@ -2209,7 +2271,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"358765432109913\", \"note\": \"Loa ch\\u1eadp ch\\u1eddn.\"}"
+              "raw": "{\"customerId\": \"{{customerId}}\", \"productVariantId\": \"{{deviceVariantId}}\", \"imei\": \"{{imei3}}\", \"note\": \"Loa ch\\u1eadp ch\\u1eddn.\"}"
             },
             "url": {
               "raw": "{{baseUrl}}/WarrantyTicket",
@@ -2250,14 +2312,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109913",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei3}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109913"
+                "{{imei3}}"
               ]
             }
           }
@@ -2329,14 +2391,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/WarrantyTicket/check/358765432109913",
+              "raw": "{{baseUrl}}/WarrantyTicket/check/{{imei3}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "WarrantyTicket",
                 "check",
-                "358765432109913"
+                "{{imei3}}"
               ]
             }
           }

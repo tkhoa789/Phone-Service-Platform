@@ -34,10 +34,18 @@ public class CategoryCommandHandlers :
     {
         var categoryRepo = _unitOfWork.Repository<CategoryEntity>();
 
-        // 1. Kiểm tra trùng mã danh mục (Code phải là duy nhất)
-        var existing = await categoryRepo.FindAsync(x => x.Code == request.Code, cancellationToken);
-        if (existing.Any())
+        // 1. Kiểm tra trùng mã danh mục (Code phải là duy nhất, kể cả đã xóa mềm)
+        var existing = await categoryRepo.FindFirstIgnoreQueryFiltersAsync(x => x.Code == request.Code, cancellationToken);
+        if (existing != null)
         {
+            if (existing.IsDeleted)
+            {
+                existing.IsDeleted = false;
+                request.Adapt(existing);
+                categoryRepo.Update(existing);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return existing.Id;
+            }
             throw new ConflictException($"Danh mục với mã {request.Code} đã tồn tại.");
         }
 

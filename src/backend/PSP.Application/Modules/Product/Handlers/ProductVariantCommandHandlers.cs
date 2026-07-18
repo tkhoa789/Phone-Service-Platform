@@ -39,11 +39,19 @@ public class ProductVariantCommandHandlers :
             throw new NotFoundException("Dòng sản phẩm cha", request.ProductId);
         }
 
-        // 2. Kiểm tra trùng mã SKU (SKU phải là duy nhất)
+        // 2. Kiểm tra trùng mã SKU (SKU phải là duy nhất, kể cả đã xóa mềm)
         var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
-        var existing = await variantRepo.FindAsync(x => x.Sku == request.Sku, cancellationToken);
-        if (existing.Any())
+        var existing = await variantRepo.FindFirstIgnoreQueryFiltersAsync(x => x.Sku == request.Sku, cancellationToken);
+        if (existing != null)
         {
+            if (existing.IsDeleted)
+            {
+                existing.IsDeleted = false;
+                request.Adapt(existing);
+                variantRepo.Update(existing);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return existing.Id;
+            }
             throw new ConflictException($"Mã SKU {request.Sku} đã tồn tại trong hệ thống.");
         }
 

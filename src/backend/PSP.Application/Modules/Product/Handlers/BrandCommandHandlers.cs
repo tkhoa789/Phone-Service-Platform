@@ -39,11 +39,19 @@ public class BrandCommandHandlers :
         // Lấy repository chuyên biệt cho thực thể BrandEntity từ Unit Of Work
         var brandRepo = _unitOfWork.Repository<BrandEntity>();
 
-        // Kiểm tra xem mã thương hiệu gửi lên đã tồn tại trong database chưa
-        var existing = await brandRepo.FindAsync(x => x.Code == request.Code, cancellationToken);
-        if (existing.Any())
+        // Kiểm tra xem mã thương hiệu gửi lên đã tồn tại trong database chưa (kể cả đã xóa mềm)
+        var existing = await brandRepo.FindFirstIgnoreQueryFiltersAsync(x => x.Code == request.Code, cancellationToken);
+        if (existing != null)
         {
-            // Nếu đã tồn tại thương hiệu cùng mã, quăng lỗi Conflict (xung đột dữ liệu)
+            if (existing.IsDeleted)
+            {
+                existing.IsDeleted = false;
+                request.Adapt(existing);
+                brandRepo.Update(existing);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return existing.Id;
+            }
+            // Nếu đã tồn tại thương hiệu cùng mã và đang hoạt động, quăng lỗi Conflict
             throw new ConflictException($"Thương hiệu với mã {request.Code} đã tồn tại.");
         }
 

@@ -72,4 +72,9 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
         entity.DeletedAt = DateTime.UtcNow;
         _dbSet.Update(entity);
     }
+
+    public async Task<T?> FindFirstIgnoreQueryFiltersAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.IgnoreQueryFilters().FirstOrDefaultAsync(predicate, cancellationToken);
+    }
 }

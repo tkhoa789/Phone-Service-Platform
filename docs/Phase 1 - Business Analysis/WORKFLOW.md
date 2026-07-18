@@ -1,0 +1,529 @@
+# WORKFLOW
+
+## Hệ thống quản lý chuỗi cửa hàng điện thoại tích hợp AI Assistant
+
+**Version:** 1.0
+
+---
+
+# 1. Mục đích
+
+Tài liệu này mô tả luồng xử lý nghiệp vụ của hệ thống.
+
+Workflow là cơ sở để xây dựng:
+
+* Sequence Diagram
+* Activity Diagram
+* API Design
+* Backend Service
+* AI Tool Calling
+* Test Case
+
+---
+
+# 2. Quy ước
+
+```
+Actor
+    ↓
+Action
+    ↓
+Validation
+    ↓
+Business Process
+    ↓
+Database
+    ↓
+Response
+```
+
+Nếu Validation thất bại thì dừng Workflow và trả về lỗi.
+
+---
+
+# 3. Authentication Workflow
+
+```
+User
+
+↓
+
+Đăng nhập
+
+↓
+
+Kiểm tra Username
+
+↓
+
+Kiểm tra Password
+
+↓
+
+Kiểm tra trạng thái tài khoản
+
+↓
+
+Sinh JWT
+
+↓
+
+Sinh Refresh Token
+
+↓
+
+Ghi Audit Log
+
+↓
+
+Trả kết quả
+```
+
+---
+
+# 4. Customer Workflow
+
+```
+Sales
+
+↓
+
+Nhập số điện thoại
+
+↓
+
+Khách hàng tồn tại?
+
+├── Có
+│      ↓
+│   Lấy thông tin
+│
+└── Không
+       ↓
+   Tạo khách hàng mới
+
+↓
+
+Lưu thông tin
+
+↓
+
+Sẵn sàng bán hàng
+```
+
+---
+
+# 5. Sales Workflow
+
+```
+Sales
+
+↓
+
+Tạo đơn hàng
+
+↓
+
+Chọn khách hàng
+
+↓
+
+Chọn sản phẩm
+
+↓
+
+Kiểm tra tồn kho
+
+↓
+
+Kiểm tra IMEI
+
+↓
+
+Áp dụng Voucher
+
+↓
+
+Tính tổng tiền
+
+↓
+
+Thanh toán
+
+↓
+
+Thanh toán thành công?
+
+├── Không
+│      ↓
+│   Hủy giao dịch
+│
+└── Có
+       ↓
+    Sinh hóa đơn
+       ↓
+    Trừ tồn kho
+       ↓
+    Cập nhật IMEI
+       ↓
+    Sinh bảo hành
+       ↓
+    Ghi Audit Log
+       ↓
+    In hóa đơn
+```
+
+---
+
+# 6. Inventory Workflow
+
+```
+Warehouse
+
+↓
+
+Tạo phiếu nhập
+
+↓
+
+Nhập IMEI
+
+↓
+
+Kiểm tra IMEI
+
+↓
+
+IMEI tồn tại?
+
+├── Có
+│      ↓
+│    Báo lỗi
+│
+└── Không
+       ↓
+    Lưu dữ liệu
+
+↓
+
+Cập nhật tồn kho
+
+↓
+
+Ghi Audit Log
+```
+
+---
+
+# 7. Transfer Inventory Workflow
+
+```
+Warehouse
+
+↓
+
+Tạo phiếu chuyển kho
+
+↓
+
+Chọn kho nguồn
+
+↓
+
+Chọn kho đích
+
+↓
+
+Kiểm tra tồn kho
+
+↓
+
+Đủ hàng?
+
+├── Không
+│      ↓
+│   Báo lỗi
+│
+└── Có
+       ↓
+    Xuất kho nguồn
+       ↓
+    Nhập kho đích
+       ↓
+    Cập nhật vị trí IMEI
+       ↓
+    Ghi Audit Log
+```
+
+---
+
+# 8. Warranty Workflow
+
+```
+Warranty Staff
+
+↓
+
+Nhập IMEI
+
+↓
+
+Kiểm tra lịch sử bán
+
+↓
+
+Kiểm tra thời hạn bảo hành
+
+↓
+
+Còn bảo hành?
+
+├── Không
+│      ↓
+│   Từ chối
+│
+└── Có
+       ↓
+   Tạo phiếu bảo hành
+       ↓
+   Kiểm tra chính sách
+       ↓
+   Sửa / Đổi máy
+       ↓
+   Hoàn tất
+       ↓
+   Ghi lịch sử
+```
+
+---
+
+# 9. Repair Workflow
+
+```
+Technician
+
+↓
+
+Tiếp nhận máy
+
+↓
+
+Ghi nhận lỗi
+
+↓
+
+Chẩn đoán
+
+↓
+
+Lập báo giá
+
+↓
+
+Khách đồng ý?
+
+├── Không
+│      ↓
+│   Trả máy
+│
+└── Có
+       ↓
+   Tiến hành sửa
+       ↓
+   Kiểm thử
+       ↓
+   Hoàn tất
+       ↓
+   Bàn giao
+       ↓
+   Ghi Audit Log
+```
+
+---
+
+# 10. Return & Exchange Workflow
+
+```
+Sales
+
+↓
+
+Nhập hóa đơn
+
+↓
+
+Kiểm tra điều kiện đổi trả
+
+↓
+
+Đủ điều kiện?
+
+├── Không
+│      ↓
+│   Từ chối
+│
+└── Có
+       ↓
+   Chọn sản phẩm đổi
+       ↓
+   Tính chênh lệch
+       ↓
+   Thu/Hoàn tiền
+       ↓
+   Cập nhật kho
+       ↓
+   Cập nhật hóa đơn
+```
+
+---
+
+# 11. Dashboard Workflow
+
+```
+User
+
+↓
+
+Chọn Dashboard
+
+↓
+
+Kiểm tra quyền
+
+↓
+
+Lấy dữ liệu
+
+↓
+
+Tổng hợp KPI
+
+↓
+
+Tính doanh thu
+
+↓
+
+Tính lợi nhuận
+
+↓
+
+Hiển thị Dashboard
+```
+
+---
+
+# 12. AI Assistant Workflow
+
+```
+User
+
+↓
+
+Gửi câu hỏi
+
+↓
+
+LLM
+
+↓
+
+Intent Detection
+
+↓
+
+Có cần Tool?
+
+├── Không
+│      ↓
+│   Trả lời
+│
+└── Có
+       ↓
+Kiểm tra Permission
+       ↓
+Permission hợp lệ?
+
+├── Không
+│      ↓
+│  Từ chối
+│
+└── Có
+       ↓
+Tool Calling
+       ↓
+Database/API
+       ↓
+RAG
+       ↓
+LLM
+       ↓
+Sinh câu trả lời
+       ↓
+Ghi AI Log
+       ↓
+Trả kết quả
+```
+
+---
+
+# 13. Notification Workflow
+
+```
+Business Event
+
+↓
+
+Sinh Notification
+
+↓
+
+Lưu Database
+
+↓
+
+Push Notification
+
+↓
+
+Email (nếu có)
+
+↓
+
+Đánh dấu đã đọc
+```
+
+---
+
+# 14. Quy tắc chung
+
+* Mọi Workflow đều phải kiểm tra Permission trước khi thực hiện.
+* Các giao dịch quan trọng phải sử dụng Database Transaction.
+* Mọi thay đổi dữ liệu phải ghi Audit Log.
+* AI chỉ được thao tác thông qua Tool Calling.
+* Không được cập nhật trực tiếp Database từ AI.
+* Khi có lỗi, hệ thống phải rollback toàn bộ transaction.
+
+---
+
+# 15. Mapping
+
+| Workflow           | Module       |
+| ------------------ | ------------ |
+| Authentication     | Auth         |
+| Customer           | Customer     |
+| Sales              | Sales        |
+| Inventory          | Inventory    |
+| Transfer Inventory | Inventory    |
+| Warranty           | Warranty     |
+| Repair             | Repair       |
+| Return & Exchange  | Sales        |
+| Dashboard          | Dashboard    |
+| AI Assistant       | AI           |
+| Notification       | Notification |
+
+---
+
+# 16. Kết luận
+
+Workflow là tài liệu mô tả luồng nghiệp vụ chuẩn của hệ thống. Mọi API, Service, Sequence Diagram, Test Case và AI Tool Calling đều phải tuân thủ các Workflow được định nghĩa trong tài liệu này để đảm bảo tính nhất quán giữa phân tích nghiệp vụ và triển khai kỹ thuật.

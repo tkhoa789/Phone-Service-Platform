@@ -41,13 +41,18 @@ public class SupplierCommandHandlers :
         // 1. Lấy repository tương ứng của thực thể SupplierEntity thông qua UnitOfWork
         var supplierRepo = _unitOfWork.Repository<SupplierEntity>();
 
-        // 2. [LUẬT NGHIỆP VỤ]: Kiểm tra xem mã nhà cung cấp (Code) gửi lên đã tồn tại trong DB chưa.
-        // Dùng phương thức FindAsync để tìm bản ghi có Code trùng khớp.
-        var existing = await supplierRepo.FindAsync(x => x.Code == request.Code, cancellationToken);
-        if (existing.Any())
+        // 2. [LUẬT NGHIỆP VỤ]: Kiểm tra xem mã nhà cung cấp (Code) gửi lên đã tồn tại trong DB chưa (kể cả đã xóa mềm).
+        var existing = await supplierRepo.FindFirstIgnoreQueryFiltersAsync(x => x.Code == request.Code, cancellationToken);
+        if (existing != null)
         {
-            // Nếu đã tồn tại, quăng lỗi ConflictException (lỗi xung đột dữ liệu). 
-            // GlobalExceptionMiddleware sẽ bắt lỗi này và trả về HTTP Status Code 409 cho Client.
+            if (existing.IsDeleted)
+            {
+                existing.IsDeleted = false;
+                request.Adapt(existing);
+                supplierRepo.Update(existing);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return existing.Id;
+            }
             throw new ConflictException($"Nhà cung cấp với mã {request.Code} đã tồn tại.");
         }
 

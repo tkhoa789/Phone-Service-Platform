@@ -334,7 +334,7 @@ public class RepairCommandHandlers :
                 {
                     var branchId = receivedUser.BranchId;
                     var branchWarehouses = await warehouseRepo.FindAsync(w => w.BranchId == branchId && !w.IsDeleted, cancellationToken);
-                    var warehouseIds = branchWarehouses.Select(w => w.Id).ToList();
+                    var warehouseIds = branchWarehouses.OrderByDescending(w => w.CreatedAt).Select(w => w.Id).ToList();
 
                     if (warehouseIds.Any())
                     {

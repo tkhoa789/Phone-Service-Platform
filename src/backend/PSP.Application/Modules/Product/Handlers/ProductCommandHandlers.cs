@@ -46,11 +46,19 @@ public class ProductCommandHandlers :
             throw new NotFoundException("Thương hiệu sản phẩm", request.BrandId);
         }
 
-        // 3. Kiểm tra xem mã dòng sản phẩm (Code) đã tồn tại trong DB chưa (Code là duy nhất)
+        // 3. Kiểm tra xem mã dòng sản phẩm (Code) đã tồn tại trong DB chưa (Code là duy nhất, kể cả đã xóa mềm)
         var productRepo = _unitOfWork.Repository<ProductEntity>();
-        var existing = await productRepo.FindAsync(x => x.Code == request.Code, cancellationToken);
-        if (existing.Any())
+        var existing = await productRepo.FindFirstIgnoreQueryFiltersAsync(x => x.Code == request.Code, cancellationToken);
+        if (existing != null)
         {
+            if (existing.IsDeleted)
+            {
+                existing.IsDeleted = false;
+                request.Adapt(existing);
+                productRepo.Update(existing);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return existing.Id;
+            }
             throw new ConflictException($"Dòng sản phẩm với mã {request.Code} đã tồn tại trong hệ thống.");
         }
 
