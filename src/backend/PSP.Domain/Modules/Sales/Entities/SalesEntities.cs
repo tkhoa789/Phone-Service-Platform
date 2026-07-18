@@ -75,9 +75,8 @@ public class SalesOrderEntity : BaseEntity
 /// Chi tiết đơn hàng bán.
 /// Tuân thủ BR-INV-03: Khi bán phải gắn đúng IMEI xuất kho vào chi tiết đơn hàng.
 /// </summary>
-public class SalesOrderItemEntity
+public class SalesOrderItemEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid SalesOrderId { get; set; }
     public Guid ProductVariantId { get; set; }
     public string? Imei { get; set; }
@@ -107,9 +106,8 @@ public class InvoiceEntity : BaseEntity
     public ICollection<PaymentEntity> Payments { get; set; } = new List<PaymentEntity>();
 }
 
-public class InvoiceItemEntity
+public class InvoiceItemEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid InvoiceId { get; set; }
     public Guid ProductVariantId { get; set; }
     public int Quantity { get; set; }
@@ -134,9 +132,8 @@ public class PaymentMethodEntity : BaseEntity
 /// Thanh toán.
 /// Tham chiếu: ERD.md - Section 3.3.
 /// </summary>
-public class PaymentEntity
+public class PaymentEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid InvoiceId { get; set; }
     public Guid PaymentMethodId { get; set; }
     public string Code { get; set; } = string.Empty;

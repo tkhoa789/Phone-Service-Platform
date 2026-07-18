@@ -15,8 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 // ĐĂNG KÝ DỊCH VỤ (Services Registration)
 // =====================================================================
 
-// Đăng ký Controllers (tầng API)
-builder.Services.AddControllers();
+// Đăng ký Controllers (tầng API) và cấu hình chuyển đổi Enum sang Chuỗi (String) trong JSON
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Đăng ký Application Layer (MediatR, FluentValidation, Mapster)
 builder.Services.AddApplicationServices();

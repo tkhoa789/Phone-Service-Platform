@@ -5,6 +5,7 @@ using PSP.Application.Common.Interfaces;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Modules.Auth.Entities;
 using PSP.Domain.Modules.Branch.Entities;
+using PSP.Domain.Modules.Sales.Entities;
 using PSP.Infrastructure.Data;
 
 namespace PSP.Infrastructure.Data.Seeders;
@@ -56,6 +57,7 @@ public static class DatabaseSeeder
             await SeedAdminUserAsync(context, passwordHasher, logger);
             await SeedUserRolesAsync(context, logger);
             await SeedRolePermissionsAsync(context, logger);
+            await SeedPaymentMethodsAsync(context, logger);
 
             logger.LogInformation("✅ Database Seeder hoàn thành. Dữ liệu gốc đã sẵn sàng.");
         }
@@ -63,6 +65,41 @@ public static class DatabaseSeeder
         {
             logger.LogError(ex, "❌ Lỗi khi gieo dữ liệu ban đầu.");
         }
+    }
+
+    // =====================================================================
+    // 7. GIEO PHƯƠNG THỨC THANH TOÁN MẶC ĐỊNH
+    // =====================================================================
+    private static async Task SeedPaymentMethodsAsync(AppDbContext context, ILogger logger)
+    {
+        if (await context.Set<PaymentMethodEntity>().AnyAsync())
+        {
+            logger.LogInformation("  → Phương thức thanh toán đã tồn tại. Bỏ qua.");
+            return;
+        }
+
+        var methods = new List<PaymentMethodEntity>
+        {
+            new()
+            {
+                Id = Guid.Parse("30000000-0000-0000-0000-000000000001"),
+                Code = "CASH",
+                Name = "Tiền mặt",
+                IsActive = true,
+                CreatedBy = "SYSTEM"
+            },
+            new()
+            {
+                Id = Guid.Parse("30000000-0000-0000-0000-000000000002"),
+                Code = "BANK_TRANSFER",
+                Name = "Chuyển khoản ngân hàng",
+                IsActive = true,
+                CreatedBy = "SYSTEM"
+            }
+        };
+
+        await context.Set<PaymentMethodEntity>().AddRangeAsync(methods);
+        await context.SaveChangesAsync();
     }
 
     // =====================================================================

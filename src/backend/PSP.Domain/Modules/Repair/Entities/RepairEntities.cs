@@ -24,6 +24,7 @@ public class RepairTicketEntity : BaseEntity
     public string ProblemDescription { get; set; } = string.Empty;
     public decimal? EstimatedCost { get; set; }
     public decimal? ActualCost { get; set; }
+    public decimal LaborCost { get; set; } = 0;
     public DateTime ReceivedDate { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedDate { get; set; }
 
@@ -39,9 +40,8 @@ public class RepairTicketEntity : BaseEntity
 /// <summary>
 /// Linh kiện thay thế trong phiếu sửa chữa.
 /// </summary>
-public class RepairPartEntity
+public class RepairPartEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid RepairTicketId { get; set; }
     public Guid ProductVariantId { get; set; }
     public int Quantity { get; set; }
@@ -55,13 +55,11 @@ public class RepairPartEntity
 /// <summary>
 /// Lịch sử trạng thái phiếu sửa chữa.
 /// </summary>
-public class RepairStatusHistoryEntity
+public class RepairStatusHistoryEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid RepairTicketId { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Note { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
     public RepairTicketEntity RepairTicket { get; set; } = null!;
