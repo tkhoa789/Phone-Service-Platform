@@ -36,14 +36,12 @@ public class WarrantyTicketEntity : BaseEntity
 /// <summary>
 /// Lịch sử bảo hành.
 /// </summary>
-public class WarrantyHistoryEntity
+public class WarrantyHistoryEntity : BaseEntity
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid WarrantyTicketId { get; set; }
     public string Action { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
     public WarrantyTicketEntity WarrantyTicket { get; set; } = null!;

@@ -1967,16 +1967,34 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<string>("Action")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Description")
+                    b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("WarrantyTicketId")
@@ -1986,7 +2004,7 @@ namespace PSP.Infrastructure.Migrations
 
                     b.HasIndex("WarrantyTicketId");
 
-                    b.ToTable("WarrantyHistories");
+                    b.ToTable("WarrantyHistories", (string)null);
                 });
 
             modelBuilder.Entity("PSP.Domain.Modules.Warranty.Entities.WarrantyTicketEntity", b =>
@@ -1997,7 +2015,8 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -2015,13 +2034,15 @@ namespace PSP.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Imei")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(18)
+                        .HasColumnType("nvarchar(18)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid>("ProductVariantId")
                         .HasColumnType("uniqueidentifier");
@@ -2032,8 +2053,10 @@ namespace PSP.Infrastructure.Migrations
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -2043,13 +2066,16 @@ namespace PSP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Code")
+                        .IsUnique();
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("ProductVariantId");
 
                     b.HasIndex("SalesOrderId");
 
-                    b.ToTable("WarrantyTickets");
+                    b.ToTable("WarrantyTickets", (string)null);
                 });
 
             modelBuilder.Entity("PSP.Domain.Modules.AI.Entities.AIConversationEntity", b =>
@@ -2582,7 +2608,8 @@ namespace PSP.Infrastructure.Migrations
 
                     b.HasOne("PSP.Domain.Modules.Sales.Entities.SalesOrderEntity", "SalesOrder")
                         .WithMany()
-                        .HasForeignKey("SalesOrderId");
+                        .HasForeignKey("SalesOrderId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Customer");
 
