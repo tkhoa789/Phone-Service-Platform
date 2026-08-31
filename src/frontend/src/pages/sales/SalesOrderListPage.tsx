@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { salesService } from '../../services/salesService';
 import { useThemeStore } from '../../stores/themeStore';
 import { i18nDictionary } from '../../locales/dictionary';
@@ -14,27 +15,17 @@ export const SalesOrderListPage: React.FC = () => {
   const tSales = i18nDictionary[language].sales;
   const tCommon = i18nDictionary[language].common;
 
-  const [orders, setOrders] = useState<SalesOrderDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: fetchedOrders, isLoading: loading, refetch: loadOrders } = useQuery({
+    queryKey: ['sales-orders'],
+    queryFn: () => salesService.getOrders(),
+    staleTime: 5 * 60 * 1000
+  });
+  const orders = Array.isArray(fetchedOrders) ? fetchedOrders : [];
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  const loadOrders = async () => {
-    setLoading(true);
-    try {
-      const data = await salesService.getOrders();
-      setOrders(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      toast.error(language === 'vi' ? 'Không thể tải danh sách đơn hàng!' : 'Failed to load sales orders list!');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const handleUpdateStatus = async (id: string, status: string) => {
     try {

@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { serviceService } from '../../services/serviceService';
 import { useThemeStore } from '../../stores/themeStore';
 import { i18nDictionary } from '../../locales/dictionary';
@@ -15,11 +16,21 @@ export const WarrantyListPage: React.FC = () => {
   const tWar = i18nDictionary[language].warranties;
   const tCommon = i18nDictionary[language].common;
 
-  const [warranties, setWarranties] = useState<WarrantyTicketDto[]>([]);
-  const [loading, setLoading] = useState(true);
+
+
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
+
+  const { data: fetchedWarranties, isLoading: loading, refetch: loadWarranties } = useQuery({
+    queryKey: ['warranties', searchTerm],
+    queryFn: () => serviceService.getWarranties({ search: searchTerm }),
+    staleTime: 5 * 60 * 1000
+  });
+  const warranties: WarrantyTicketDto[] = React.useMemo(() => {
+    if (!fetchedWarranties) return [];
+    return Array.isArray((fetchedWarranties as any)?.items) ? (fetchedWarranties as any).items : Array.isArray(fetchedWarranties) ? fetchedWarranties : [];
+  }, [fetchedWarranties]);
 
   // Check IMEI State
   const [checkImei, setCheckImei] = useState('');
@@ -30,23 +41,7 @@ export const WarrantyListPage: React.FC = () => {
   const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [selectedWarranty, setSelectedWarranty] = useState<WarrantyTicketDto | null>(null);
 
-  const loadWarranties = async () => {
-    setLoading(true);
-    try {
-      const data = await serviceService.getWarranties({ search: searchTerm });
-      const list = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
-      setWarranties(list);
-    } catch (e: any) {
-      toast.error(language === 'vi' ? 'Không thể tải danh sách phiếu bảo hành!' : 'Failed to load warranty tickets list!');
-      setWarranties([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadWarranties();
-  }, [searchTerm]);
+  
 
   const handleCheckImei = async (e: React.FormEvent) => {
     e.preventDefault();

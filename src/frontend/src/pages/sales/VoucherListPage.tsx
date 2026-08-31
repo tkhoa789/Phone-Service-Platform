@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { voucherService } from '../../services/voucherService';
 import { useThemeStore } from '../../stores/themeStore';
 import { i18nDictionary } from '../../locales/dictionary';
@@ -15,8 +16,12 @@ export const VoucherListPage: React.FC = () => {
   const tVoucher = i18nDictionary[language].vouchers;
   const tCommon = i18nDictionary[language].common;
 
-  const [vouchers, setVouchers] = useState<VoucherDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: fetchedVouchers, isLoading: loading, refetch: loadVouchers } = useQuery({
+    queryKey: ['vouchers'],
+    queryFn: () => voucherService.getAll(),
+    staleTime: 5 * 60 * 1000
+  });
+  const vouchers = Array.isArray(fetchedVouchers) ? fetchedVouchers : [];
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, id: '', code: '' });
   const [currentPage, setCurrentPage] = useState(1);
@@ -25,22 +30,7 @@ export const VoucherListPage: React.FC = () => {
   // Modal State
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    loadVouchers();
-  }, []);
-
-  const loadVouchers = async () => {
-    setLoading(true);
-    try {
-      const data = await voucherService.getAll();
-      setVouchers(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      toast.error(language === 'vi' ? 'Không thể tải danh sách Voucher!' : 'Failed to load vouchers list!');
-      setVouchers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const handleDelete = async (id: string) => {
     if (!window.confirm(language === 'vi' ? 'Bạn có chắc chắn muốn thu hồi/xóa mã Voucher này?' : 'Are you sure you want to revoke/delete this voucher code?')) return;
