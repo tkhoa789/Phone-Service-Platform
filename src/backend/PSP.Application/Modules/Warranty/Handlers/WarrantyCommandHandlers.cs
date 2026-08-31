@@ -152,10 +152,42 @@ public class WarrantyCommandHandlers :
             throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
         }
 
-        // Chặn chỉnh sửa nếu phiếu đã kết thúc
+        // 2.1.1 Pre-flight RowVersion Concurrency Check
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        // 2.1.2 State Transition Validation (Business State Machine)
         if (ticket.Status == WarrantyTicketStatus.Completed || ticket.Status == WarrantyTicketStatus.Rejected || ticket.Status == WarrantyTicketStatus.Cancelled)
         {
-            throw new BadRequestException("Phiếu bảo hành này đã kết thúc xử lý, không thể cập nhật thêm.");
+            throw new BadRequestException($"Phiếu bảo hành đang ở trạng thái {ticket.Status} và đã kết thúc xử lý, không thể cập nhật thêm.");
+        }
+
+        bool isValidTransition = false;
+        if (ticket.Status == WarrantyTicketStatus.Received)
+        {
+            if (request.Status == WarrantyTicketStatus.Processing || 
+                request.Status == WarrantyTicketStatus.Completed || 
+                request.Status == WarrantyTicketStatus.Rejected || 
+                request.Status == WarrantyTicketStatus.Cancelled)
+            {
+                isValidTransition = true;
+            }
+        }
+        else if (ticket.Status == WarrantyTicketStatus.Processing)
+        {
+            if (request.Status == WarrantyTicketStatus.Completed || 
+                request.Status == WarrantyTicketStatus.Rejected || 
+                request.Status == WarrantyTicketStatus.Cancelled)
+            {
+                isValidTransition = true;
+            }
+        }
+
+        if (!isValidTransition)
+        {
+            throw new BadRequestException($"Chuyển đổi trạng thái không hợp lệ: Từ {ticket.Status} sang {request.Status}.");
         }
 
         // 2.2 RÀNG BUỘC BR-905: Nếu đổi máy mới cho khách hàng
@@ -251,7 +283,14 @@ public class WarrantyCommandHandlers :
         await historyRepo.AddAsync(history, cancellationToken);
 
         // 2.6 Lưu thay đổi
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
 
         return true;
     }
@@ -269,6 +308,12 @@ public class WarrantyCommandHandlers :
         if (ticket == null)
         {
             throw new NotFoundException("Phiếu bảo hành", request.Id);
+        }
+
+        // 3.1.1 Pre-flight RowVersion Concurrency Check
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
         }
 
         // 3.2 Chặn xóa nếu phiếu đã xử lý
@@ -293,7 +338,14 @@ public class WarrantyCommandHandlers :
         ticketRepo.Remove(ticket);
 
         // 3.5 Lưu thay đổi
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
 
         return true;
     }

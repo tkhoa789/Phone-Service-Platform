@@ -9,6 +9,7 @@ using PSP.Application.Common.Interfaces;
 using PSP.Application.Modules.Sales.Commands;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
+using PSP.Domain.Modules.Auth.Entities;
 using PSP.Domain.Modules.Branch.Entities;
 using PSP.Domain.Modules.Customer.Entities;
 using PSP.Domain.Modules.Inventory.Entities;
@@ -31,11 +32,13 @@ public class SalesOrderCommandHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IIdempotencyService _idempotencyService;
 
-    public SalesOrderCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public SalesOrderCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IIdempotencyService idempotencyService)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _idempotencyService = idempotencyService;
     }
 
     /// <summary>
@@ -56,11 +59,31 @@ public class SalesOrderCommandHandlers :
             throw new NotFoundException("Khách hàng", request.CustomerId);
         }
 
+        // Lấy thông tin người lập đơn từ tài khoản đang đăng nhập
+        Guid employeeId = Guid.Empty;
+        if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
+        {
+            employeeId = parsedGuid;
+        }
+        else
+        {
+            throw new BadRequestException("Không thể xác định thông tin nhân viên lập đơn hàng.");
+        }
+
+        var userRepo = _unitOfWork.Repository<UserEntity>();
+        var employee = await userRepo.GetByIdAsync(employeeId, cancellationToken);
+        if (employee == null)
+        {
+            throw new NotFoundException("Nhân viên", employeeId);
+        }
+
+        var branchId = employee.BranchId;
+
         // 2. Kiểm tra Chi nhánh có tồn tại không
-        var branch = await branchRepo.GetByIdAsync(request.BranchId, cancellationToken);
+        var branch = await branchRepo.GetByIdAsync(branchId, cancellationToken);
         if (branch == null)
         {
-            throw new NotFoundException("Chi nhánh", request.BranchId);
+            throw new NotFoundException("Chi nhánh", branchId);
         }
 
         // 3. Khởi tạo tính toán tổng tiền đơn hàng
@@ -69,7 +92,7 @@ public class SalesOrderCommandHandlers :
 
         // Lấy danh sách kho thuộc chi nhánh này
         var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
-        var branchWarehouses = await warehouseRepo.FindAsync(w => w.BranchId == request.BranchId, cancellationToken);
+        var branchWarehouses = await warehouseRepo.FindAsync(w => w.BranchId == branchId, cancellationToken);
         var branchWarehouseIds = branchWarehouses.Select(w => w.Id).ToList();
 
         if (!branchWarehouseIds.Any())
@@ -232,17 +255,11 @@ public class SalesOrderCommandHandlers :
         var orderCode = "SO-" + DateTime.UtcNow.ToString("yyyyMMdd") + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
 
         // 7. Tạo thực thể SalesOrder chính
-        Guid employeeId = Guid.Parse("20000000-0000-0000-0000-000000000001"); // Mặc định là Admin được seeder gieo sẵn
-        if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
-        {
-            employeeId = parsedGuid;
-        }
-
         var salesOrder = new SalesOrderEntity
         {
             CustomerId = request.CustomerId,
             UserId = employeeId,
-            BranchId = request.BranchId,
+            BranchId = branchId,
             VoucherId = voucherId,
             Code = orderCode,
             Status = SalesOrderStatus.Pending, // Mặc định ở trạng thái chờ duyệt/thanh toán
@@ -253,7 +270,6 @@ public class SalesOrderCommandHandlers :
 
         // Lưu đơn hàng
         await salesOrderRepo.AddAsync(salesOrder, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // 8. Lưu danh sách chi tiết các mặt hàng vào DB
         foreach (var item in orderItems)
@@ -261,6 +277,7 @@ public class SalesOrderCommandHandlers :
             item.SalesOrderId = salesOrder.Id;
             await salesOrderItemRepo.AddAsync(item, cancellationToken);
         }
+        _idempotencyService.AttachRecord(salesOrder.Id);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return salesOrder.Id;
@@ -275,12 +292,28 @@ public class SalesOrderCommandHandlers :
         var salesOrderItemRepo = _unitOfWork.Repository<SalesOrderItemEntity>();
         var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
         var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+        var inventoryTransactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
 
         // 1. Tìm đơn hàng
         var order = await salesOrderRepo.GetByIdAsync(request.Id, cancellationToken);
         if (order == null)
         {
             throw new NotFoundException("Đơn hàng", request.Id);
+        }
+
+        Guid employeeId = Guid.Empty;
+        if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
+        {
+            employeeId = parsedGuid;
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && order.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền cập nhật đơn hàng của chi nhánh khác.");
+            }
         }
 
         // 2. Nếu trạng thái trùng lặp thì không làm gì
@@ -342,6 +375,19 @@ public class SalesOrderCommandHandlers :
                     {
                         inventory.Quantity = Math.Max(0, inventory.Quantity - 1);
                         inventoryRepo.Update(inventory);
+                        
+                        var transaction = new InventoryTransactionEntity
+                        {
+                            WarehouseId = sourceWarehouseId,
+                            ProductVariantId = item.ProductVariantId,
+                            ImeiId = imei.Id,
+                            Type = InventoryTransactionType.SALE,
+                            QuantityChange = -1,
+                            CostSnapshot = item.UnitPrice,
+                            ReferenceId = order.Id,
+                            ActorId = employeeId
+                        };
+                        await inventoryTransactionRepo.AddAsync(transaction, cancellationToken);
                     }
                 }
                 else
@@ -361,6 +407,18 @@ public class SalesOrderCommandHandlers :
 
                     inventory.Quantity -= item.Quantity;
                     inventoryRepo.Update(inventory);
+                    
+                    var transaction = new InventoryTransactionEntity
+                    {
+                        WarehouseId = inventory.WarehouseId,
+                        ProductVariantId = item.ProductVariantId,
+                        Type = InventoryTransactionType.SALE,
+                        QuantityChange = -item.Quantity,
+                        CostSnapshot = item.UnitPrice,
+                        ReferenceId = order.Id,
+                        ActorId = employeeId
+                    };
+                    await inventoryTransactionRepo.AddAsync(transaction, cancellationToken);
                 }
             }
 
@@ -378,6 +436,16 @@ public class SalesOrderCommandHandlers :
                     }
                     voucherRepo.Update(voucher);
                 }
+            }
+
+            // Tích điểm thưởng CRM Loyalty PTS (BR-306): 10.000 VNĐ = 1 PTS
+            var customerRepo = _unitOfWork.Repository<CustomerEntity>();
+            var customer = await customerRepo.GetByIdAsync(order.CustomerId, cancellationToken);
+            if (customer != null)
+            {
+                customer.TotalSpent += order.Total;
+                customer.RewardPoints += (int)(order.Total / 10000m);
+                customerRepo.Update(customer);
             }
 
             order.Status = SalesOrderStatus.Completed;
@@ -416,6 +484,19 @@ public class SalesOrderCommandHandlers :
                         {
                             inventory.Quantity += 1;
                             inventoryRepo.Update(inventory);
+                            
+                            var transaction = new InventoryTransactionEntity
+                            {
+                                WarehouseId = primaryWarehouse.Id,
+                                ProductVariantId = item.ProductVariantId,
+                                ImeiId = imei.Id,
+                                Type = InventoryTransactionType.SALE_RETURN,
+                                QuantityChange = 1,
+                                CostSnapshot = item.UnitPrice,
+                                ReferenceId = order.Id,
+                                ActorId = employeeId
+                            };
+                            await inventoryTransactionRepo.AddAsync(transaction, cancellationToken);
                         }
                     }
                     else
@@ -430,6 +511,18 @@ public class SalesOrderCommandHandlers :
                         {
                             inventory.Quantity += item.Quantity;
                             inventoryRepo.Update(inventory);
+                            
+                            var transaction = new InventoryTransactionEntity
+                            {
+                                WarehouseId = primaryWarehouse.Id,
+                                ProductVariantId = item.ProductVariantId,
+                                Type = InventoryTransactionType.SALE_RETURN,
+                                QuantityChange = item.Quantity,
+                                CostSnapshot = item.UnitPrice,
+                                ReferenceId = order.Id,
+                                ActorId = employeeId
+                            };
+                            await inventoryTransactionRepo.AddAsync(transaction, cancellationToken);
                         }
                     }
                 }
@@ -448,6 +541,16 @@ public class SalesOrderCommandHandlers :
                         }
                         voucherRepo.Update(voucher);
                     }
+                }
+
+                // Thu hồi điểm thưởng CRM Loyalty PTS (BR-306) chống trục lợi
+                var customerRepo = _unitOfWork.Repository<CustomerEntity>();
+                var customer = await customerRepo.GetByIdAsync(order.CustomerId, cancellationToken);
+                if (customer != null)
+                {
+                    customer.TotalSpent = Math.Max(0, customer.TotalSpent - order.Total);
+                    customer.RewardPoints = Math.Max(0, customer.RewardPoints - (int)(order.Total / 10000m));
+                    customerRepo.Update(customer);
                 }
             }
 
@@ -476,6 +579,15 @@ public class SalesOrderCommandHandlers :
         if (order == null)
         {
             throw new NotFoundException("Đơn hàng", request.Id);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && order.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền xóa đơn hàng của chi nhánh khác.");
+            }
         }
 
         // Ràng buộc bảo toàn dữ liệu tài chính

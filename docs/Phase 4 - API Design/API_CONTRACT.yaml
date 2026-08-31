@@ -1,7 +1,15 @@
 openapi: 3.0.3
 info:
   title: Phone Store Chain & AI Assistant Management System API
-  description: API Contracts for Phone Store Chain Management System integrated with Local AI Assistant.
+  description: |
+    API Contracts for Phone Store Chain Management System integrated with Local AI Assistant.
+    
+    LƯU Ý ĐỒNG BỘ (CẬP NHẬT TỪ PHASE 8):
+    Đây là bản đặc tả cốt lõi ban đầu (Core Blueprint) định nghĩa các endpoint chính. 
+    Trong quá trình phát triển thực tế, mã nguồn Backend đã được mở rộng và hoàn thiện tới 26 Controllers 
+    (bao gồm các module: Nhập hàng, Chuyển kho, Bảo hành, Khuyến mãi, Thiết lập hệ thống, v.v.).
+    Để lấy bản đặc tả (Swagger/OpenAPI 3.0) chi tiết 100% khớp với mã nguồn hiện tại, 
+    vui lòng chạy dự án `PSP.API` và truy xuất trực tiếp từ endpoint Swagger (thường là /swagger/v1/swagger.json).
   version: 1.0.0
 servers:
   - url: http://localhost:8080/api/v1

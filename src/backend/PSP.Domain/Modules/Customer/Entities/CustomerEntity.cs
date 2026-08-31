@@ -14,4 +14,8 @@ public class CustomerEntity : BaseEntity
     public string Phone { get; set; } = string.Empty;
     public string? Email { get; set; }
     public string? Address { get; set; }
+    public int RewardPoints { get; set; } = 0;
+    public decimal TotalSpent { get; set; } = 0;
+    public string MemberTier { get; set; } = "BRONZE";
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }

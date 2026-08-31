@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/PSP.Infrastructure.Tests/PSP.Infrastructure.Tests.csproj" />
+  </Folder>
   <Project Path="PSP.API/PSP.API.csproj" />
   <Project Path="PSP.Application/PSP.Application.csproj" />
   <Project Path="PSP.Domain/PSP.Domain.csproj" />

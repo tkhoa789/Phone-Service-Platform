@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Sales.Commands;
@@ -13,6 +14,7 @@ namespace PSP.API.Controllers;
 /// - Lớp này tiếp nhận các yêu cầu HTTP từ client (Frontend/Postman).
 /// - Không chứa logic nghiệp vụ, chỉ chuyển tiếp yêu cầu sang MediatR (Mediator.Send) và bọc kết quả bằng ApiResponse.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Promotions")]
 public class PromotionController : BaseApiController
@@ -21,6 +23,7 @@ public class PromotionController : BaseApiController
     /// API Tạo mới chương trình khuyến mãi.
     /// POST: /api/Promotion
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePromotionCommand command, CancellationToken cancellationToken)
     {
@@ -32,6 +35,7 @@ public class PromotionController : BaseApiController
     /// API Cập nhật chương trình khuyến mãi.
     /// PUT: /api/Promotion/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePromotionCommand command, CancellationToken cancellationToken)
     {
@@ -48,6 +52,7 @@ public class PromotionController : BaseApiController
     /// API Xóa mềm chương trình khuyến mãi.
     /// DELETE: /api/Promotion/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

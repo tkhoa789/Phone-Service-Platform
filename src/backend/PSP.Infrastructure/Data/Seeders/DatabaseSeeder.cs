@@ -1,60 +1,98 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using PSP.Application.Common.Interfaces;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Modules.Auth.Entities;
 using PSP.Domain.Modules.Branch.Entities;
 using PSP.Domain.Modules.Sales.Entities;
-using PSP.Infrastructure.Data;
 
 namespace PSP.Infrastructure.Data.Seeders;
 
-/// <summary>
-/// =====================================================================
-/// BỘ GIEO DỮ LIỆU BAN ĐẦU (DatabaseSeeder)
-/// =====================================================================
-/// 
-/// File này chạy MỘT LẦN DUY NHẤT khi ứng dụng khởi động lần đầu.
-/// Nhiệm vụ: Tạo sẵn dữ liệu gốc (Seed Data) vào Database để hệ thống
-/// có thể hoạt động ngay lập tức mà không cần nhập liệu thủ công.
-///
-/// DỮ LIỆU ĐƯỢC GIEO:
-/// 1. Chi nhánh mặc định (Trụ sở chính).
-/// 2. Tài khoản Admin mặc định (username: admin, password: Admin@123).
-/// 3. Các vai trò (Roles): Admin, Manager, Sales, Inventory, Technician.
-/// 4. Các quyền hạn (Permissions): USER_CREATE, SALES_VIEW, v.v.
-/// 5. Gán vai trò Admin cho tài khoản Admin.
-/// 6. Gán toàn bộ quyền cho vai trò Admin.
-///
-/// QUAN TRỌNG: Dữ liệu chỉ được tạo nếu CHƯA TỒN TẠI.
-/// Chạy đi chạy lại bao nhiêu lần cũng không bị trùng lặp (Idempotent).
-/// =====================================================================
-/// </summary>
 public static class DatabaseSeeder
 {
-    /// <summary>
-    /// Hàm chính: Được gọi từ Program.cs khi ứng dụng khởi động.
-    /// </summary>
     public static async Task SeedAsync(IServiceProvider serviceProvider)
     {
-        // Tạo một "phạm vi" DI tạm thời để lấy các dịch vụ cần thiết.
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
 
+        // 1. Auto-ensure DB columns exist in physical Customers and Suppliers tables first
         try
         {
-            // Tự động chạy Migration (tạo bảng nếu chưa có).
-            await context.Database.MigrateAsync();
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Customers') AND name = N'RewardPoints')
+                BEGIN
+                    ALTER TABLE [Customers] ADD [RewardPoints] INT NOT NULL DEFAULT 0;
+                END;
 
-            // Gieo dữ liệu theo thứ tự phụ thuộc:
-            //   Branch → Role → Permission → User → UserRole → RolePermission
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Customers') AND name = N'TotalSpent')
+                BEGIN
+                    ALTER TABLE [Customers] ADD [TotalSpent] DECIMAL(18,2) NOT NULL DEFAULT 0;
+                END;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'TaxCode')
+                BEGIN
+                    ALTER TABLE [Suppliers] ADD [TaxCode] NVARCHAR(50) NULL;
+                END;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'DebtAmount')
+                BEGIN
+                    ALTER TABLE [Suppliers] ADD [DebtAmount] DECIMAL(18,2) NOT NULL DEFAULT 0;
+                END;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'CreditLimit')
+                BEGIN
+                    ALTER TABLE [Suppliers] ADD [CreditLimit] DECIMAL(18,2) NOT NULL DEFAULT 500000000;
+                END;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'PaymentTermsDays')
+                BEGIN
+                    ALTER TABLE [Suppliers] ADD [PaymentTermsDays] INT NOT NULL DEFAULT 30;
+                END;
+
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'SupplierDebtTransactions')
+                BEGIN
+                    CREATE TABLE [SupplierDebtTransactions] (
+                        [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                        [SupplierId] UNIQUEIDENTIFIER NOT NULL,
+                        [TransactionType] NVARCHAR(30) NOT NULL,
+                        [Amount] DECIMAL(18,2) NOT NULL,
+                        [BalanceAfter] DECIMAL(18,2) NOT NULL,
+                        [ReferenceNo] NVARCHAR(50) NULL,
+                        [PaymentMethod] NVARCHAR(30) NULL,
+                        [Note] NVARCHAR(500) NULL,
+                        [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                        [CreatedBy] NVARCHAR(100) NULL,
+                        [UpdatedAt] DATETIME2 NULL,
+                        [UpdatedBy] NVARCHAR(100) NULL,
+                        [IsDeleted] BIT NOT NULL DEFAULT 0,
+                        [DeletedAt] DATETIME2 NULL,
+                        [DeletedBy] NVARCHAR(100) NULL,
+                        CONSTRAINT [FK_SupplierDebtTransactions_Suppliers] FOREIGN KEY ([SupplierId]) REFERENCES [Suppliers]([Id]) ON DELETE CASCADE
+                    );
+                END;
+            ");
+        }
+        catch (Exception exRaw)
+        {
+            logger.LogWarning(exRaw, "⚠️ Could not run raw ALTER TABLE script on Customers/Suppliers table.");
+        }
+
+        try
+        {
+            // Removed: await context.Database.MigrateAsync(); (INFRA-OPS-002)
+            // Database migration should be handled explicitly via CI/CD deployment scripts, not at runtime.
+
             await SeedBranchAsync(context, logger);
             await SeedRolesAsync(context, logger);
             await SeedPermissionsAsync(context, logger);
-            await SeedAdminUserAsync(context, passwordHasher, logger);
+            await SeedUsersAsync(context, passwordHasher, logger);
             await SeedUserRolesAsync(context, logger);
             await SeedRolePermissionsAsync(context, logger);
             await SeedPaymentMethodsAsync(context, logger);
@@ -67,51 +105,26 @@ public static class DatabaseSeeder
         }
     }
 
-    // =====================================================================
-    // 7. GIEO PHƯƠNG THỨC THANH TOÁN MẶC ĐỊNH
-    // =====================================================================
     private static async Task SeedPaymentMethodsAsync(AppDbContext context, ILogger logger)
     {
         if (await context.Set<PaymentMethodEntity>().AnyAsync())
         {
-            logger.LogInformation("  → Phương thức thanh toán đã tồn tại. Bỏ qua.");
             return;
         }
 
         var methods = new List<PaymentMethodEntity>
         {
-            new()
-            {
-                Id = Guid.Parse("30000000-0000-0000-0000-000000000001"),
-                Code = "CASH",
-                Name = "Tiền mặt",
-                IsActive = true,
-                CreatedBy = "SYSTEM"
-            },
-            new()
-            {
-                Id = Guid.Parse("30000000-0000-0000-0000-000000000002"),
-                Code = "BANK_TRANSFER",
-                Name = "Chuyển khoản ngân hàng",
-                IsActive = true,
-                CreatedBy = "SYSTEM"
-            }
+            new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000001"), Code = "CASH", Name = "Tiền mặt", IsActive = true, CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("30000000-0000-0000-0000-000000000002"), Code = "BANK_TRANSFER", Name = "Chuyển khoản (VietQR)", IsActive = true, CreatedBy = "SYSTEM" }
         };
 
         await context.Set<PaymentMethodEntity>().AddRangeAsync(methods);
         await context.SaveChangesAsync();
     }
 
-    // =====================================================================
-    // 1. GIEO CHI NHÁNH MẶC ĐỊNH
-    // =====================================================================
     private static async Task SeedBranchAsync(AppDbContext context, ILogger logger)
     {
-        if (await context.Branches.AnyAsync())
-        {
-            logger.LogInformation("  → Chi nhánh đã tồn tại. Bỏ qua.");
-            return;
-        }
+        if (await context.Branches.AnyAsync()) return;
 
         var branch = new BranchEntity
         {
@@ -127,162 +140,130 @@ public static class DatabaseSeeder
 
         await context.Branches.AddAsync(branch);
         await context.SaveChangesAsync();
-        logger.LogInformation("  → Đã tạo Chi nhánh mặc định: {Name}", branch.Name);
     }
 
-    // =====================================================================
-    // 2. GIEO CÁC VAI TRÒ (ROLES)
-    // =====================================================================
     private static async Task SeedRolesAsync(AppDbContext context, ILogger logger)
     {
-        if (await context.Roles.AnyAsync())
-        {
-            logger.LogInformation("  → Roles đã tồn tại. Bỏ qua.");
-            return;
-        }
-
         var roles = new List<RoleEntity>
         {
-            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000001"), Name = "Admin",      Description = "Quản trị viên hệ thống - Toàn quyền", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000000"), Name = "Owner",      Description = "Chủ sở hữu chuỗi - Chủ tịch điều hành duy nhất", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000001"), Name = "Admin",      Description = "Quản trị viên hệ thống IT - Toàn quyền", CreatedBy = "SYSTEM" },
             new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000002"), Name = "Manager",    Description = "Quản lý chi nhánh", CreatedBy = "SYSTEM" },
-            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000003"), Name = "Sales",      Description = "Nhân viên bán hàng", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000003"), Name = "Sales",      Description = "Nhân viên bán hàng POS", CreatedBy = "SYSTEM" },
             new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000004"), Name = "Inventory",  Description = "Nhân viên kho vận", CreatedBy = "SYSTEM" },
-            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000005"), Name = "Technician", Description = "Kỹ thuật viên sửa chữa", CreatedBy = "SYSTEM" }
+            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000005"), Name = "Technician", Description = "Kỹ thuật viên sửa chữa", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("10000000-0000-0000-0000-000000000006"), Name = "Warranty",   Description = "Nhân viên bảo hành & đổi trả", CreatedBy = "SYSTEM" }
         };
 
-        await context.Roles.AddRangeAsync(roles);
+        foreach (var r in roles)
+        {
+            if (!await context.Roles.AnyAsync(x => x.Id == r.Id || x.Name == r.Name))
+            {
+                await context.Roles.AddAsync(r);
+            }
+        }
         await context.SaveChangesAsync();
-        logger.LogInformation("  → Đã tạo {Count} Roles.", roles.Count);
     }
 
-    // =====================================================================
-    // 3. GIEO CÁC QUYỀN HẠN (PERMISSIONS)
-    // =====================================================================
     private static async Task SeedPermissionsAsync(AppDbContext context, ILogger logger)
     {
-        if (await context.Permissions.AnyAsync())
-        {
-            logger.LogInformation("  → Permissions đã tồn tại. Bỏ qua.");
-            return;
-        }
-
         var permissions = new List<PermissionEntity>
         {
-            // Quyền quản lý User
-            new() { Code = "USER_VIEW",   Name = "Xem người dùng",   Module = "Auth", CreatedBy = "SYSTEM" },
-            new() { Code = "USER_CREATE", Name = "Tạo người dùng",   Module = "Auth", CreatedBy = "SYSTEM" },
-            new() { Code = "USER_UPDATE", Name = "Sửa người dùng",   Module = "Auth", CreatedBy = "SYSTEM" },
-            new() { Code = "USER_DELETE", Name = "Xóa người dùng",   Module = "Auth", CreatedBy = "SYSTEM" },
-
-            // Quyền quản lý Chi nhánh
-            new() { Code = "BRANCH_VIEW",   Name = "Xem chi nhánh",   Module = "Branch", CreatedBy = "SYSTEM" },
-            new() { Code = "BRANCH_CREATE", Name = "Tạo chi nhánh",   Module = "Branch", CreatedBy = "SYSTEM" },
-            new() { Code = "BRANCH_UPDATE", Name = "Sửa chi nhánh",   Module = "Branch", CreatedBy = "SYSTEM" },
-            new() { Code = "BRANCH_DELETE", Name = "Xóa chi nhánh",   Module = "Branch", CreatedBy = "SYSTEM" },
-
-            // Quyền quản lý Sản phẩm
-            new() { Code = "PRODUCT_VIEW",   Name = "Xem sản phẩm",   Module = "Product", CreatedBy = "SYSTEM" },
-            new() { Code = "PRODUCT_CREATE", Name = "Tạo sản phẩm",   Module = "Product", CreatedBy = "SYSTEM" },
-            new() { Code = "PRODUCT_UPDATE", Name = "Sửa sản phẩm",   Module = "Product", CreatedBy = "SYSTEM" },
-            new() { Code = "PRODUCT_DELETE", Name = "Xóa sản phẩm",   Module = "Product", CreatedBy = "SYSTEM" },
-
-            // Quyền quản lý Kho
-            new() { Code = "INVENTORY_VIEW",   Name = "Xem tồn kho",   Module = "Inventory", CreatedBy = "SYSTEM" },
-            new() { Code = "INVENTORY_MANAGE", Name = "Quản lý tồn kho", Module = "Inventory", CreatedBy = "SYSTEM" },
-
-            // Quyền quản lý Bán hàng
-            new() { Code = "SALES_VIEW",   Name = "Xem đơn hàng",   Module = "Sales", CreatedBy = "SYSTEM" },
-            new() { Code = "SALES_CREATE", Name = "Tạo đơn hàng",   Module = "Sales", CreatedBy = "SYSTEM" },
-
-            // Quyền quản lý Sửa chữa
-            new() { Code = "REPAIR_VIEW",   Name = "Xem phiếu sửa chữa",   Module = "Repair", CreatedBy = "SYSTEM" },
-            new() { Code = "REPAIR_MANAGE", Name = "Quản lý phiếu sửa chữa", Module = "Repair", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("40000000-0000-0000-0000-000000000001"), Code = "BRANCH_VIEW", Name = "Xem chi nhánh", Module = "BRANCH", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("40000000-0000-0000-0000-000000000002"), Code = "USER_VIEW", Name = "Xem người dùng", Module = "USER", CreatedBy = "SYSTEM" },
+            new() { Id = Guid.Parse("40000000-0000-0000-0000-000000000003"), Code = "AUDIT_VIEW", Name = "Xem nhật ký audit", Module = "AUDIT", CreatedBy = "SYSTEM" },
         };
 
-        await context.Permissions.AddRangeAsync(permissions);
+        foreach (var p in permissions)
+        {
+            if (!await context.Permissions.AnyAsync(x => x.Id == p.Id || x.Code == p.Code))
+            {
+                await context.Permissions.AddAsync(p);
+            }
+        }
         await context.SaveChangesAsync();
-        logger.LogInformation("  → Đã tạo {Count} Permissions.", permissions.Count);
     }
 
-    // =====================================================================
-    // 4. GIEO TÀI KHOẢN ADMIN MẶC ĐỊNH
-    // =====================================================================
-    private static async Task SeedAdminUserAsync(AppDbContext context, IPasswordHasher passwordHasher, ILogger logger)
+    private static async Task SeedUsersAsync(AppDbContext context, IPasswordHasher passwordHasher, ILogger logger)
     {
-        if (await context.Users.AnyAsync(u => u.Username == "admin"))
+        var mainBranchId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+        var userList = new List<(Guid Id, string Username, string Pass, string Name, string Email, string Phone)>
         {
-            logger.LogInformation("  → Tài khoản Admin đã tồn tại. Bỏ qua.");
-            return;
+            (Guid.Parse("20000000-0000-0000-0000-000000000000"), "owner",      "Owner@123",      "Chủ sở hữu chuỗi (Owner Master)", "owner@psp.com",      "0900000000"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000001"), "admin",      "Admin@123",      "Quản trị viên IT (Admin System)", "admin@psp.com",      "0900000001"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000002"), "manager",    "Manager@123",    "Cửa hàng trưởng (Branch Manager)","manager@psp.com",    "0900000002"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000003"), "sales",      "Sales@123",      "Nhân viên Bán hàng POS (Cashier)","sales@psp.com",      "0900000003"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000004"), "inventory",  "Inventory@123",  "Thủ kho (Warehouse Controller)",  "inventory@psp.com",  "0900000004"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000005"), "technician", "Technician@123", "Kỹ thuật viên (Repair Tech)",     "technician@psp.com", "0900000005"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000006"), "warranty",   "Warranty@123",   "Nhân viên Bảo hành (Warranty)",   "warranty@psp.com",   "0900000006"),
+        };
+
+        foreach (var u in userList)
+        {
+            if (!await context.Users.AnyAsync(user => user.Username == u.Username))
+            {
+                var newUser = new UserEntity
+                {
+                    Id = u.Id,
+                    BranchId = mainBranchId,
+                    Username = u.Username,
+                    PasswordHash = passwordHasher.Hash(u.Pass),
+                    FullName = u.Name,
+                    Email = u.Email,
+                    Phone = u.Phone,
+                    Status = UserStatus.Active,
+                    CreatedBy = "SYSTEM"
+                };
+                await context.Users.AddAsync(newUser);
+            }
         }
 
-        var admin = new UserEntity
-        {
-            Id = Guid.Parse("20000000-0000-0000-0000-000000000001"),
-            BranchId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Username = "admin",
-            PasswordHash = passwordHasher.Hash("Admin@123"),  // Mật khẩu mặc định → ĐỔI NGAY khi lên Production!
-            FullName = "Quản trị viên hệ thống",
-            Email = "admin@psp.com",
-            Phone = "0900000001",
-            Status = UserStatus.Active,
-            CreatedBy = "SYSTEM"
-        };
-
-        await context.Users.AddAsync(admin);
         await context.SaveChangesAsync();
-        logger.LogInformation("  → Đã tạo tài khoản Admin mặc định (username: admin, password: Admin@123).");
     }
 
-    // =====================================================================
-    // 5. GÁN VAI TRÒ ADMIN CHO TÀI KHOẢN ADMIN
-    // =====================================================================
     private static async Task SeedUserRolesAsync(AppDbContext context, ILogger logger)
     {
-        var adminUserId = Guid.Parse("20000000-0000-0000-0000-000000000001");
-        var adminRoleId = Guid.Parse("10000000-0000-0000-0000-000000000001");
-
-        if (await context.UserRoles.AnyAsync(ur => ur.UserId == adminUserId && ur.RoleId == adminRoleId))
+        var roleMappings = new List<(Guid UserId, string RoleName)>
         {
-            logger.LogInformation("  → UserRole cho Admin đã tồn tại. Bỏ qua.");
-            return;
-        }
-
-        var userRole = new UserRoleEntity
-        {
-            UserId = adminUserId,
-            RoleId = adminRoleId
+            (Guid.Parse("20000000-0000-0000-0000-000000000000"), "Owner"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000001"), "Admin"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000002"), "Manager"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000003"), "Sales"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000004"), "Inventory"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000005"), "Technician"),
+            (Guid.Parse("20000000-0000-0000-0000-000000000006"), "Warranty"),
         };
 
-        await context.UserRoles.AddAsync(userRole);
-        await context.SaveChangesAsync();
-        logger.LogInformation("  → Đã gán vai trò Admin cho tài khoản admin.");
-    }
-
-    // =====================================================================
-    // 6. GÁN TOÀN BỘ QUYỀN CHO VAI TRÒ ADMIN
-    // =====================================================================
-    private static async Task SeedRolePermissionsAsync(AppDbContext context, ILogger logger)
-    {
-        var adminRoleId = Guid.Parse("10000000-0000-0000-0000-000000000001");
-
-        if (await context.RolePermissions.AnyAsync(rp => rp.RoleId == adminRoleId))
+        foreach (var map in roleMappings)
         {
-            logger.LogInformation("  → RolePermissions cho Admin đã tồn tại. Bỏ qua.");
-            return;
+            var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == map.RoleName);
+            if (role != null && await context.Users.AnyAsync(u => u.Id == map.UserId))
+            {
+                if (!await context.UserRoles.AnyAsync(ur => ur.UserId == map.UserId && ur.RoleId == role.Id))
+                {
+                    await context.UserRoles.AddAsync(new UserRoleEntity { UserId = map.UserId, RoleId = role.Id });
+                }
+            }
         }
 
-        // Lấy toàn bộ Permission trong hệ thống
-        var allPermissions = await context.Permissions.ToListAsync();
-
-        // Gán tất cả cho vai trò Admin (Admin có toàn quyền)
-        var rolePermissions = allPermissions.Select(p => new RolePermissionEntity
-        {
-            RoleId = adminRoleId,
-            PermissionId = p.Id
-        }).ToList();
-
-        await context.RolePermissions.AddRangeAsync(rolePermissions);
         await context.SaveChangesAsync();
-        logger.LogInformation("  → Đã gán {Count} quyền cho vai trò Admin.", rolePermissions.Count);
+    }
+
+    private static async Task SeedRolePermissionsAsync(AppDbContext context, ILogger logger)
+    {
+        var allPermissions = await context.Permissions.ToListAsync();
+        var rolesToGrantAll = new[] { "Owner", "Admin" };
+
+        foreach (var roleName in rolesToGrantAll)
+        {
+            var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+            if (role != null && !await context.RolePermissions.AnyAsync(rp => rp.RoleId == role.Id))
+            {
+                await context.RolePermissions.AddRangeAsync(allPermissions.Select(p => new RolePermissionEntity { RoleId = role.Id, PermissionId = p.Id }));
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 }

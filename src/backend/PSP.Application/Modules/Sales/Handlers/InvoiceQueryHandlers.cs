@@ -10,6 +10,7 @@ using PSP.Application.Modules.Sales.Queries;
 using PSP.Domain.Common.Exceptions;
 using PSP.Domain.Modules.Product.Entities;
 using PSP.Domain.Modules.Sales.Entities;
+using PSP.Domain.Modules.Auth.Entities;
 
 namespace PSP.Application.Modules.Sales.Handlers;
 
@@ -23,10 +24,12 @@ public class InvoiceQueryHandlers :
     IRequestHandler<GetAllPaymentMethodsQuery, IEnumerable<PaymentMethodDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public InvoiceQueryHandlers(IUnitOfWork unitOfWork)
+    public InvoiceQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -48,8 +51,24 @@ public class InvoiceQueryHandlers :
             throw new NotFoundException("Hóa đơn", request.Id);
         }
 
-        // 2. Lấy thông tin đơn bán hàng liên kết
-        var order = await salesOrderRepo.GetByIdAsNoTrackingAsync(invoice.SalesOrderId, cancellationToken);
+        // 2. Lấy thông tin đơn bán hàng liên kết (nếu có)
+        PSP.Domain.Modules.Sales.Entities.SalesOrderEntity? order = null;
+        if (invoice.SalesOrderId.HasValue)
+        {
+            order = await salesOrderRepo.GetByIdAsNoTrackingAsync(invoice.SalesOrderId.Value, cancellationToken);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+            {
+                if (invoice.BranchId != userBranchId)
+                {
+                    throw new ForbiddenException("Bạn không có quyền truy cập hóa đơn của chi nhánh khác.");
+                }
+            }
+        }
 
         // 3. Lấy danh sách mặt hàng của hóa đơn
         var items = await invoiceItemRepo.FindAsNoTrackingAsync(i => i.InvoiceId == invoice.Id, cancellationToken);
@@ -91,7 +110,7 @@ public class InvoiceQueryHandlers :
         return new InvoiceDto
         {
             Id = invoice.Id,
-            SalesOrderId = invoice.SalesOrderId,
+            SalesOrderId = invoice.SalesOrderId ?? Guid.Empty,
             SalesOrderCode = order?.Code ?? string.Empty,
             Code = invoice.Code,
             Status = invoice.Status,
@@ -123,7 +142,14 @@ public class InvoiceQueryHandlers :
     public async Task<IEnumerable<InvoiceDto>> Handle(GetAllInvoicesQuery request, CancellationToken cancellationToken)
     {
         var invoiceRepo = _unitOfWork.Repository<InvoiceEntity>();
-        var invoices = await invoiceRepo.GetAllAsNoTrackingAsync(cancellationToken);
+        var query = invoiceRepo.GetQueryableAsNoTracking();
+
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            query = query.Where(inv => inv.BranchId == userBranchId);
+        }
+
+        var invoices = query.ToList();
 
         var result = new List<InvoiceDto>();
         foreach (var inv in invoices)

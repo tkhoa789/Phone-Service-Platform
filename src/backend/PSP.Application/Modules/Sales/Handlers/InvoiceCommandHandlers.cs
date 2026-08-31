@@ -26,11 +26,15 @@ public class InvoiceCommandHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IIdempotencyService _idempotencyService;
 
-    public InvoiceCommandHandlers(IUnitOfWork unitOfWork, IMediator mediator)
+    public InvoiceCommandHandlers(IUnitOfWork unitOfWork, IMediator mediator, ICurrentUserService currentUserService, IIdempotencyService idempotencyService)
     {
         _unitOfWork = unitOfWork;
         _mediator = mediator;
+        _currentUserService = currentUserService;
+        _idempotencyService = idempotencyService;
     }
 
     /// <summary>
@@ -63,6 +67,7 @@ public class InvoiceCommandHandlers :
         // 4. Khởi tạo hóa đơn chính
         var invoice = new InvoiceEntity
         {
+            BranchId = order.BranchId,
             SalesOrderId = order.Id,
             Code = invoiceCode,
             Status = InvoiceStatus.Issued, // Trạng thái sẵn sàng để thanh toán
@@ -105,6 +110,15 @@ public class InvoiceCommandHandlers :
         if (invoice == null)
         {
             throw new NotFoundException("Hóa đơn", request.InvoiceId);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            if (invoice.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền thao tác trên hóa đơn của chi nhánh khác.");
+            }
         }
 
         // BR-803: Không cho phép thanh toán cho hóa đơn đã Paid hoặc đã Cancelled
@@ -157,7 +171,6 @@ public class InvoiceCommandHandlers :
         };
 
         await paymentRepo.AddAsync(payment, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // 6. Kiểm tra xem hóa đơn đã được thanh toán đầy đủ chưa (BR-801)
         decimal totalPaid = paidSoFar + request.Amount;
@@ -165,12 +178,43 @@ public class InvoiceCommandHandlers :
         {
             // Cập nhật trạng thái hóa đơn sang Paid
             invoice.Status = InvoiceStatus.Paid;
-            invoiceRepo.Update(invoice);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        
+        // Luôn trigger UPDATE trên InvoiceEntity để cập nhật RowVersion (ngăn chặn concurrency double payment)
+        invoice.UpdatedAt = DateTime.UtcNow;
+        invoiceRepo.Update(invoice);
 
-            // Đồng thời tự động cập nhật trạng thái Đơn hàng sang Completed (Kích hoạt trừ kho và tăng voucher)
-            // Tận dụng sức mạnh MediatR gửi Lệnh cập nhật để tái sử dụng toàn bộ nghiệp vụ kiểm kho đã lập trình sẵn ở Module 13
-            await _mediator.Send(new UpdateSalesOrderStatusCommand(invoice.SalesOrderId, SalesOrderStatus.Completed), cancellationToken);
+        // Transaction Boundary 1: Lưu Payment và Invoice
+        try 
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Giao dịch thanh toán đang bị xung đột với một giao dịch khác. Vui lòng thử lại.");
+        }
+
+        if (_idempotencyService != null)
+        {
+            _idempotencyService.AttachRecord(payment.Id);
+        }
+
+        // Transaction Boundary 2: Tự động cập nhật trạng thái Đơn hàng sang Completed (Kích hoạt trừ kho)
+        // Nếu xuất kho thất bại (Exception), Payment vẫn được bảo toàn.
+        if (invoice.Status == InvoiceStatus.Paid && invoice.SalesOrderId.HasValue)
+        {
+            try
+            {
+                await _mediator.Send(new UpdateSalesOrderStatusCommand(invoice.SalesOrderId.Value, SalesOrderStatus.Completed), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                // Tiền đã thu thành công, nhưng xuất kho thất bại (e.g., hết hàng, conflict RowVersion).
+                // Ghi log để theo dõi. Trạng thái hiện tại: Invoice = Paid, SalesOrder = Pending/Confirmed.
+                // Admin sẽ cần xử lý phần Fulfillment sau.
+                Console.WriteLine($"[CRITICAL] Thanh toán thành công nhưng xuất kho thất bại cho Invoice {invoice.Id}. Error: {ex.Message}");
+                // We purposefully suppress throwing this exception to the client so the API returns 200 OK for the Payment.
+            }
         }
 
         return payment.Id;
@@ -187,6 +231,15 @@ public class InvoiceCommandHandlers :
         if (invoice == null)
         {
             throw new NotFoundException("Hóa đơn", request.Id);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            if (invoice.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền thao tác trên hóa đơn của chi nhánh khác.");
+            }
         }
 
         if (invoice.Status == InvoiceStatus.Paid)

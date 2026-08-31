@@ -49,7 +49,12 @@ public record UpdateWarehouseTransferCommand : IRequest<bool>
 /// <summary>
 /// COMMAND giao hàng điều chuyển (Pending -> InTransit).
 /// </summary>
-public record ShipWarehouseTransferCommand(Guid Id) : IRequest<bool>;
+public record ShipWarehouseTransferCommand : IRequest<bool>
+{
+    public Guid Id { get; init; }
+    
+    public List<ProductVariantImeisDto> VariantImeis { get; init; } = new();
+}
 
 /// <summary>
 /// COMMAND nhận hàng điều chuyển thành công (InTransit -> Received).

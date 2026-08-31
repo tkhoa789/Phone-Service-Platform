@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
@@ -13,6 +14,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP quản lý việc Kiểm kê kho (StockTake).
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("StockTakes")]
 public class StockTakeController : BaseApiController
@@ -21,6 +23,7 @@ public class StockTakeController : BaseApiController
     /// API Tạo mới Phiếu kiểm kê kho (Trạng thái mặc định là Draft).
     /// POST: /api/StockTake
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStockTakeCommand command, CancellationToken cancellationToken)
     {
@@ -32,6 +35,7 @@ public class StockTakeController : BaseApiController
     /// API Cập nhật thông tin Phiếu kiểm kê (Chỉ áp dụng khi phiếu ở trạng thái Draft hoặc InProgress).
     /// PUT: /api/StockTake/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateStockTakeCommand command, CancellationToken cancellationToken)
     {
@@ -48,6 +52,7 @@ public class StockTakeController : BaseApiController
     /// API Bắt đầu kiểm kê kho (Chuyển trạng thái sang InProgress).
     /// PUT: /api/StockTake/{id}/start
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/start")]
     public async Task<IActionResult> Start(Guid id, CancellationToken cancellationToken)
     {
@@ -60,6 +65,7 @@ public class StockTakeController : BaseApiController
     /// API Hoàn tất kiểm kê kho (InProgress -> Completed). Điều chỉnh số lượng tồn và IMEI theo thực tế kiểm đếm.
     /// PUT: /api/StockTake/{id}/complete
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/complete")]
     public async Task<IActionResult> Complete(Guid id, [FromBody] CompleteStockTakeCommand command, CancellationToken cancellationToken)
     {
@@ -76,6 +82,7 @@ public class StockTakeController : BaseApiController
     /// API Hủy phiếu kiểm kê kho.
     /// PUT: /api/StockTake/{id}/cancel
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {
@@ -88,6 +95,7 @@ public class StockTakeController : BaseApiController
     /// API Xóa mềm Phiếu kiểm kê kho (Chỉ áp dụng khi phiếu ở trạng thái Draft).
     /// DELETE: /api/StockTake/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

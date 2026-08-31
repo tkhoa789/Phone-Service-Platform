@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
@@ -18,6 +19,7 @@ namespace PSP.API.Controllers;
 /// - Đường dẫn mặc định: /api/Warehouse
 /// - Nhóm Swagger: Warehouses
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Warehouses")]
 public class WarehouseController : BaseApiController
@@ -26,6 +28,7 @@ public class WarehouseController : BaseApiController
     /// API Tạo mới Kho hàng.
     /// POST: /api/Warehouse
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWarehouseCommand command, CancellationToken cancellationToken)
     {
@@ -37,6 +40,7 @@ public class WarehouseController : BaseApiController
     /// API Cập nhật thông tin Kho hàng.
     /// PUT: /api/Warehouse/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWarehouseCommand command, CancellationToken cancellationToken)
     {
@@ -53,6 +57,7 @@ public class WarehouseController : BaseApiController
     /// API Xóa kho hàng (Xóa mềm).
     /// DELETE: /api/Warehouse/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

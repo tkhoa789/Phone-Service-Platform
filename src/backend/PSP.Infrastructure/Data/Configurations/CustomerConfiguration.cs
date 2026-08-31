@@ -36,5 +36,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<CustomerEntity>
 
         builder.Property(e => e.Address)
             .HasMaxLength(255);
+
+        builder.Property(e => e.RowVersion)
+            .IsRowVersion();
     }
 }

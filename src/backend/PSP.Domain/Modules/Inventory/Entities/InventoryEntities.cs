@@ -32,6 +32,9 @@ public class InventoryEntity : BaseEntity
     public int Quantity { get; set; }
     public int MinimumStock { get; set; }
 
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     // Navigation Properties
     public WarehouseEntity Warehouse { get; set; } = null!;
     public ProductVariantEntity ProductVariant { get; set; } = null!;
@@ -49,6 +52,9 @@ public class ImeiEntity : BaseEntity
     public Guid? WarehouseId { get; set; }
     public ImeiStatus Status { get; set; } = ImeiStatus.InStock;
 
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     // Navigation Properties
     public ProductVariantEntity ProductVariant { get; set; } = null!;
     public WarehouseEntity? Warehouse { get; set; }
@@ -65,6 +71,9 @@ public class PurchaseOrderEntity : BaseEntity
     public string Code { get; set; } = string.Empty;
     public PurchaseOrderStatus Status { get; set; } = PurchaseOrderStatus.Draft;
     public decimal TotalAmount { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     // Navigation Properties
     public SupplierEntity Supplier { get; set; } = null!;
@@ -142,4 +151,29 @@ public class StockTakeItemEntity : BaseEntity
     // Navigation Properties
     public StockTakeEntity StockTake { get; set; } = null!;
     public ProductVariantEntity ProductVariant { get; set; } = null!;
+}
+
+/// <summary>
+/// Sổ cái ghi nhận mọi biến động tồn kho (FE-3).
+/// Đảm bảo tính bất biến của Ledger.
+/// </summary>
+public class InventoryTransactionEntity : BaseEntity
+{
+    public Guid WarehouseId { get; set; }
+    public Guid ProductVariantId { get; set; }
+    public Guid? ImeiId { get; set; }
+    
+    public InventoryTransactionType Type { get; set; }
+    public int QuantityChange { get; set; } // Âm (xuất), Dương (nhập), 0 (WriteOff)
+    public decimal? CostSnapshot { get; set; } // Giá vốn thời điểm giao dịch
+    
+    public Guid? ReferenceId { get; set; } // Liên kết đến RepairPartId hoặc các nguồn khác
+    public Guid ActorId { get; set; } // Người thực hiện
+    
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Navigation Properties
+    public WarehouseEntity Warehouse { get; set; } = null!;
+    public ProductVariantEntity ProductVariant { get; set; } = null!;
+    public ImeiEntity? Imei { get; set; }
 }

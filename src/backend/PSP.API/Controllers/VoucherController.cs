@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Sales.Commands;
@@ -13,6 +14,7 @@ namespace PSP.API.Controllers;
 /// - Cung cấp các thao tác CRUD cho Voucher.
 /// - Cung cấp API kiểm tra Voucher hợp lệ theo code và giá trị đơn hàng cụ thể.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Vouchers")]
 public class VoucherController : BaseApiController
@@ -21,6 +23,7 @@ public class VoucherController : BaseApiController
     /// API Tạo mới mã Voucher giảm giá.
     /// POST: /api/Voucher
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVoucherCommand command, CancellationToken cancellationToken)
     {
@@ -32,6 +35,7 @@ public class VoucherController : BaseApiController
     /// API Cập nhật thông tin mã Voucher.
     /// PUT: /api/Voucher/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVoucherCommand command, CancellationToken cancellationToken)
     {
@@ -48,6 +52,7 @@ public class VoucherController : BaseApiController
     /// API Xóa mềm Voucher.
     /// DELETE: /api/Voucher/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

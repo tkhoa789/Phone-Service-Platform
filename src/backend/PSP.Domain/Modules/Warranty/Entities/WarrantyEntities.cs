@@ -26,6 +26,9 @@ public class WarrantyTicketEntity : BaseEntity
     public DateTime? EndDate { get; set; }
     public string? Note { get; set; }
 
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     // Navigation Properties
     public CustomerEntity Customer { get; set; } = null!;
     public SalesOrderEntity? SalesOrder { get; set; }

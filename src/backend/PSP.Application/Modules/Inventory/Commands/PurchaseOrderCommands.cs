@@ -46,6 +46,8 @@ public record UpdatePurchaseOrderCommand : IRequest<bool>
     public Guid WarehouseId { get; init; }
     
     public List<CreatePurchaseOrderItemCommand> Items { get; init; } = new();
+
+    public byte[] RowVersion { get; init; } = Array.Empty<byte>();
 }
 
 /// <summary>
@@ -61,6 +63,8 @@ public record CompletePurchaseOrderCommand : IRequest<bool>
     /// Đối với các sản phẩm điện thoại (Category MOBILE), bắt buộc truyền đúng số lượng.
     /// </summary>
     public List<ProductVariantImeisDto> VariantImeis { get; init; } = new();
+
+    public byte[] RowVersion { get; init; } = Array.Empty<byte>();
 }
 
 /// <summary>
@@ -76,9 +80,9 @@ public class ProductVariantImeisDto
 /// <summary>
 /// COMMAND hủy phiếu nhập kho (Draft/Confirmed -> Cancelled).
 /// </summary>
-public record CancelPurchaseOrderCommand(Guid Id) : IRequest<bool>;
+public record CancelPurchaseOrderCommand(Guid Id, byte[] RowVersion) : IRequest<bool>;
 
 /// <summary>
 /// COMMAND xóa mềm phiếu nhập kho (Chỉ áp dụng cho phiếu ở trạng thái Draft).
 /// </summary>
-public record DeletePurchaseOrderCommand(Guid Id) : IRequest<bool>;
+public record DeletePurchaseOrderCommand(Guid Id, byte[] RowVersion) : IRequest<bool>;

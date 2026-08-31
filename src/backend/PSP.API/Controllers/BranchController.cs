@@ -14,17 +14,15 @@ namespace PSP.API.Controllers;
 /// Lễ tân không tự nấu ăn (không tự xử lý logic), mà ghi lại order (Command/Query) 
 /// rồi chuyển cho "Nhà bếp" (Mediator) xử lý. Sau đó lấy món ăn trả lại cho khách.
 /// </summary>
-[Authorize]
+[Authorize(Roles = "Owner,Admin,Manager")]
 [Route("api/[controller]")] // Khai báo đường dẫn API, ví dụ: http://localhost:5000/api/Branch
 [Tags("Branches")]
 public class BranchController : BaseApiController
 {
     /// <summary>
-    /// API để tạo mới một chi nhánh.
-    /// Phương thức POST thường được dùng khi muốn THÊM MỚI dữ liệu.
+    /// API để tạo mới một chi nhánh (Dành riêng cho Owner & Admin).
     /// </summary>
-    /// <param name="command">Chứa dữ liệu người dùng gửi lên (Tên chi nhánh, Địa chỉ...)</param>
-    /// <param name="cancellationToken">Dùng để hủy tiến trình nếu người dùng đột ngột ngắt kết nối</param>
+    [Authorize(Roles = "Owner,Admin")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBranchCommand command, CancellationToken cancellationToken)
     {
@@ -38,30 +36,25 @@ public class BranchController : BaseApiController
     }
 
     /// <summary>
-    /// API để cập nhật (chỉnh sửa) thông tin chi nhánh.
-    /// Phương thức PUT thường dùng khi muốn GHI ĐÈ / SỬA dữ liệu.
+    /// API để cập nhật (chỉnh sửa) thông tin chi nhánh (Dành riêng cho Owner & Admin).
     /// </summary>
-    [HttpPut("{id:guid}")] // Đường dẫn sẽ có dạng: /api/Branch/123456...
+    [Authorize(Roles = "Owner,Admin")]
+    [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBranchCommand command, CancellationToken cancellationToken)
     {
-        // 1. Kiểm tra an toàn cơ bản: Mã ID trên đường dẫn URL phải giống với Mã ID trong nội dung gửi lên.
         if (id != command.Id)
         {
-            // Nếu không giống, trả về lỗi 400 Bad Request ngay lập tức.
             return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp"));
         }
 
-        // 2. Nếu hợp lệ, chuyển lệnh sửa cho Mediator xử lý.
         var result = await Mediator.Send(command, cancellationToken);
-        
-        // 3. Trả về kết quả thành công.
         return Ok(ApiResponse<bool>.Success(result, "Cập nhật chi nhánh thành công"));
     }
 
     /// <summary>
-    /// API để xóa một chi nhánh.
-    /// Phương thức DELETE dùng để XÓA.
+    /// API để xóa một chi nhánh (Dành riêng cho Owner & Admin).
     /// </summary>
+    [Authorize(Roles = "Owner,Admin")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

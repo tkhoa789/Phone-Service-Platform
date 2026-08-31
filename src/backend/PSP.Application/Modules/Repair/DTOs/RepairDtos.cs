@@ -47,6 +47,8 @@ public class RepairTicketDto
     
     public List<RepairPartDto> Parts { get; set; } = new();
     public List<RepairStatusHistoryDto> StatusHistories { get; set; } = new();
+    public List<RepairChecklistDto> Checklists { get; set; } = new();
+    public List<RepairDepositDto> Deposits { get; set; } = new();
 }
 
 /// <summary>
@@ -75,4 +77,44 @@ public class RepairStatusHistoryDto
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
+}
+
+public class RepairChecklistDto
+{
+    public Guid Id { get; set; }
+    public Guid RepairTicketId { get; set; }
+    public string Type { get; set; } = string.Empty;
+    public Guid InspectorId { get; set; }
+    public string InspectorName { get; set; } = string.Empty;
+    public DateTime InspectedAt { get; set; }
+    public string? CustomerSignatureUrl { get; set; }
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<RepairChecklistItemDto> Items { get; set; } = new();
+}
+
+public class RepairChecklistItemDto
+{
+    public Guid Id { get; set; }
+    public string CheckPointName { get; set; } = string.Empty;
+    public bool IsPassed { get; set; }
+    public string? IssueDescription { get; set; }
+}
+
+public class RepairDepositDto
+{
+    public Guid Id { get; set; }
+    public Guid RepairTicketId { get; set; }
+    public decimal Amount { get; set; }
+    public Guid PaymentMethodId { get; set; }
+    public string PaymentMethodName { get; set; } = string.Empty;
+    public string? TransactionCode { get; set; }
+    public Guid ReceivedById { get; set; }
+    public string ReceivedByName { get; set; } = string.Empty;
+    public DateTime PaidAt { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public Guid? AppliedToInvoiceId { get; set; }
+    
+    // Idempotency support
+    public string IdempotencyKey { get; set; } = string.Empty;
 }

@@ -23,10 +23,12 @@ public class WarehouseQueryHandlers :
     IRequestHandler<GetWarehousesQuery, IEnumerable<WarehouseDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public WarehouseQueryHandlers(IUnitOfWork unitOfWork)
+    public WarehouseQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -42,6 +44,15 @@ public class WarehouseQueryHandlers :
         if (warehouse == null)
         {
             throw new NotFoundException("Kho hàng", request.Id);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && warehouse.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền truy cập kho hàng của chi nhánh khác.");
+            }
         }
 
         // 2. Tải thông tin chi nhánh liên kết để lấy Tên chi nhánh
@@ -69,6 +80,15 @@ public class WarehouseQueryHandlers :
             throw new NotFoundException("Chi nhánh", request.BranchId);
         }
 
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && request.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền truy cập danh sách kho hàng của chi nhánh khác.");
+            }
+        }
+
         // 2. Truy vấn danh sách các kho của chi nhánh đó
         var warehouses = await warehouseRepo.FindAsNoTrackingAsync(w => w.BranchId == request.BranchId, cancellationToken);
 
@@ -92,8 +112,18 @@ public class WarehouseQueryHandlers :
         var branchRepo = _unitOfWork.Repository<BranchEntity>();
 
         // 1. Tải toàn bộ kho hàng và toàn bộ chi nhánh lên RAM
-        var warehouses = await warehouseRepo.GetAllAsNoTrackingAsync(cancellationToken);
-        var branches = await branchRepo.GetAllAsNoTrackingAsync(cancellationToken);
+        var warehousesQuery = warehouseRepo.GetQueryableAsNoTracking();
+        var branchesQuery = branchRepo.GetQueryableAsNoTracking();
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            warehousesQuery = warehousesQuery.Where(w => w.BranchId == userBranchId);
+            branchesQuery = branchesQuery.Where(b => b.Id == userBranchId);
+        }
+
+        var warehouses = warehousesQuery.ToList();
+        var branches = branchesQuery.ToList();
 
         // 2. Tạo Dictionary tra cứu nhanh tên Chi nhánh theo Id để tối ưu hiệu năng (tránh lặp truy vấn N+1)
         var branchMap = branches.ToDictionary(b => b.Id, b => b.Name);

@@ -41,26 +41,54 @@ public class VoucherCommandHandlers :
         var voucherRepo = _unitOfWork.Repository<VoucherEntity>();
         var promotionRepo = _unitOfWork.Repository<PromotionEntity>();
 
-        // 1. Kiểm tra chương trình khuyến mãi cha (Promotion) có tồn tại không
-        var promotion = await promotionRepo.GetByIdAsync(request.PromotionId, cancellationToken);
-        if (promotion == null)
+        // 1. Kiểm tra và tự động gán Chương trình Khuyến mãi mặc định nếu không truyền PromotionId
+        PromotionEntity? promotion = null;
+        if (request.PromotionId == Guid.Empty)
         {
-            throw new NotFoundException("Chương trình khuyến mãi", request.PromotionId);
+            var promotions = await promotionRepo.FindAsync(p => p.Code == "GENERAL_PROMO", cancellationToken);
+            promotion = promotions.FirstOrDefault();
+            if (promotion == null)
+            {
+                promotion = new PromotionEntity
+                {
+                    Id = Guid.NewGuid(),
+                    Code = "GENERAL_PROMO",
+                    Name = "Chương trình Khuyến mãi Phát hành Voucher Trực tiếp",
+                    Type = "GENERAL",
+                    Value = 0,
+                    StartDate = DateTime.UtcNow.AddYears(-1),
+                    EndDate = DateTime.UtcNow.AddYears(10),
+                    IsActive = true,
+                    CreatedBy = "SYSTEM"
+                };
+                await promotionRepo.AddAsync(promotion, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+        }
+        else
+        {
+            promotion = await promotionRepo.GetByIdAsync(request.PromotionId, cancellationToken);
+            if (promotion == null)
+            {
+                throw new NotFoundException("Chương trình khuyến mãi", request.PromotionId);
+            }
+
+            if (!promotion.IsActive)
+            {
+                throw new BadRequestException($"Chương trình khuyến mãi '{promotion.Name}' đã bị ngừng hoạt động.");
+            }
+
+            // Bắt buộc tính toán hạn sử dụng voucher đến cuối ngày 23:59:59 trên Server (BR-1104 & BUS-004)
+            var actualExpiryDate = request.ExpiryDate.Date.AddDays(1).AddTicks(-1);
+
+            if (actualExpiryDate > promotion.EndDate)
+            {
+                throw new BadRequestException("Hạn sử dụng của Voucher không được vượt quá ngày kết thúc của chương trình khuyến mãi.");
+            }
         }
 
-        // 2. Kiểm tra xem chương trình khuyến mãi đó có đang hoạt động không
-        if (!promotion.IsActive)
-        {
-            throw new BadRequestException($"Chương trình khuyến mãi '{promotion.Name}' đã bị ngừng hoạt động.");
-        }
-
-        // 3. Kiểm tra xem ngày hết hạn của Voucher có nằm ngoài thời gian chạy chương trình khuyến mãi không
-        if (request.ExpiryDate > promotion.EndDate)
-        {
-            throw new BadRequestException("Hạn sử dụng của Voucher không được vượt quá ngày kết thúc của chương trình khuyến mãi.");
-        }
-
-        if (request.ExpiryDate <= DateTime.UtcNow)
+        var finalExpiryDate = request.ExpiryDate.Date.AddDays(1).AddTicks(-1);
+        if (finalExpiryDate <= DateTime.UtcNow)
         {
             throw new BadRequestException("Hạn sử dụng của Voucher phải ở trong tương lai.");
         }
@@ -90,6 +118,8 @@ public class VoucherCommandHandlers :
 
         // 6. Map dữ liệu và gán các trạng thái mặc định ban đầu
         var voucher = request.Adapt<VoucherEntity>();
+        voucher.ExpiryDate = finalExpiryDate; // Fix Trust Boundary (Client sets Voucher Expiry)
+        voucher.PromotionId = promotion.Id;
         voucher.Status = VoucherStatus.Active;
         voucher.UsageCount = 0; // Mới tạo thì chưa ai dùng
 
@@ -117,9 +147,16 @@ public class VoucherCommandHandlers :
         // 2. Nếu thay đổi hạn sử dụng, kiểm tra so với chương trình khuyến mãi cha
         var promotionRepo = _unitOfWork.Repository<PromotionEntity>();
         var promotion = await promotionRepo.GetByIdAsync(voucher.PromotionId, cancellationToken);
-        if (promotion != null && request.ExpiryDate > promotion.EndDate)
+        var finalExpiryDate = request.ExpiryDate.Date.AddDays(1).AddTicks(-1); // BR-1104
+
+        if (promotion != null && finalExpiryDate > promotion.EndDate)
         {
             throw new BadRequestException("Hạn sử dụng mới của Voucher không được vượt quá ngày kết thúc của chương trình khuyến mãi.");
+        }
+
+        if (finalExpiryDate <= DateTime.UtcNow)
+        {
+            throw new BadRequestException("Hạn sử dụng mới của Voucher phải ở trong tương lai.");
         }
 
         // 3. Kiểm tra các con số tài chính hợp lệ
@@ -140,6 +177,7 @@ public class VoucherCommandHandlers :
 
         // 4. Map ghi đè thuộc tính mới lên thực thể cũ (Code giữ nguyên)
         request.Adapt(voucher);
+        voucher.ExpiryDate = finalExpiryDate; // Fix Trust Boundary
 
         voucherRepo.Update(voucher);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

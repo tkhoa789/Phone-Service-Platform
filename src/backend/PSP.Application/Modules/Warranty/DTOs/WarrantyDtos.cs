@@ -33,6 +33,7 @@ public class WarrantyTicketDto
 
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     public List<WarrantyHistoryDto> Histories { get; set; } = new();
 }

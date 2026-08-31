@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
@@ -13,6 +14,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP liên quan đến Điều chuyển kho giữa các chi nhánh (Warehouse Transfer).
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("WarehouseTransfers")]
 public class WarehouseTransferController : BaseApiController
@@ -21,6 +23,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Tạo mới Phiếu điều chuyển kho (Trạng thái mặc định là Pending).
     /// POST: /api/WarehouseTransfer
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -32,6 +35,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Cập nhật thông tin Phiếu điều chuyển kho (Chỉ áp dụng khi phiếu ở trạng thái Pending).
     /// PUT: /api/WarehouseTransfer/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -48,10 +52,14 @@ public class WarehouseTransferController : BaseApiController
     /// API Xuất giao hàng điều chuyển (Pending -> InTransit).
     /// PUT: /api/WarehouseTransfer/{id}/ship
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/ship")]
-    public async Task<IActionResult> Ship(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Ship(Guid id, [FromBody] ShipWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
-        var command = new ShipWarehouseTransferCommand(id);
+        if (id != command.Id)
+        {
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
+        }
         var result = await Mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Xuất giao hàng điều chuyển thành công (Đang vận chuyển)."));
     }
@@ -60,6 +68,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Hoàn tất nhận hàng điều chuyển kho (InTransit -> Received). Thực hiện trừ kho nguồn và cộng kho đích.
     /// PUT: /api/WarehouseTransfer/{id}/receive
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/receive")]
     public async Task<IActionResult> Receive(Guid id, [FromBody] ReceiveWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -76,6 +85,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Hủy phiếu điều chuyển kho.
     /// PUT: /api/WarehouseTransfer/{id}/cancel
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {
@@ -88,6 +98,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Xóa mềm Phiếu điều chuyển kho (Chỉ áp dụng khi phiếu ở trạng thái Pending).
     /// DELETE: /api/WarehouseTransfer/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -19,10 +19,12 @@ public class InventoryCommandHandlers :
     IRequestHandler<UpdateImeiStatusCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public InventoryCommandHandlers(IUnitOfWork unitOfWork)
+    public InventoryCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -36,6 +38,17 @@ public class InventoryCommandHandlers :
         if (inventory == null)
         {
             throw new NotFoundException("Tồn kho", request.Id);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
+            var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(inventory.WarehouseId, cancellationToken);
+            if (warehouse != null && warehouse.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền thao tác trên tồn kho của chi nhánh khác.");
+            }
         }
 
         inventory.MinimumStock = request.MinimumStock;
@@ -60,6 +73,20 @@ public class InventoryCommandHandlers :
         if (imei == null)
         {
             throw new NotFoundException("Mã IMEI", request.Imei);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            if (imei.WarehouseId.HasValue)
+            {
+                var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
+                var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(imei.WarehouseId.Value, cancellationToken);
+                if (warehouse != null && warehouse.BranchId != userBranchId)
+                {
+                    throw new ForbiddenException("Bạn không có quyền thao tác trên IMEI của chi nhánh khác.");
+                }
+            }
         }
 
         // Chuyển đổi chuỗi String sang Enum

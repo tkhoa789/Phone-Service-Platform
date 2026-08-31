@@ -174,6 +174,34 @@ Khách hàng có nhiều phiếu sửa chữa.
 
 ---
 
+## BR-306 (Quy tắc Tích điểm Thưởng Loyalty PTS)
+
+Điểm tích lũy (PTS) được tự động cộng khi Khách hàng hoàn tất thanh toán Hóa đơn bán hàng hoặc Hóa đơn sửa chữa:
+* Tỷ lệ tích điểm: 10.000 VNĐ chi tiêu = 1 PTS (Tương đương 100.000 VNĐ = 10 PTS).
+* Tỷ lệ tiêu điểm giảm giá tại POS: 1 PTS = 1.000 VNĐ giảm giá trực tiếp vào hóa đơn.
+* **Quy tắc Thu hồi:** Nếu Hóa đơn hoặc Đơn hàng bị Hủy (Cancelled), hệ thống phải tự động **thu hồi lại** số Điểm thưởng (PTS) và Tổng chi tiêu (Total Spent) đã cộng tương ứng để chống trục lợi.
+
+---
+
+## BR-307 (Quy tắc Phân hạng Hội viên Tự động Theo Chi Tiêu)
+
+Hồ sơ Khách hàng (CustomerEntity) bắt buộc phải có trường **Hạng thành viên (MemberTier)**. Hạng thành viên được hệ thống tự động tính toán và nâng hạng dựa trên Tổng chi tiêu tích lũy (hoặc Quy đổi 10.000 VNĐ = 1 PTS):
+* 🥉 Hạng Đồng (Bronze): Tổng chi tiêu dưới 5.000.000 VNĐ (0 - 500 PTS).
+* 🥈 Hạng Bạc (Silver): Tổng chi tiêu từ 5.000.001 VNĐ đến 20.000.000 VNĐ (501 - 2.000 PTS).
+* 🥇 Hạng Vàng (Gold): Tổng chi tiêu từ 20.000.001 VNĐ đến 70.000.000 VNĐ (2.001 - 7.000 PTS).
+* 👑 Hạng Kim Cương (Diamond): Tổng chi tiêu từ 70.000.001 VNĐ trở lên (Trên 7.000 PTS).
+
+---
+
+## BR-308 (Quyền lợi Hạng VIP & Bảo lưu Điểm)
+
+* Hạng Bạc: Giảm 2% tiền công sửa chữa.
+* Hạng Vàng: Giảm 5% tiền công sửa chữa & Ưu tiên tiếp nhận kỹ thuật.
+* Hạng Kim Cương: Giảm 10% tiền công sửa chữa & Miễn phí gói bảo hành VIP Care 1-đổi-1.
+* Điểm tích lũy được bảo lưu vĩnh viễn cho đến khi khách hàng sử dụng trừ tiền hóa đơn.
+
+---
+
 # 6. Product Rules
 
 ## BR-401
@@ -212,13 +240,55 @@ Không cho phép chỉnh sửa IMEI sau khi đã nhập kho.
 
 ---
 
-## BR-407
+## BR-407 (Quy tắc In Tem Mã Vạch / Barcode QR Label)
+
+Mỗi biến thể SKU phải hỗ trợ tạo tem mã vạch tiêu chuẩn Code-128 / QR Code và xuất lệnh in tem nhãn trực tiếp tới máy in tem nhiệt chuyên dụng (Xprinter / Zebra) với kích thước khổ tem tùy chỉnh (50x30mm, 35x22mm, A4 Sheet).
+
+---
+
+## BR-408 (Quy tắc Tự động Tính Tỷ Suất Lợi Nhuận Gộp)
+
+Giao diện Khai báo biến thể SKU phải tự động tính toán và hiển thị trực tiếp Tỷ suất Lợi nhuận gộp (Gross Profit Margin %) theo công thức `Margin % = ((SalePrice - CostPrice) / SalePrice) * 100%` để quản lý kiểm soát biên độ lợi nhuận bán lẻ.
+
+---
+
+## BR-409
 
 Giá bán phải lớn hơn hoặc bằng 0.
 
 ---
 
-## BR-408
+## BR-410 (Quy tắc Tìm Kiếm Danh Mục & Thương Hiệu Trên Modal Tạo Sản Phẩm)
+
+Màn hình Khai Báo Dòng Sản Phẩm Mới phải tích hợp công cụ Tìm kiếm SearchableSelect cho cả 2 trường Danh mục Thiết bị (Category) và Thương hiệu Sản xuất (Brand).
+
+---
+
+## BR-411 (Quy tắc Gợi Nhớ Tên Mẫu Sản Phẩm & Quét Mã Vạch Hãng Tự Điền)
+
+1. Tên dòng sản phẩm (Model Name) phải lưu giữ lịch sử tên các dòng máy từng nhập thủ công trước đây (như iPhone 15 Pro, Samsung S24) và tự động hiển thị gợi nhớ Autocomplete Dropdown khi gõ phím để nhân viên dễ dàng thay đổi số model (như iPhone 17).
+2. Tích hợp tính năng Quét mã vạch nhà phân phối/hãng sản xuất (Manufacturer Barcode Scanner Auto-Fill) để tự động nhận diện thương hiệu, danh mục và tên sản phẩm gốc.
+
+---
+
+## BR-412 (Quy tắc Cơ Chế Kép Quét Mã Vạch Súng Bán Hàng & Camera Điện Thoại)
+
+Màn hình Khai báo Sản phẩm phải tích hợp cơ chế nhận diện Kép:
+1. **Auto-Focus Súng Quét Tít Còi (Physical Laser Barcode Gun):** Tự động đặt con trỏ chuột Auto-Focus vào ô mã vạch ngay khi mở Modal để nhân viên chĩa súng bắn tít còi là hệ thống tự động điền trong 0.05 giây mà không cần chạm chuột.
+2. **Camera Điện Thoại / Máy Tính Bảng (Mobile Cam QR Scan):** Bổ sung nút bấm `📷 Bật Cam ĐT` kích hoạt camera thiết bị di động để quét mã QR/Barcode di động.
+
+---
+
+## BR-413 (Quy tắc Fallback Sang Ollama AI + Qdrant Vector Knowledge RAG)
+
+Khi súng quét bắn mã vạch chưa có sẵn trong cơ sở dữ liệu hệ thống cục bộ:
+1. Hệ thống tự động chuyển tiếp ngầm yêu cầu tra cứu sang **Ollama AI + Qdrant Vector Database RAG Engine**.
+2. Ollama AI thực hiện suy luận RAG truy vấn kho tri thức EAN/GTIN quốc tế để trích xuất Thương hiệu (*Nintendo, Sony, Google Pixel, Asus ROG...*), Danh mục, Mã sản phẩm và Tên dòng máy trong thời gian dưới **0.8 giây**.
+3. Tự động điền đầy đủ các ô dữ liệu và hiển thị Badge bảo chứng `🤖 Ollama AI + Qdrant Vector (0.8s)`.
+
+---
+
+## BR-414
 
 Giá nhập phải lớn hơn 0.
 
@@ -265,6 +335,39 @@ Kiểm kho không được làm mất lịch sử giao dịch.
 
 ---
 
+## BR-507
+
+Giao diện Quản lý Kho phải hỗ trợ lọc tồn kho theo từng Kho Chi Nhánh cụ thể và tích hợp bộ lọc nhanh 1-click hiển thị các sản phẩm có tồn kho dưới định mức tối thiểu (Minimum Stock Alert).
+
+---
+
+## BR-508
+
+Thao tác luân chuyển kho liên chi nhánh (Inter-Branch Transfer) phải kiểm tra số lượng điều chuyển không vượt quá tồn kho khả dụng tại Kho Nguồn và cập nhật vị trí quản lý kho của thiết bị.
+
+---
+
+## BR-509 (Quy tắc Chọn Sản Phẩm Theo Lô)
+
+Màn hình Tạo Phiếu Luân Chuyển Kho phải tích hợp Cửa sổ Chọn Sản Phẩm Theo Lô (Batch Product Selection Modal) cho phép tìm kiếm, tích chọn đồng thời nhiều mặt hàng và tùy chỉnh số lượng luân chuyển từng loại.
+
+---
+
+## BR-510 (Quy trình Vận Chuyển & Giao Hàng Liên Chi Nhánh)
+
+Quy trình luân chuyển kho thực tế phải trải qua Pipeline Vận chuyển 3 bước:
+1. Mốc 1 (Draft / Locked): Kho Nguồn lập phiếu, đóng gói thùng niêm phong và tạm khóa tồn kho khả dụng.
+2. Mốc 2 (In-Transit / Shipping): Bàn giao đơn vị vận chuyển / Shipper nội bộ (ghi nhận tên tài xế & biển số xe) và chuyển hàng đi xa.
+3. Mốc 3 (Completed / Received): Thủ kho Kho Đích mở thùng kiểm đếm thực tế vs Phiếu chuyển, bấm xác nhận nhập kho để tự động tăng số lượng tồn kho Kho Đích.
+
+---
+
+## BR-511 (Sổ Tra Cứu Phiếu Chuyển Kho & Hành Trình Tài Xế)
+
+Giao diện Quản lý Kho phải tích hợp Sổ Tra Cứu Phiếu Chuyển Kho (Transfer Tracker Modal) cho phép tìm kiếm theo mã phiếu, tên tài xế, SĐT, biển số xe và bấm nút **"📥 Kho Đích Xác Nhận Đã Nhận Đủ Hàng"** để chốt phiếu và tự động cộng tồn kho vào Kho Đích.
+
+---
+
 # 8. Purchase Rules
 
 ## BR-601
@@ -282,6 +385,24 @@ Không nhập trùng IMEI.
 ## BR-603
 
 Giá nhập phải lớn hơn 0.
+
+---
+
+## BR-604 (Sổ Giao Dịch & Lịch Sử Công Nợ AP Nhà Cung Cấp)
+
+Mỗi biến động công nợ mua hàng (Nhập hàng tăng nợ `INVOICE`, Thanh toán trả tiền giảm nợ `PAYMENT`, Trả hàng lỗi giảm nợ `DEBIT_NOTE`) phải được ghi nhận tự động vào Sổ Giao Dịch Công Nợ (`SupplierDebtTransactions`) và tính toán số dư nợ dồn lũy kế (`BalanceAfter`) tại từng mốc thời gian.
+
+---
+
+## BR-605 (Phiếu Chi Thanh Toán Nợ Nhà Cung Cấp)
+
+Giao diện Quản lý Nhà Cung Cấp phải tích hợp Cửa sổ Lập Phiếu Chi Thanh Toán Nợ (`SupplierPaymentModal`) cho phép nhập số tiền thanh toán (trả toàn bộ hoặc một phần), chọn phương thức (Tiền mặt, VietQR Chuyển khoản, Ủy nhiệm chi) và mã chứng từ. Khi bấm xác nhận chi, hệ thống tự động trừ dư nợ `DebtAmount` trong cơ sở dữ liệu realtime và tạo phiếu chi kế toán.
+
+---
+
+## BR-606 (Hạn Mức Tín Dụng & Cảnh Báo Tuổi Nợ AP)
+
+Mỗi Nhà cung cấp được quản lý theo Hạn Mức Nợ Tối Đa (Credit Limit, mặc định 500M ₫) và Kỳ Hạn Thanh Toán (Credit Term Days, mặc định 30 ngày). Hệ thống phải tự động kiểm tra và hiển thị Badge cảnh báo màu đỏ `⚠️ Vượt Hạn Mức Nợ` hoặc `⏰ Quá Hạn` khi dư nợ vượt hạn mức hoặc quá ngày hẹn thanh toán.
 
 ---
 
@@ -325,6 +446,24 @@ Sau khi thanh toán thành công:
 * Cập nhật trạng thái IMEI
 * Sinh hóa đơn
 * Ghi lịch sử khách hàng
+
+---
+
+## BR-707
+
+Màn hình Bán hàng POS phải hỗ trợ lưu giữ và chuyển đổi nhiều Tab Đơn Hàng Nháp (Draft Carts Multi-Tab) đồng thời tại quầy.
+
+---
+
+## BR-708
+
+Dữ liệu đơn nháp tại màn hình POS phải được duy trì liên tục qua các lần tải lại trang (localStorage persistence).
+
+---
+
+## BR-709
+
+Khung hiển thị POS và các thành phần giao diện phải tự động điều chỉnh tỷ lệ (Fluid Auto-Scaling) khi người dùng thu phóng trình duyệt native (Ctrl + / Ctrl -) mà không làm lệch hay trôi lề.
 
 ---
 
@@ -383,6 +522,18 @@ Nếu đổi máy:
 
 ---
 
+## BR-906
+
+Cổng tra cứu Bảo hành Điện tử (Electronic Warranty Verification Portal) chuẩn AppleCare+ / Samsung Care+ phải hiển thị thời hạn bảo hành còn lại (Countdown Days), Gói bảo hành (VIP Care 1-Đổi-1 / Standard Care), Hóa đơn mua gốc, Chi nhánh xuất bán và hỗ trợ in Thẻ Bảo Hành Điện Tử.
+
+---
+
+## BR-907
+
+Khi thực hiện đổi máy 1-đổi-1 theo quy tắc BR-905, số IMEI máy cũ bị vô hiệu hóa và số IMEI máy mới kế thừa trọn vẹn thời hạn bảo hành còn lại của hóa đơn mua hàng gốc.
+
+---
+
 # 12. Repair Rules
 
 ## BR-1001
@@ -415,6 +566,42 @@ Chỉ được bàn giao sau khi hoàn tất sửa chữa.
 
 ---
 
+## BR-1006
+
+Phải lập Bảng kiểm tra 8 chức năng (Pre-Repair 8-Point Function Checklist: Màn hình, Cảm ứng, FaceID/TouchID, Camera, Loa/Mic, Sạc/Pin, Wifi/SIM, Thân vỏ) trước khi tiếp nhận máy sửa để chống tranh chấp.
+
+---
+
+## BR-1007
+
+Khi gán linh kiện thay thế vào phiếu sửa chữa, hệ thống tự động xuất kho linh kiện từ kho chi nhánh tiếp nhận và tính toán Tổng tiền = Tiền công KTV + Tổng giá bán các linh kiện thay thế.
+
+---
+
+## BR-1008
+
+Nếu phiếu sửa chữa bị Hủy, toàn bộ linh kiện thay thế đã chọn phải tự động được hoàn trả lại kho chi nhánh.
+
+---
+
+## BR-1009
+
+Mọi phiếu sửa chữa phải hỗ trợ xem và in Biên nhận K80 khổ 80mm có đầy đủ mã phiếu, ngoại quan, tiền cọc và chữ ký xác nhận của hai bên.
+
+---
+
+## BR-1010
+
+Cung cấp tính năng tra cứu tiến độ sửa chữa chuẩn AppleCare / Samsung Smart Service qua 5 mốc trạng thái tiến trình (Tiếp nhận ➔ Chẩn đoán ➔ Sửa chữa ➔ QC ➔ Bàn giao).
+
+---
+
+## BR-1011 (Quy tắc Thanh Toán Phiếu Sửa Chữa)
+
+Phiếu sửa chữa khi chuyển sang trạng thái Hoàn thành (Completed) bắt buộc phải sinh ra **Hóa đơn tài chính (Invoice)** tương ứng để tiến hành thanh toán. Khách hàng chỉ được tích điểm thưởng (RewardPoints) sau khi Hóa đơn này được thanh toán đủ (Paid). Mọi phiếu sửa chữa đã hoàn thành không được phép bàn giao nếu chưa hoàn tất Hóa đơn.
+
+---
+
 # 13. Promotion Rules
 
 ## BR-1101
@@ -432,6 +619,12 @@ Voucher hết hạn không được sử dụng.
 ## BR-1103
 
 Không áp dụng nhiều voucher nếu chính sách không cho phép.
+
+---
+
+## BR-1104
+
+Voucher phát hành trực tiếp không gắn mã Chương trình Khuyến mãi sẽ tự động liên kết với Chương trình Khuyến mãi Hệ thống Mặc định (GENERAL_PROMO). Hạn sử dụng của Voucher được tính trọn vẹn đến thời điểm cuối ngày (23:59:59).
 
 ---
 
@@ -557,13 +750,25 @@ Không được để dữ liệu ở trạng thái không nhất quán.
 
 ## BR-1603
 
-Mọi API phải kiểm tra quyền trước khi xử lý.
+Mọi API phải kiểm tra quyền (Authorization) trước khi xử lý. Bắt buộc phải sử dụng thuộc tính `[Authorize]` trên tất cả Controller hoặc Endpoint, trừ khi API đó được thiết kế công khai (Public) một cách có chủ đích (ví dụ: Đăng nhập).
+
+---
+
+## BR-1605 (RBAC - Role-Based Access Control)
+
+Hệ thống phải thực thi kiểm soát truy cập dựa trên vai trò (RBAC). Các API nhạy cảm (tạo, sửa, xóa, truy cập dữ liệu quan trọng) phải kiểm tra quyền cụ thể của người dùng, không được phép áp dụng chính sách "cào bằng" quyền hạn sau khi đăng nhập thành công.
 
 ---
 
 ## BR-1604
 
 Các thao tác thất bại không được làm thay đổi dữ liệu.
+
+---
+
+## BR-1606 (Optimistic Concurrency - Khóa Lạc Quan)
+
+Các nghiệp vụ nhạy cảm về tài chính hoặc số lượng tồn kho (Thanh toán Invoice, Xử lý bảo hành Warranty, Nhập xuất Kho, Cập nhật trạng thái sửa chữa) bắt buộc phải sử dụng cơ chế Khóa lạc quan (Optimistic Concurrency) thông qua trường `RowVersion` ở cơ sở dữ liệu. Nếu hệ thống phát hiện phiên bản dữ liệu đã bị thay đổi bởi người dùng khác, phải từ chối thao tác và ném lỗi `CONCURRENCY_ERROR` để tránh thất thoát hoặc ghi đè dữ liệu sai lệch.
 
 ---
 

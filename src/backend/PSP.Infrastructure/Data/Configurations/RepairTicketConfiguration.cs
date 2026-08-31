@@ -56,8 +56,17 @@ public class RepairTicketConfiguration : IEntityTypeConfiguration<RepairTicketEn
             .IsRequired()
             .HasPrecision(18, 2);
 
+        builder.Property(e => e.RowVersion)
+            .IsRowVersion();
+
         // 8. Cấu hình mối quan hệ khóa ngoại (Foreign Keys)
         // Chặn Cascade Delete (sử dụng Restrict) để khi xóa khách hàng hay sản phẩm không bị xóa nhầm lịch sử sửa chữa.
+        
+        // Phiếu sửa chữa phải thuộc về một Chi nhánh (BranchId không được null)
+        builder.HasOne(e => e.Branch)
+            .WithMany()
+            .HasForeignKey(e => e.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
         
         // Phiếu sửa chữa thuộc về một Khách hàng
         builder.HasOne(e => e.Customer)

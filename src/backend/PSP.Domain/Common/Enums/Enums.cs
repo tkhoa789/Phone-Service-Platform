@@ -10,7 +10,8 @@ public enum ImeiStatus
     Sold,           // Đã bán
     Repairing,      // Đang sửa chữa
     WarrantyHold,   // Đang giữ bảo hành
-    Disposed        // Đã thanh lý / đổi máy
+    Disposed,       // Đã thanh lý / đổi máy
+    WrittenOff      // Đã xuất hủy (FE-3 Repair WriteOff)
 }
 
 /// <summary>
@@ -86,9 +87,14 @@ public enum WarrantyTicketStatus
 public enum RepairTicketStatus
 {
     Received,           // Tiếp nhận
+    Diagnosing,         // Chẩn đoán (BUS-001)
+    WaitingApproval,    // Chờ khách đồng ý (BUS-001)
     WaitingForParts,    // Chờ linh kiện
     Repairing,          // Đang sửa
-    Completed,          // Hoàn thành
+    WaitingQC,          // Chờ QC kiểm tra (BUS-001)
+    Completed,          // Hoàn thành sửa chữa
+    WaitingPickup,      // Chờ khách lấy (BUS-001)
+    Delivered,          // Đã giao khách (BUS-001)
     Cancelled           // Hủy
 }
 
@@ -143,4 +149,44 @@ public enum LoginStatus
 {
     Success,
     Failed
+}
+
+/// <summary>
+/// Trạng thái Tiền cọc (Deposit) của Phiếu sửa chữa.
+/// </summary>
+public enum RepairDepositStatus
+{
+    Paid,             // Khách đã đóng cọc
+    Applied,          // Đã được cấn trừ vào hóa đơn thanh toán
+    RefundRequested,  // Yêu cầu hoàn tiền (chờ thủ quỹ)
+    Refunded          // Đã hoàn tiền cho khách (nếu hủy phiếu)
+}
+
+/// <summary>
+/// Trạng thái của linh kiện thay thế trong Phiếu sửa chữa (FE-3).
+/// </summary>
+public enum RepairPartStatus
+{
+    Reserved,
+    Issued,
+    Installed,
+    Returned,
+    WriteOff
+}
+
+/// <summary>
+/// Loại giao dịch tồn kho cho Ledger.
+/// </summary>
+public enum InventoryTransactionType
+{
+    REPAIR_ISSUE,
+    REPAIR_RETURN,
+    REPAIR_WRITEOFF,
+    IMPORT,
+    SALE,
+    SALE_RETURN,
+    TRANSFER_OUT,
+    TRANSFER_IN,
+    TRANSFER_CANCEL_RETURN,
+    STOCKTAKE_ADJUSTMENT
 }

@@ -54,6 +54,9 @@ public class InventoryConfiguration : IEntityTypeConfiguration<InventoryEntity>
     public void Configure(EntityTypeBuilder<InventoryEntity> builder)
     {
         builder.HasKey(e => e.Id);
+        
+        // Đảm bảo không âm tồn kho ở cấp độ Database
+        builder.ToTable(t => t.HasCheckConstraint("CK_Inventory_Quantity", "[Quantity] >= 0"));
     }
 }
 
@@ -69,6 +72,9 @@ public class ImeiConfiguration : IEntityTypeConfiguration<ImeiEntity>
 
         builder.HasIndex(e => e.Imei)
             .IsUnique();
+            
+        builder.Property(e => e.Status)
+            .HasConversion<string>();
 
         builder.HasOne(e => e.ProductVariant)
             .WithMany(v => v.Imeis)
@@ -142,6 +148,35 @@ public class PurchaseOrderConfiguration : IEntityTypeConfiguration<PurchaseOrder
         builder.HasOne(e => e.Warehouse)
             .WithMany()
             .HasForeignKey(e => e.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+/// <summary>
+/// Cấu hình cho Ledger tồn kho (InventoryTransactionEntity).
+/// </summary>
+public class InventoryTransactionConfiguration : IEntityTypeConfiguration<InventoryTransactionEntity>
+{
+    public void Configure(EntityTypeBuilder<InventoryTransactionEntity> builder)
+    {
+        builder.HasKey(e => e.Id);
+        
+        builder.Property(e => e.Type)
+            .HasConversion<string>();
+            
+        builder.HasOne(e => e.Warehouse)
+            .WithMany()
+            .HasForeignKey(e => e.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+            
+        builder.HasOne(e => e.ProductVariant)
+            .WithMany()
+            .HasForeignKey(e => e.ProductVariantId)
+            .OnDelete(DeleteBehavior.Restrict);
+            
+        builder.HasOne(e => e.Imei)
+            .WithMany()
+            .HasForeignKey(e => e.ImeiId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

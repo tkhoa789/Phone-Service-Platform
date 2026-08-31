@@ -30,10 +30,12 @@ public class SalesOrderQueryHandlers :
     IRequestHandler<GetAllSalesOrdersQuery, IEnumerable<SalesOrderDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public SalesOrderQueryHandlers(IUnitOfWork unitOfWork)
+    public SalesOrderQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -54,6 +56,15 @@ public class SalesOrderQueryHandlers :
         if (order == null)
         {
             throw new NotFoundException("Đơn hàng", request.Id);
+        }
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && order.BranchId != userBranchId)
+            {
+                throw new ForbiddenException("Bạn không có quyền truy cập đơn hàng của chi nhánh khác.");
+            }
         }
 
         // 2. Nạp tuần tự thông tin khách hàng, nhân viên, chi nhánh, voucher liên quan (EF Core không thread-safe)
@@ -116,7 +127,13 @@ public class SalesOrderQueryHandlers :
     public async Task<IEnumerable<SalesOrderDto>> Handle(GetSalesOrdersByCustomerIdQuery request, CancellationToken cancellationToken)
     {
         var salesOrderRepo = _unitOfWork.Repository<SalesOrderEntity>();
-        var orders = await salesOrderRepo.FindAsNoTrackingAsync(x => x.CustomerId == request.CustomerId, cancellationToken);
+        
+        bool isGlobalAdmin = _currentUserService.IsGlobalAdmin;
+        Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId);
+
+        var orders = await salesOrderRepo.FindAsNoTrackingAsync(x => 
+            x.CustomerId == request.CustomerId && 
+            (isGlobalAdmin || x.BranchId == userBranchId), cancellationToken);
 
         var result = new List<SalesOrderDto>();
         foreach (var order in orders)
@@ -134,7 +151,12 @@ public class SalesOrderQueryHandlers :
     public async Task<IEnumerable<SalesOrderDto>> Handle(GetAllSalesOrdersQuery request, CancellationToken cancellationToken)
     {
         var salesOrderRepo = _unitOfWork.Repository<SalesOrderEntity>();
-        var orders = await salesOrderRepo.GetAllAsNoTrackingAsync(cancellationToken);
+        
+        bool isGlobalAdmin = _currentUserService.IsGlobalAdmin;
+        Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId);
+
+        var orders = await salesOrderRepo.FindAsNoTrackingAsync(x => 
+            isGlobalAdmin || x.BranchId == userBranchId, cancellationToken);
 
         var result = new List<SalesOrderDto>();
         foreach (var order in orders)

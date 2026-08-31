@@ -97,7 +97,8 @@ public class WarrantyQueryHandlers :
             Note = ticket.Note,
             CreatedAt = ticket.CreatedAt,
             CreatedBy = ticket.CreatedBy,
-            Histories = historyDtos
+            Histories = historyDtos,
+            RowVersion = ticket.RowVersion
         };
 
         return dto;
@@ -180,7 +181,8 @@ public class WarrantyQueryHandlers :
                 EndDate = ticket.EndDate,
                 Note = ticket.Note,
                 CreatedAt = ticket.CreatedAt,
-                CreatedBy = ticket.CreatedBy
+                CreatedBy = ticket.CreatedBy,
+                RowVersion = ticket.RowVersion
             });
         }
 

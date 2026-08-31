@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Warranty.Commands;
@@ -17,6 +18,7 @@ namespace PSP.API.Controllers;
 /// - Lớp này tiếp nhận các yêu cầu bảo hành từ bộ phận chăm sóc khách hàng/kỹ thuật.
 /// - Cung cấp tính năng kiểm tra nhanh thời hạn bảo hành của thiết bị dựa trên IMEI, cập nhật trạng thái xử lý và đổi trả thiết bị mới.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("WarrantyTickets")]
 public class WarrantyTicketController : BaseApiController
@@ -25,6 +27,7 @@ public class WarrantyTicketController : BaseApiController
     /// API Tạo mới Phiếu tiếp nhận bảo hành.
     /// POST: /api/WarrantyTicket
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager,Sales,Technician")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWarrantyTicketCommand command, CancellationToken cancellationToken)
     {
@@ -37,6 +40,7 @@ public class WarrantyTicketController : BaseApiController
     /// Hỗ trợ truyền NewImei để đổi máy mới cho khách hàng (BR-905).
     /// PUT: /api/WarrantyTicket/{id}/status
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager,Sales,Technician")]
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateWarrantyStatusCommand command, CancellationToken cancellationToken)
     {
@@ -53,10 +57,11 @@ public class WarrantyTicketController : BaseApiController
     /// API Xóa mềm phiếu tiếp nhận bảo hành (Chỉ cho phép khi ở trạng thái Received).
     /// DELETE: /api/WarrantyTicket/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid id, [FromBody] byte[] rowVersion, CancellationToken cancellationToken)
     {
-        var command = new DeleteWarrantyTicketCommand(id);
+        var command = new DeleteWarrantyTicketCommand(id, rowVersion);
         var result = await Mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Xóa phiếu bảo hành thành công"));
     }

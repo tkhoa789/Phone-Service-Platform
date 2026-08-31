@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Product.Commands;
@@ -11,6 +12,7 @@ namespace PSP.API.Controllers;
 /// Quản lý các API liên quan đến Danh mục sản phẩm (Categories).
 /// Cho phép tạo danh mục cha-con đa cấp.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Categories")]
 public class CategoryController : BaseApiController
@@ -22,6 +24,7 @@ public class CategoryController : BaseApiController
     /// <param name="command">Dữ liệu tạo danh mục (mã, tên, parentId)</param>
     /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
     /// <returns>Trả về Guid của danh mục vừa tạo</returns>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCategoryCommand command, CancellationToken cancellationToken)
     {
@@ -37,6 +40,7 @@ public class CategoryController : BaseApiController
     /// <param name="command">Dữ liệu cập nhật mới trong body request</param>
     /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
     /// <returns>Trả về true nếu cập nhật thành công</returns>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryCommand command, CancellationToken cancellationToken)
     {
@@ -57,6 +61,7 @@ public class CategoryController : BaseApiController
     /// <param name="id">Id danh mục cần xóa</param>
     /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
     /// <returns>Trả về true nếu xóa thành công</returns>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

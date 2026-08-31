@@ -25,6 +25,7 @@ namespace PSP.API.Controllers;
 ///   → API đăng xuất yêu cầu phải đang đăng nhập thì mới được đăng xuất.
 /// =====================================================================
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Authorization")]
 public class AuthController : BaseApiController

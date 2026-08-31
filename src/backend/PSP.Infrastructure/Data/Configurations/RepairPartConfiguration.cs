@@ -44,5 +44,22 @@ public class RepairPartConfiguration : IEntityTypeConfiguration<RepairPartEntity
             .WithMany()
             .HasForeignKey(e => e.ProductVariantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Cấu hình thuộc tính mới FE-3
+        builder.Property(e => e.Status)
+            .HasConversion<string>();
+
+        builder.Property(e => e.CostAtWriteOff)
+            .HasPrecision(18, 2);
+
+        builder.HasOne(e => e.Imei)
+            .WithMany()
+            .HasForeignKey(e => e.ImeiId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Unique Filtered Index bảo vệ IMEI: Một linh kiện Serialized không được đồng thời bị chiếm dụng bởi 2 Ticket
+        builder.HasIndex(e => e.ImeiId)
+            .IsUnique()
+            .HasFilter("[ImeiId] IS NOT NULL AND [Status] IN ('Reserved', 'Issued', 'Installed')");
     }
 }

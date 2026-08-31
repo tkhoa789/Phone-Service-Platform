@@ -64,13 +64,16 @@ public class ProductVariantEntity : BaseEntity
     public decimal CostPrice { get; set; }
     public decimal SalePrice { get; set; }
 
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     // Navigation Properties
     public ProductEntity Product { get; set; } = null!;
     public ICollection<ImeiEntity> Imeis { get; set; } = new List<ImeiEntity>();
 }
 
 /// <summary>
-/// Nhà cung cấp.
+/// Nhà cung cấp linh kiện / máy thiết bị.
 /// Tham chiếu: ERD.md - Section 3.2.
 /// </summary>
 public class SupplierEntity : BaseEntity
@@ -80,4 +83,32 @@ public class SupplierEntity : BaseEntity
     public string? Phone { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
+    public string? TaxCode { get; set; }
+    public decimal DebtAmount { get; set; }
+    public decimal CreditLimit { get; set; } = 500000000;
+    public int PaymentTermsDays { get; set; } = 30;
+
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+    // Navigation Properties
+    public ICollection<SupplierDebtTransactionEntity> DebtTransactions { get; set; } = new List<SupplierDebtTransactionEntity>();
+}
+
+/// <summary>
+/// Thực thể ghi nhận Sổ Giao Dịch & Lịch Sử Công Nợ Nhà Cung Cấp.
+/// Tham chiếu: ERD.md - Section 3.2.
+/// </summary>
+public class SupplierDebtTransactionEntity : BaseEntity
+{
+    public Guid SupplierId { get; set; }
+    public string TransactionType { get; set; } = "PAYMENT"; // INVOICE, PAYMENT, DEBIT_NOTE
+    public decimal Amount { get; set; }
+    public decimal BalanceAfter { get; set; }
+    public string ReferenceNo { get; set; } = string.Empty;
+    public string? PaymentMethod { get; set; } // CASH, VIETQR, BANK_TRANSFER
+    public string? Note { get; set; }
+
+    // Navigation Properties
+    public SupplierEntity Supplier { get; set; } = null!;
 }

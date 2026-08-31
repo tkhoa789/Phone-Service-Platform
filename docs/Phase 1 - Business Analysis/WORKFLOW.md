@@ -215,26 +215,30 @@ Ghi Audit Log
 
 ---
 
-# 7. Transfer Inventory Workflow
+# 7. Transfer Inventory Workflow (Luân Chuyển Kho Theo Lô & Vận Chuyển Liên Chi Nhánh)
 
 ```
-Warehouse
+Warehouse Staff
 
 ↓
 
-Tạo phiếu chuyển kho
+Tạo Phiếu Chuyển Kho Liên Chi Nhánh
 
 ↓
 
-Chọn kho nguồn
+Chọn Kho Nguồn & Kho Đích
 
 ↓
 
-Chọn kho đích
+Mở Modal "📦 Chọn Theo Lô Sản Phẩm" (Multi-Select Search Batch Modal)
 
 ↓
 
-Kiểm tra tồn kho
+Tích chọn danh sách n mặt hàng & Tùy chỉnh số lượng luân chuyển từng loại
+
+↓
+
+Kiểm tra số lượng tồn kho khả dụng tại Kho Nguồn
 
 ↓
 
@@ -242,17 +246,23 @@ Kiểm tra tồn kho
 
 ├── Không
 │      ↓
-│   Báo lỗi
+│   Cảnh báo không đủ tồn kho khả dụng
 │
 └── Có
        ↓
-    Xuất kho nguồn
+   Chọn Đơn vị Vận chuyển / Tài xế Shipper & Đóng gói niêm phong (Mốc 1: Draft / Locked)
        ↓
-    Nhập kho đích
+   Kho Nguồn tạm khóa / xuất tồn kho vật lý
        ↓
-    Cập nhật vị trí IMEI
+   Vận chuyển đường xa (Mốc 2: In-Transit / Shipping)
        ↓
-    Ghi Audit Log
+   Kho Đích kiểm đếm số lượng thực nhận vs Phiếu chuyển
+       ↓
+   Kho Đích xác nhận Nhập Kho (Mốc 3: Completed / Received)
+       ↓
+   Tự động cộng tồn kho Kho Đích & Cập nhật vị trí chuỗi 15 số IMEI
+       ↓
+   Ghi Audit Log
 ```
 
 ---
@@ -300,7 +310,7 @@ Còn bảo hành?
 # 9. Repair Workflow
 
 ```
-Technician
+Technician / Receptionist
 
 ↓
 
@@ -308,15 +318,27 @@ Tiếp nhận máy
 
 ↓
 
-Ghi nhận lỗi
+Lập Bảng kiểm tra 8 chức năng (Pre-Repair 8-Point Checklist: Màn hình, Cảm ứng, FaceID, Camera, Loa/Mic, Sạc, Wifi, Thân vỏ)
 
 ↓
 
-Chẩn đoán
+Ghi nhận mô tả lỗi & Mật khẩu mở máy
 
 ↓
 
-Lập báo giá
+In Phiếu Biên Nhận K80 (80mm) & Khách hàng ký tên xác nhận
+
+↓
+
+Khởi tạo tiến trình AppleCare Progress Stepper (Mốc 1: Received)
+
+↓
+
+Chẩn đoán kỹ thuật (Mốc 2: Diagnosing)
+
+↓
+
+Lập báo giá (Tiền công KTV + Linh kiện thay thế)
 
 ↓
 
@@ -324,17 +346,19 @@ Khách đồng ý?
 
 ├── Không
 │      ↓
-│   Trả máy
+│   Hủy phiếu & Trả máy nguyên trạng
 │
 └── Có
        ↓
-   Tiến hành sửa
+   Tiến hành sửa & Gán linh kiện thay thế (Mốc 3: Repairing)
        ↓
-   Kiểm thử
+   Tự động xuất kho linh kiện từ Kho Chi Nhánh (Inventories -1)
        ↓
-   Hoàn tất
+   Kiểm thử chất lượng QC (Mốc 4: Testing)
        ↓
-   Bàn giao
+   Hoàn tất & Sẵn sàng bàn giao (Mốc 5: Completed)
+       ↓
+   Bàn giao máy & Thu tiền còn lại
        ↓
    Ghi Audit Log
 ```

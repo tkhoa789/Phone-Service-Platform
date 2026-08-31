@@ -28,10 +28,12 @@ public class RepairQueryHandlers :
     IRequestHandler<GetRepairTicketsQuery, (IEnumerable<RepairTicketDto> Items, int TotalCount)>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public RepairQueryHandlers(IUnitOfWork unitOfWork)
+    public RepairQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -45,6 +47,8 @@ public class RepairQueryHandlers :
         var userRepo = _unitOfWork.Repository<UserEntity>();
         var partRepo = _unitOfWork.Repository<RepairPartEntity>();
         var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+        var checklistRepo = _unitOfWork.Repository<RepairChecklistEntity>();
+        var checklistItemRepo = _unitOfWork.Repository<RepairChecklistItemEntity>();
 
         // 1.1 Tìm phiếu sửa chữa theo ID (Không tracking để tăng tốc)
         var ticket = await ticketRepo.GetByIdAsNoTrackingAsync(request.Id, cancellationToken);
@@ -61,6 +65,19 @@ public class RepairQueryHandlers :
 
         // 1.4 Nạp thông tin Nhân viên tiếp nhận và Kỹ thuật viên
         var receivedBy = await userRepo.GetByIdAsNoTrackingAsync(ticket.ReceivedById, cancellationToken);
+        
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin)
+        {
+            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+            {
+                if (ticket.BranchId != userBranchId)
+                {
+                    throw new ForbiddenException("Bạn không có quyền truy cập phiếu sửa chữa của chi nhánh khác.");
+                }
+            }
+        }
+
         var technician = ticket.TechnicianId.HasValue
             ? await userRepo.GetByIdAsNoTrackingAsync(ticket.TechnicianId.Value, cancellationToken)
             : null;
@@ -102,7 +119,62 @@ public class RepairQueryHandlers :
             })
             .ToList();
 
-        // 1.7 Ánh xạ và tính toán dữ liệu trả về DTO
+        // 1.7 Lấy danh sách Checklist
+        var checklists = await checklistRepo.FindAsNoTrackingAsync(c => c.RepairTicketId == ticket.Id && !c.IsDeleted, cancellationToken);
+        var checklistDtos = new List<RepairChecklistDto>();
+        foreach(var c in checklists)
+        {
+            var items = await checklistItemRepo.FindAsNoTrackingAsync(i => i.RepairChecklistId == c.Id && !i.IsDeleted, cancellationToken);
+            var inspector = await userRepo.GetByIdAsNoTrackingAsync(c.InspectorId, cancellationToken);
+            
+            checklistDtos.Add(new RepairChecklistDto
+            {
+                Id = c.Id,
+                RepairTicketId = c.RepairTicketId,
+                Type = c.Type.ToString(),
+                InspectorId = c.InspectorId,
+                InspectorName = inspector?.FullName ?? string.Empty,
+                InspectedAt = c.InspectedAt,
+                CustomerSignatureUrl = c.CustomerSignatureUrl,
+                Notes = c.Notes,
+                CreatedAt = c.CreatedAt,
+                Items = items.Select(i => new RepairChecklistItemDto
+                {
+                    Id = i.Id,
+                    CheckPointName = i.CheckPointName,
+                    IsPassed = i.IsPassed,
+                    IssueDescription = i.IssueDescription
+                }).ToList()
+            });
+        }
+
+        // 1.8 Lấy danh sách Tiền cọc (Deposits)
+        var depositRepo = _unitOfWork.Repository<RepairDepositEntity>();
+        var paymentMethodRepo = _unitOfWork.Repository<PSP.Domain.Modules.Sales.Entities.PaymentMethodEntity>();
+        
+        var deposits = await depositRepo.FindAsNoTrackingAsync(d => d.RepairTicketId == ticket.Id && !d.IsDeleted, cancellationToken);
+        var depositDtos = new List<RepairDepositDto>();
+        foreach (var deposit in deposits)
+        {
+            var paymentMethod = await paymentMethodRepo.GetByIdAsNoTrackingAsync(deposit.PaymentMethodId, cancellationToken);
+            var receiver = await userRepo.GetByIdAsNoTrackingAsync(deposit.ReceivedById, cancellationToken);
+            depositDtos.Add(new RepairDepositDto
+            {
+                Id = deposit.Id,
+                RepairTicketId = deposit.RepairTicketId,
+                Amount = deposit.Amount,
+                PaymentMethodId = deposit.PaymentMethodId,
+                PaymentMethodName = paymentMethod?.Name ?? string.Empty,
+                TransactionCode = deposit.TransactionCode,
+                ReceivedById = deposit.ReceivedById,
+                ReceivedByName = receiver?.FullName ?? string.Empty,
+                PaidAt = deposit.PaidAt,
+                Status = deposit.Status.ToString(),
+                AppliedToInvoiceId = deposit.AppliedToInvoiceId
+            });
+        }
+
+        // 1.9 Ánh xạ và tính toán dữ liệu trả về DTO
         var dto = new RepairTicketDto
         {
             Id = ticket.Id,
@@ -129,7 +201,9 @@ public class RepairQueryHandlers :
             CreatedAt = ticket.CreatedAt,
             CreatedBy = ticket.CreatedBy,
             Parts = partDtos,
-            StatusHistories = historyDtos
+            StatusHistories = historyDtos,
+            Checklists = checklistDtos,
+            Deposits = depositDtos
         };
 
         return dto;
@@ -148,6 +222,12 @@ public class RepairQueryHandlers :
 
         // 2.1 Sử dụng IQueryable để xây dựng câu truy vấn động trên SQL Server
         var query = ticketRepo.GetQueryableAsNoTracking();
+
+        // 2.1.5 Branch Isolation
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            query = query.Where(t => t.BranchId == userBranchId);
+        }
 
         // 2.2 Áp dụng các bộ lọc nếu được truyền lên từ API
         if (!string.IsNullOrWhiteSpace(request.Code))

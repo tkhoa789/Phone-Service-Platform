@@ -25,10 +25,17 @@ public class WarehouseTransferCommandHandlers :
     IRequestHandler<DeleteWarehouseTransferCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IIdempotencyService _idempotencyService;
 
-    public WarehouseTransferCommandHandlers(IUnitOfWork unitOfWork)
+    public WarehouseTransferCommandHandlers(
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUserService,
+        IIdempotencyService idempotencyService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _idempotencyService = idempotencyService;
     }
 
     /// <summary>
@@ -198,12 +205,15 @@ public class WarehouseTransferCommandHandlers :
 
     /// <summary>
     /// Xử lý chuyển đổi trạng thái sang Đang chuyển hàng (InTransit).
+    /// Thực hiện trừ kho nguồn, ghi Ledger TRANSFER_OUT và tháo IMEI khỏi kho nguồn.
     /// </summary>
     public async Task<bool> Handle(ShipWarehouseTransferCommand request, CancellationToken cancellationToken)
     {
         var transferRepo = _unitOfWork.Repository<WarehouseTransferEntity>();
         var itemRepo = _unitOfWork.Repository<WarehouseTransferItemEntity>();
         var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
+        var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+        var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
 
         var transfer = await transferRepo.GetByIdAsync(request.Id, cancellationToken);
         if (transfer == null)
@@ -216,61 +226,19 @@ public class WarehouseTransferCommandHandlers :
             throw new ConflictException("Chỉ được xuất giao hàng cho phiếu điều chuyển ở trạng thái Chờ xử lý (Pending).");
         }
 
-        // Kiểm định lại tồn kho lần cuối trước khi xe lăn bánh xuất hàng
+        Guid employeeId = Guid.Empty;
+        if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
+        {
+            employeeId = parsedGuid;
+        }
+
         var items = await itemRepo.FindAsync(i => i.TransferId == transfer.Id, cancellationToken);
         foreach (var item in items)
         {
-            var invs = await inventoryRepo.FindAsync(i => i.WarehouseId == transfer.FromWarehouseId && i.ProductVariantId == item.ProductVariantId, cancellationToken);
-            var inventory = invs.FirstOrDefault();
-            if (inventory == null || inventory.Quantity < item.Quantity)
-            {
-                var variant = await _unitOfWork.Repository<ProductVariantEntity>().GetByIdAsync(item.ProductVariantId, cancellationToken);
-                throw new ConflictException($"Xuất hàng thất bại: Kho nguồn không đủ tồn cho biến thể '{variant?.Name}'.");
-            }
-        }
-
-        transfer.Status = WarehouseTransferStatus.InTransit;
-        transferRepo.Update(transfer);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return true;
-    }
-
-    /// <summary>
-    /// Xử lý nhận hàng thành công (Received): Đồng thời trừ tồn kho nguồn, cộng tồn kho đích và đổi WarehouseId cho các IMEI (BR-503, BR-505).
-    /// </summary>
-    public async Task<bool> Handle(ReceiveWarehouseTransferCommand request, CancellationToken cancellationToken)
-    {
-        var transferRepo = _unitOfWork.Repository<WarehouseTransferEntity>();
-        var itemRepo = _unitOfWork.Repository<WarehouseTransferItemEntity>();
-        var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
-        var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
-
-        // 1. Tìm phiếu điều chuyển
-        var transfer = await transferRepo.GetByIdAsync(request.Id, cancellationToken);
-        if (transfer == null)
-        {
-            throw new NotFoundException("Phiếu điều chuyển", request.Id);
-        }
-
-        // 2. Ràng buộc: Chỉ nhận khi đang InTransit
-        if (transfer.Status != WarehouseTransferStatus.InTransit)
-        {
-            throw new ConflictException("Chỉ được nhận hàng khi phiếu điều chuyển đang ở trạng thái Đang vận chuyển (InTransit).");
-        }
-
-        // 3. Lấy danh sách mặt hàng cần điều chuyển
-        var items = await itemRepo.FindAsync(i => i.TransferId == transfer.Id, cancellationToken);
-
-        // 4. Xử lý trừ kho nguồn, cộng kho đích và cập nhật IMEI
-        foreach (var item in items)
-        {
-            // Kiểm tra xem sản phẩm này có quản lý theo IMEI hay không
             var isImeiRequired = await IsImeiControlledAsync(item.ProductVariantId, cancellationToken);
-
+            
             if (isImeiRequired)
             {
-                // Lấy danh sách IMEI được chọn để chuyển đi
                 var supplied = request.VariantImeis.FirstOrDefault(x => x.ProductVariantId == item.ProductVariantId);
                 var imeisList = supplied?.Imeis ?? new List<string>();
 
@@ -279,10 +247,9 @@ public class WarehouseTransferCommandHandlers :
                     throw new BadRequestException($"Mặt hàng với ID biến thể '{item.ProductVariantId}' yêu cầu chọn đúng {item.Quantity} mã IMEI để chuyển đi, nhưng nhận được {imeisList.Count} mã.");
                 }
 
-                foreach (var imei in imeisList)
+                foreach (var imeiStr in imeisList)
                 {
-                    var cleanImei = imei.Trim();
-                    // Xác thực mã IMEI phải nằm tại kho xuất nguồn và đang ở trạng thái InStock
+                    var cleanImei = imeiStr.Trim();
                     var existingImeis = await imeiRepo.FindAsync(
                         i => i.Imei == cleanImei && i.WarehouseId == transfer.FromWarehouseId && i.Status == ImeiStatus.InStock,
                         cancellationToken
@@ -293,66 +260,251 @@ public class WarehouseTransferCommandHandlers :
                         throw new ConflictException($"Mã IMEI '{cleanImei}' không hợp lệ hoặc không có sẵn (InStock) tại kho nguồn của phiếu chuyển.");
                     }
 
-                    // Cập nhật vị trí kho mới cho thẻ IMEI
-                    imeiEntity.WarehouseId = transfer.ToWarehouseId;
+                    // Gỡ IMEI khỏi kho nguồn để tránh bị Sales bán đè (Status vẫn InStock)
+                    imeiEntity.WarehouseId = null;
                     imeiEntity.UpdatedAt = DateTime.UtcNow;
                     imeiRepo.Update(imeiEntity);
+
+                    // Trừ tồn kho vật lý 1 đơn vị
+                    var sourceInvs = await inventoryRepo.FindAsync(
+                        inv => inv.WarehouseId == transfer.FromWarehouseId && inv.ProductVariantId == item.ProductVariantId,
+                        cancellationToken
+                    );
+                    var sourceInv = sourceInvs.FirstOrDefault();
+                    if (sourceInv == null || sourceInv.Quantity < 1)
+                    {
+                        throw new ConflictException($"Kho nguồn không đủ tồn để xuất IMEI '{cleanImei}'.");
+                    }
+                    sourceInv.Quantity -= 1;
+                    inventoryRepo.Update(sourceInv);
+
+                    // Ghi Ledger TRANSFER_OUT
+                    var transaction = new InventoryTransactionEntity
+                    {
+                        WarehouseId = transfer.FromWarehouseId,
+                        ProductVariantId = item.ProductVariantId,
+                        ImeiId = imeiEntity.Id,
+                        Type = InventoryTransactionType.TRANSFER_OUT,
+                        QuantityChange = -1,
+                        CostSnapshot = null,
+                        ReferenceId = transfer.Id,
+                        ActorId = employeeId
+                    };
+                    await transactionRepo.AddAsync(transaction, cancellationToken);
                 }
-            }
-
-            // 5. Trừ số lượng tồn ở kho xuất nguồn
-            var sourceInvs = await inventoryRepo.FindAsync(
-                inv => inv.WarehouseId == transfer.FromWarehouseId && inv.ProductVariantId == item.ProductVariantId,
-                cancellationToken
-            );
-            var sourceInv = sourceInvs.FirstOrDefault();
-            if (sourceInv == null || sourceInv.Quantity < item.Quantity)
-            {
-                var variant = await _unitOfWork.Repository<ProductVariantEntity>().GetByIdAsync(item.ProductVariantId, cancellationToken);
-                throw new ConflictException($"Xung đột: Kho nguồn không đủ tồn tại thời điểm hoàn tất nhận hàng cho biến thể '{variant?.Name}'.");
-            }
-            sourceInv.Quantity -= item.Quantity;
-            inventoryRepo.Update(sourceInv);
-
-            // 6. Cộng số lượng tồn ở kho nhận đích (tạo mới bản ghi tồn kho nếu kho đích chưa từng có sản phẩm này)
-            var targetInvs = await inventoryRepo.FindAsync(
-                inv => inv.WarehouseId == transfer.ToWarehouseId && inv.ProductVariantId == item.ProductVariantId,
-                cancellationToken
-            );
-            var targetInv = targetInvs.FirstOrDefault();
-            if (targetInv == null)
-            {
-                targetInv = new InventoryEntity
-                {
-                    WarehouseId = transfer.ToWarehouseId,
-                    ProductVariantId = item.ProductVariantId,
-                    Quantity = item.Quantity,
-                    MinimumStock = 5
-                };
-                await inventoryRepo.AddAsync(targetInv, cancellationToken);
             }
             else
             {
-                targetInv.Quantity += item.Quantity;
-                inventoryRepo.Update(targetInv);
+                // Sản phẩm không quản lý IMEI
+                var sourceInvs = await inventoryRepo.FindAsync(
+                    inv => inv.WarehouseId == transfer.FromWarehouseId && inv.ProductVariantId == item.ProductVariantId,
+                    cancellationToken
+                );
+                var sourceInv = sourceInvs.FirstOrDefault();
+                if (sourceInv == null || sourceInv.Quantity < item.Quantity)
+                {
+                    var variant = await _unitOfWork.Repository<ProductVariantEntity>().GetByIdAsync(item.ProductVariantId, cancellationToken);
+                    throw new ConflictException($"Xuất hàng thất bại: Kho nguồn không đủ tồn cho biến thể '{variant?.Name}'.");
+                }
+                
+                sourceInv.Quantity -= item.Quantity;
+                inventoryRepo.Update(sourceInv);
+
+                var transaction = new InventoryTransactionEntity
+                {
+                    WarehouseId = transfer.FromWarehouseId,
+                    ProductVariantId = item.ProductVariantId,
+                    ImeiId = null,
+                    Type = InventoryTransactionType.TRANSFER_OUT,
+                    QuantityChange = -item.Quantity,
+                    CostSnapshot = null,
+                    ReferenceId = transfer.Id,
+                    ActorId = employeeId
+                };
+                await transactionRepo.AddAsync(transaction, cancellationToken);
             }
         }
 
-        // 7. Cập nhật trạng thái phiếu điều chuyển sang Đã nhận (Received)
-        transfer.Status = WarehouseTransferStatus.Received;
+        transfer.Status = WarehouseTransferStatus.InTransit;
         transferRepo.Update(transfer);
-
+        
+        _idempotencyService.AttachRecord(transfer.Id);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;
     }
 
     /// <summary>
-    /// Xử lý hủy phiếu điều chuyển kho (Pending/InTransit -> Cancelled).
+    /// Xử lý nhận hàng thành công (Received): Cộng tồn kho đích, gán IMEI và tạo TRANSFER_IN.
+    /// </summary>
+    public async Task<bool> Handle(ReceiveWarehouseTransferCommand request, CancellationToken cancellationToken)
+    {
+        var transferRepo = _unitOfWork.Repository<WarehouseTransferEntity>();
+        var itemRepo = _unitOfWork.Repository<WarehouseTransferItemEntity>();
+        var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
+        var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+        var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
+
+        var transfer = await transferRepo.GetByIdAsync(request.Id, cancellationToken);
+        if (transfer == null)
+        {
+            throw new NotFoundException("Phiếu điều chuyển", request.Id);
+        }
+
+        if (transfer.Status != WarehouseTransferStatus.InTransit)
+        {
+            throw new ConflictException("Chỉ được nhận hàng khi phiếu điều chuyển đang ở trạng thái Đang vận chuyển (InTransit).");
+        }
+
+        Guid employeeId = Guid.Empty;
+        if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
+        {
+            employeeId = parsedGuid;
+        }
+
+        var items = await itemRepo.FindAsync(i => i.TransferId == transfer.Id, cancellationToken);
+        var outTransactions = await transactionRepo.FindAsync(
+            x => x.ReferenceId == transfer.Id && x.Type == InventoryTransactionType.TRANSFER_OUT, 
+            cancellationToken
+        );
+
+        foreach (var item in items)
+        {
+            var isImeiRequired = await IsImeiControlledAsync(item.ProductVariantId, cancellationToken);
+
+            if (isImeiRequired)
+            {
+                var supplied = request.VariantImeis.FirstOrDefault(x => x.ProductVariantId == item.ProductVariantId);
+                var imeisList = supplied?.Imeis ?? new List<string>();
+
+                if (imeisList.Count != item.Quantity)
+                {
+                    throw new BadRequestException($"Mặt hàng với ID biến thể '{item.ProductVariantId}' yêu cầu đúng {item.Quantity} mã IMEI.");
+                }
+
+                foreach (var imeiStr in imeisList)
+                {
+                    var cleanImei = imeiStr.Trim();
+                    
+                    var existingImeis = await imeiRepo.FindAsync(
+                        i => i.Imei == cleanImei && i.WarehouseId == null && i.Status == ImeiStatus.InStock,
+                        cancellationToken
+                    );
+                    var imeiEntity = existingImeis.FirstOrDefault();
+                    if (imeiEntity == null)
+                    {
+                        throw new ConflictException($"Mã IMEI '{cleanImei}' không hợp lệ hoặc không nằm trong trạng thái InTransit (WarehouseId khác null).");
+                    }
+
+                    // Xác minh IMEI này thực sự thuộc về chuyến hàng này
+                    var belongedToTransfer = outTransactions.Any(t => t.ImeiId == imeiEntity.Id);
+                    if (!belongedToTransfer)
+                    {
+                        throw new ConflictException($"Mã IMEI '{cleanImei}' không được xuất từ phiếu điều chuyển này.");
+                    }
+
+                    // Gán IMEI vào kho đích
+                    imeiEntity.WarehouseId = transfer.ToWarehouseId;
+                    imeiEntity.UpdatedAt = DateTime.UtcNow;
+                    imeiRepo.Update(imeiEntity);
+
+                    // Cộng tồn kho đích 1 đơn vị
+                    var targetInvs = await inventoryRepo.FindAsync(
+                        inv => inv.WarehouseId == transfer.ToWarehouseId && inv.ProductVariantId == item.ProductVariantId,
+                        cancellationToken
+                    );
+                    var targetInv = targetInvs.FirstOrDefault();
+                    if (targetInv == null)
+                    {
+                        targetInv = new InventoryEntity
+                        {
+                            WarehouseId = transfer.ToWarehouseId,
+                            ProductVariantId = item.ProductVariantId,
+                            Quantity = 1,
+                            MinimumStock = 5
+                        };
+                        await inventoryRepo.AddAsync(targetInv, cancellationToken);
+                    }
+                    else
+                    {
+                        targetInv.Quantity += 1;
+                        inventoryRepo.Update(targetInv);
+                    }
+
+                    // Ghi Ledger TRANSFER_IN
+                    var transaction = new InventoryTransactionEntity
+                    {
+                        WarehouseId = transfer.ToWarehouseId,
+                        ProductVariantId = item.ProductVariantId,
+                        ImeiId = imeiEntity.Id,
+                        Type = InventoryTransactionType.TRANSFER_IN,
+                        QuantityChange = 1,
+                        CostSnapshot = null,
+                        ReferenceId = transfer.Id,
+                        ActorId = employeeId
+                    };
+                    await transactionRepo.AddAsync(transaction, cancellationToken);
+                }
+            }
+            else
+            {
+                var targetInvs = await inventoryRepo.FindAsync(
+                    inv => inv.WarehouseId == transfer.ToWarehouseId && inv.ProductVariantId == item.ProductVariantId,
+                    cancellationToken
+                );
+                var targetInv = targetInvs.FirstOrDefault();
+                if (targetInv == null)
+                {
+                    targetInv = new InventoryEntity
+                    {
+                        WarehouseId = transfer.ToWarehouseId,
+                        ProductVariantId = item.ProductVariantId,
+                        Quantity = item.Quantity,
+                        MinimumStock = 5
+                    };
+                    await inventoryRepo.AddAsync(targetInv, cancellationToken);
+                }
+                else
+                {
+                    targetInv.Quantity += item.Quantity;
+                    inventoryRepo.Update(targetInv);
+                }
+
+                var transaction = new InventoryTransactionEntity
+                {
+                    WarehouseId = transfer.ToWarehouseId,
+                    ProductVariantId = item.ProductVariantId,
+                    ImeiId = null,
+                    Type = InventoryTransactionType.TRANSFER_IN,
+                    QuantityChange = item.Quantity,
+                    CostSnapshot = null,
+                    ReferenceId = transfer.Id,
+                    ActorId = employeeId
+                };
+                await transactionRepo.AddAsync(transaction, cancellationToken);
+            }
+        }
+
+        transfer.Status = WarehouseTransferStatus.Received;
+        transferRepo.Update(transfer);
+        
+        _idempotencyService.AttachRecord(transfer.Id);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Xử lý hủy phiếu điều chuyển kho. Nếu đang InTransit, hoàn trả lại Inventory và IMEI.
     /// </summary>
     public async Task<bool> Handle(CancelWarehouseTransferCommand request, CancellationToken cancellationToken)
     {
         var transferRepo = _unitOfWork.Repository<WarehouseTransferEntity>();
+        var itemRepo = _unitOfWork.Repository<WarehouseTransferItemEntity>();
+        var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
+        var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+        var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
+
         var transfer = await transferRepo.GetByIdAsync(request.Id, cancellationToken);
         if (transfer == null)
         {
@@ -364,8 +516,90 @@ public class WarehouseTransferCommandHandlers :
             throw new ConflictException("Phiếu điều chuyển đã nhận hàng hoặc đã hủy trước đó.");
         }
 
+        Guid employeeId = Guid.Empty;
+        if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
+        {
+            employeeId = parsedGuid;
+        }
+
+        if (transfer.Status == WarehouseTransferStatus.InTransit)
+        {
+            // Cần hoàn trả kho
+            var outTransactions = await transactionRepo.FindAsync(
+                x => x.ReferenceId == transfer.Id && x.Type == InventoryTransactionType.TRANSFER_OUT, 
+                cancellationToken
+            );
+
+            foreach (var outTx in outTransactions)
+            {
+                if (outTx.ImeiId.HasValue)
+                {
+                    var imei = await imeiRepo.GetByIdAsync(outTx.ImeiId.Value, cancellationToken);
+                    if (imei != null && imei.WarehouseId == null)
+                    {
+                        imei.WarehouseId = transfer.FromWarehouseId;
+                        imeiRepo.Update(imei);
+                    }
+
+                    var sourceInvs = await inventoryRepo.FindAsync(
+                        inv => inv.WarehouseId == transfer.FromWarehouseId && inv.ProductVariantId == outTx.ProductVariantId,
+                        cancellationToken
+                    );
+                    var sourceInv = sourceInvs.FirstOrDefault();
+                    if (sourceInv != null)
+                    {
+                        sourceInv.Quantity += 1; // Hoàn lại 1
+                        inventoryRepo.Update(sourceInv);
+                    }
+
+                    var returnTx = new InventoryTransactionEntity
+                    {
+                        WarehouseId = transfer.FromWarehouseId,
+                        ProductVariantId = outTx.ProductVariantId,
+                        ImeiId = outTx.ImeiId,
+                        Type = InventoryTransactionType.TRANSFER_CANCEL_RETURN,
+                        QuantityChange = 1, // Trả lại 1
+                        CostSnapshot = null,
+                        ReferenceId = transfer.Id,
+                        ActorId = employeeId
+                    };
+                    await transactionRepo.AddAsync(returnTx, cancellationToken);
+                }
+                else
+                {
+                    // Non-IMEI
+                    var qtyToReturn = Math.Abs(outTx.QuantityChange);
+                    var sourceInvs = await inventoryRepo.FindAsync(
+                        inv => inv.WarehouseId == transfer.FromWarehouseId && inv.ProductVariantId == outTx.ProductVariantId,
+                        cancellationToken
+                    );
+                    var sourceInv = sourceInvs.FirstOrDefault();
+                    if (sourceInv != null)
+                    {
+                        sourceInv.Quantity += qtyToReturn;
+                        inventoryRepo.Update(sourceInv);
+                    }
+
+                    var returnTx = new InventoryTransactionEntity
+                    {
+                        WarehouseId = transfer.FromWarehouseId,
+                        ProductVariantId = outTx.ProductVariantId,
+                        ImeiId = null,
+                        Type = InventoryTransactionType.TRANSFER_CANCEL_RETURN,
+                        QuantityChange = qtyToReturn,
+                        CostSnapshot = null,
+                        ReferenceId = transfer.Id,
+                        ActorId = employeeId
+                    };
+                    await transactionRepo.AddAsync(returnTx, cancellationToken);
+                }
+            }
+        }
+
         transfer.Status = WarehouseTransferStatus.Cancelled;
         transferRepo.Update(transfer);
+        
+        _idempotencyService.AttachRecord(transfer.Id);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;

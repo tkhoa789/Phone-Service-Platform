@@ -23,10 +23,11 @@ public record UpdateWarrantyStatusCommand(
     WarrantyTicketStatus Status,
     string Action,
     string? Description,
-    string? NewImei = null
+    string? NewImei = null,
+    byte[] RowVersion = null!
 ) : IRequest<bool>;
 
 /// <summary>
 /// Lệnh xóa phiếu bảo hành (chỉ cho phép khi ở trạng thái Received và chưa có lịch sử xử lý phức tạp).
 /// </summary>
-public record DeleteWarrantyTicketCommand(Guid Id) : IRequest<bool>;
+public record DeleteWarrantyTicketCommand(Guid Id, byte[] RowVersion) : IRequest<bool>;

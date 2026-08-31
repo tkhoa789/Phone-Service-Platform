@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using PSP.Domain.Modules.Sales.Entities;
+using PSP.Domain.Modules.Repair.Entities;
 
 namespace PSP.Infrastructure.Data.Configurations;
 
@@ -43,11 +44,25 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<InvoiceEntity>
 
         // 6. Cấu hình mối quan hệ khóa ngoại (Foreign Keys):
         
+        // Hóa đơn thuộc về một Chi nhánh
+        builder.HasOne(e => e.Branch)
+            .WithMany()
+            .HasForeignKey(e => e.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Một hóa đơn thuộc về duy nhất một Đơn hàng bán lẻ (SalesOrder)
         // Thiết lập OnDelete Restrict để tránh việc xóa đơn hàng làm ảnh hưởng dây chuyền đến sổ sách hóa đơn
         builder.HasOne(e => e.SalesOrder)
             .WithMany()
             .HasForeignKey(e => e.SalesOrderId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Một hóa đơn cũng có thể thuộc về một Phiếu sửa chữa (RepairTicket)
+        builder.HasOne(e => e.RepairTicket)
+            .WithMany()
+            .HasForeignKey(e => e.RepairTicketId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Một hóa đơn có thể chứa nhiều chi tiết hóa đơn (InvoiceItems)

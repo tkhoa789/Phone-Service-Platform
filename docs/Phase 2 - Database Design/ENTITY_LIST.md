@@ -79,9 +79,10 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 
 # 8. Supplier Management Domain
 
-| Entity   | Aggregate Root | Parent | Soft Delete | Audit | Mô tả        |
-| -------- | -------------- | ------ | ----------- | ----- | ------------ |
-| Supplier | Supplier       | -      | Yes         | Yes   | Nhà cung cấp |
+| Entity                  | Aggregate Root | Parent   | Soft Delete | Audit | Mô tả                       |
+| ----------------------- | -------------- | -------- | ----------- | ----- | --------------------------- |
+| Supplier                | Supplier       | -        | Yes         | Yes   | Nhà cung cấp                |
+| SupplierDebtTransaction | Supplier       | Supplier | No          | Yes   | Lịch sử công nợ nhà cung cấp |
 
 ---
 
@@ -172,6 +173,9 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 | RepairTicket        | RepairTicket   | -            | No          | Yes   | Phiếu sửa chữa              |
 | RepairPart          | RepairTicket   | RepairTicket | No          | Yes   | Linh kiện thay thế          |
 | RepairStatusHistory | RepairTicket   | RepairTicket | No          | Yes   | Lịch sử trạng thái sửa chữa |
+| RepairChecklist     | RepairTicket   | RepairTicket | No          | Yes   | Danh sách kiểm tra thiết bị |
+| RepairChecklistItem | RepairTicket   | RepairChecklist | No       | Yes   | Chi tiết bước kiểm tra      |
+| RepairDeposit       | RepairTicket   | RepairTicket | No          | Yes   | Quản lý tiền cọc            |
 
 ---
 
@@ -211,6 +215,14 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 
 ---
 
+# 21. Idempotency Domain
+
+| Entity            | Aggregate Root | Parent | Soft Delete | Audit | Mô tả                              |
+| ----------------- | -------------- | ------ | ----------- | ----- | ---------------------------------- |
+| IdempotencyRecord | -              | -      | No          | Yes   | Chống trùng lặp request API (CQRS) |
+
+---
+
 # 22. Thống kê Entity
 
 | Domain               | Số Entity |
@@ -220,7 +232,7 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 | User Management      |         1 |
 | Branch Management    |         1 |
 | Customer Management  |         1 |
-| Supplier Management  |         1 |
+| Supplier Management  |         2 |
 | Product Catalog      |         4 |
 | Inventory Management |         8 |
 | Purchase Management  |         2 |
@@ -229,13 +241,14 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 | Payment Domain       |         2 |
 | Promotion Domain     |         2 |
 | Warranty Domain      |         2 |
-| Repair Domain        |         3 |
+| Repair Domain        |         6 |
 | Notification Domain  |         1 |
 | File Management      |         1 |
 | Audit Domain         |         1 |
+| Idempotency Domain   |         1 |
 | AI Assistant Domain  |         5 |
 
-**Tổng cộng: 45 Entity**
+**Tổng cộng: 49 Entity**
 
 ---
 
@@ -274,11 +287,15 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 * RepairTicket
 * RepairPart
 * RepairStatusHistory
+* RepairChecklist
+* RepairChecklistItem
+* RepairDeposit
 * WarehouseTransfer
 * WarehouseTransferItem
 * InventoryTransaction
 * StockTake
 * StockTakeItem
+* SupplierDebtTransaction
 
 ---
 
@@ -291,6 +308,7 @@ Tài liệu này liệt kê toàn bộ Entity của hệ thống.
 * Notification
 * FileAttachment
 * AuditLog
+* IdempotencyRecord
 * AIConversation
 * AIMessage
 * AIToolCall

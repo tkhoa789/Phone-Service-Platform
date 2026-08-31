@@ -25,10 +25,12 @@ public class PurchaseOrderCommandHandlers :
     IRequestHandler<DeletePurchaseOrderCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IIdempotencyService _idempotencyService;
 
-    public PurchaseOrderCommandHandlers(IUnitOfWork unitOfWork)
+    public PurchaseOrderCommandHandlers(IUnitOfWork unitOfWork, IIdempotencyService idempotencyService)
     {
         _unitOfWork = unitOfWork;
+        _idempotencyService = idempotencyService;
     }
 
     /// <summary>
@@ -90,6 +92,7 @@ public class PurchaseOrderCommandHandlers :
             await _unitOfWork.Repository<PurchaseOrderItemEntity>().AddAsync(item, cancellationToken);
         }
 
+        _idempotencyService.AttachRecord(po.Id);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return po.Id;
@@ -108,6 +111,11 @@ public class PurchaseOrderCommandHandlers :
         if (po == null)
         {
             throw new NotFoundException("Phiếu nhập kho", request.Id);
+        }
+
+        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
         // 2. Ràng buộc: Chỉ được sửa khi đang ở trạng thái Nháp (Draft)
@@ -163,7 +171,15 @@ public class PurchaseOrderCommandHandlers :
         po.TotalAmount = totalAmount;
         poRepo.Update(po);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            _idempotencyService.AttachRecord(true);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Dữ liệu phiếu nhập đã bị thay đổi bởi người khác. Vui lòng thử lại.");
+        }
 
         return true;
     }
@@ -177,12 +193,20 @@ public class PurchaseOrderCommandHandlers :
         var itemRepo = _unitOfWork.Repository<PurchaseOrderItemEntity>();
         var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
         var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
+        var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
+        var supplierRepo = _unitOfWork.Repository<SupplierEntity>();
+        var debtTransactionRepo = _unitOfWork.Repository<SupplierDebtTransactionEntity>();
 
         // 1. Tìm phiếu nhập
         var po = await poRepo.GetByIdAsync(request.Id, cancellationToken);
         if (po == null)
         {
             throw new NotFoundException("Phiếu nhập kho", request.Id);
+        }
+
+        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
 
         // 2. Kiểm tra trạng thái hợp lệ
@@ -261,13 +285,62 @@ public class PurchaseOrderCommandHandlers :
                 inventory.Quantity += item.Quantity;
                 inventoryRepo.Update(inventory);
             }
+
+            // Ghi nhận lịch sử giao dịch tồn kho (Thẻ kho)
+            var invTxn = new InventoryTransactionEntity
+            {
+                WarehouseId = po.WarehouseId,
+                ProductVariantId = item.ProductVariantId,
+                Type = InventoryTransactionType.IMPORT,
+                QuantityChange = item.Quantity,
+                CostSnapshot = item.UnitPrice,
+                ReferenceId = po.Id,
+                ActorId = Guid.Empty // Hoặc lấy từ UserInfo nếu có
+            };
+            await transactionRepo.AddAsync(invTxn, cancellationToken);
         }
 
         // 6. Cập nhật trạng thái phiếu nhập sang Đã nhận hàng (Received)
         po.Status = PurchaseOrderStatus.Received;
         poRepo.Update(po);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        // 7. Cập nhật công nợ nhà cung cấp
+        var supplier = await supplierRepo.GetByIdAsync(po.SupplierId, cancellationToken);
+        if (supplier == null)
+        {
+            throw new NotFoundException("Nhà cung cấp", po.SupplierId);
+        }
+
+        supplier.DebtAmount += po.TotalAmount;
+        supplierRepo.Update(supplier);
+
+        // 8. Ghi nhận sổ công nợ nhà cung cấp
+        var debtTxn = new SupplierDebtTransactionEntity
+        {
+            SupplierId = po.SupplierId,
+            TransactionType = "INVOICE",
+            Amount = po.TotalAmount,
+            BalanceAfter = supplier.DebtAmount,
+            ReferenceNo = po.Code,
+            Note = $"Nhập hàng theo PO: {po.Code}"
+        };
+        await debtTransactionRepo.AddAsync(debtTxn, cancellationToken);
+
+        try
+        {
+            _idempotencyService.AttachRecord(true);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Dữ liệu phiếu nhập hoặc công nợ đã bị thay đổi bởi giao dịch khác. Vui lòng thử lại.");
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+        {
+            if (ex.InnerException?.Message.Contains("IX_Imeis_Imei") == true)
+                throw new ConflictException("Mã IMEI đã bị trùng lặp.");
+            throw;
+        }
 
         return true;
     }
@@ -284,6 +357,11 @@ public class PurchaseOrderCommandHandlers :
             throw new NotFoundException("Phiếu nhập kho", request.Id);
         }
 
+        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
+        }
+
         if (po.Status != PurchaseOrderStatus.Draft && po.Status != PurchaseOrderStatus.Confirmed)
         {
             throw new ConflictException("Phiếu nhập đã nhận hàng hoặc đã hủy, không thể thay đổi trạng thái nữa.");
@@ -291,7 +369,16 @@ public class PurchaseOrderCommandHandlers :
 
         po.Status = PurchaseOrderStatus.Cancelled;
         poRepo.Update(po);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        try
+        {
+            _idempotencyService.AttachRecord(true);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Dữ liệu phiếu nhập đã bị thay đổi bởi người khác. Vui lòng thử lại.");
+        }
 
         return true;
     }
@@ -308,13 +395,27 @@ public class PurchaseOrderCommandHandlers :
             throw new NotFoundException("Phiếu nhập kho", request.Id);
         }
 
+        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
+        }
+
         if (po.Status != PurchaseOrderStatus.Draft)
         {
             throw new ConflictException("Chỉ được phép xóa phiếu nhập ở trạng thái Nháp (Draft).");
         }
 
         poRepo.Remove(po);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        try
+        {
+            _idempotencyService.AttachRecord(true);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Dữ liệu phiếu nhập đã bị thay đổi bởi người khác. Vui lòng thử lại.");
+        }
 
         return true;
     }

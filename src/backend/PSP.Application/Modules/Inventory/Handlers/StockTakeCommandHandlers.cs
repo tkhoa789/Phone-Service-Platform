@@ -180,6 +180,7 @@ public class StockTakeCommandHandlers :
         var itemRepo = _unitOfWork.Repository<StockTakeItemEntity>();
         var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
         var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+        var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
 
         // 1. Tìm phiếu kiểm kê
         var stockTake = await stockTakeRepo.GetByIdAsync(request.Id, cancellationToken);
@@ -195,11 +196,15 @@ public class StockTakeCommandHandlers :
         }
 
         var items = await itemRepo.FindAsync(i => i.StockTakeId == stockTake.Id, cancellationToken);
+        var actorId = Guid.Empty; // Placeholder cho ActorId (người thực hiện kiểm kê)
 
         // 3. Đối soát tồn kho và IMEI cho từng sản phẩm
         foreach (var item in items)
         {
             var isImeiRequired = await IsImeiControlledAsync(item.ProductVariantId, cancellationToken);
+            
+            // Tính toán Delta dựa trên scope (WarehouseId + ProductVariantId) từ lúc Snapshot
+            int delta = item.ActualQuantity - item.SystemQuantity;
 
             if (isImeiRequired)
             {
@@ -214,31 +219,27 @@ public class StockTakeCommandHandlers :
                 }
 
                 // A. Lấy danh sách IMEI hiện tại trong database tại kho này
-                var dbImeis = await imeiRepo.FindAsync(
+                var dbImeis = (await imeiRepo.FindAsync(
                     i => i.ProductVariantId == item.ProductVariantId && i.WarehouseId == stockTake.WarehouseId,
                     cancellationToken
-                );
+                )).ToList();
 
-                // B. Đối soát: Các IMEI có trong DB nhưng không có trong danh sách kiểm đếm thực tế -> Đánh dấu Thất thoát (Disposed) và xóa khỏi kho
+                // B. Đối soát: Các IMEI có trong DB nhưng không có trong danh sách kiểm đếm thực tế
                 foreach (var dbImei in dbImeis)
                 {
                     if (!actualImeisList.Contains(dbImei.Imei))
                     {
-                        dbImei.Status = ImeiStatus.Disposed;
-                        dbImei.WarehouseId = null; // Trục xuất khỏi kho
-                        dbImei.UpdatedAt = DateTime.UtcNow;
-                        imeiRepo.Update(dbImei);
+                        // User Rule: A missing IMEI is a discrepancy, not automatically proof of loss/disposal.
+                        throw new ConflictException($"Discrepancy: IMEI '{dbImei.Imei}' có trong hệ thống nhưng không được kiểm đếm thực tế. Vui lòng kiểm tra lại hoặc thực hiện quy trình xuất hủy riêng.");
                     }
                     else if (dbImei.Status != ImeiStatus.InStock)
                     {
-                        // Nếu IMEI thực tế có mặt và đang bị khóa trạng thái khác, hoàn trả về InStock
-                        dbImei.Status = ImeiStatus.InStock;
-                        dbImei.UpdatedAt = DateTime.UtcNow;
-                        imeiRepo.Update(dbImei);
+                        // Không tự ý chuyển Sold/Repairing -> InStock
+                        throw new ConflictException($"IMEI '{dbImei.Imei}' đang ở trạng thái '{dbImei.Status}', không thể tự động phục hồi về InStock thông qua kiểm kê.");
                     }
                 }
 
-                // C. Đối soát: Các IMEI có trong danh sách thực tế nhưng chưa có tại kho này trong DB -> Đăng ký mới hoặc thu hồi
+                // C. Đối soát: Các IMEI có trong danh sách thực tế nhưng chưa có tại kho này trong DB
                 foreach (var actualImei in actualImeisList)
                 {
                     var cleanImei = actualImei.Trim();
@@ -250,9 +251,13 @@ public class StockTakeCommandHandlers :
 
                         if (globalImei != null)
                         {
-                            // Nếu đã có ở kho khác hoặc trạng thái khác, cập nhật lại về kho này
+                            if (globalImei.Status != ImeiStatus.InStock)
+                            {
+                                throw new ConflictException($"IMEI '{globalImei.Imei}' đang thuộc trạng thái '{globalImei.Status}' (không phải InStock), không thể điều chuyển bằng kiểm kê.");
+                            }
+                            
+                            // Nếu đã có ở kho khác và đang InStock, cập nhật lại về kho này
                             globalImei.WarehouseId = stockTake.WarehouseId;
-                            globalImei.Status = ImeiStatus.InStock;
                             globalImei.UpdatedAt = DateTime.UtcNow;
                             imeiRepo.Update(globalImei);
                         }
@@ -272,7 +277,7 @@ public class StockTakeCommandHandlers :
                 }
             }
 
-            // 4. Cân bằng số lượng tồn kho (InventoryEntity): Cập nhật cứng số lượng sổ sách bằng số lượng thực tế
+            // 4. Cân bằng số lượng tồn kho (InventoryEntity): Cập nhật Delta thay vì ghi đè
             var invs = await inventoryRepo.FindAsync(
                 inv => inv.WarehouseId == stockTake.WarehouseId && inv.ProductVariantId == item.ProductVariantId,
                 cancellationToken
@@ -286,20 +291,37 @@ public class StockTakeCommandHandlers :
                 {
                     WarehouseId = stockTake.WarehouseId,
                     ProductVariantId = item.ProductVariantId,
-                    Quantity = item.ActualQuantity,
+                    Quantity = delta, // delta = ActualQuantity - 0
                     MinimumStock = 5
                 };
                 await inventoryRepo.AddAsync(inventory, cancellationToken);
             }
             else
             {
-                // Cập nhật đè số lượng kiểm thực tế
-                inventory.Quantity = item.ActualQuantity;
+                // Thay vì ghi đè bằng ActualQuantity, ta áp dụng Delta lên số lượng hiện tại (CurrentQuantity)
+                // NewQuantity = CurrentQuantity + Delta
+                inventory.Quantity += delta;
                 inventoryRepo.Update(inventory);
+            }
+
+            // 5. Ghi nhận Ledger (Sổ cái) nếu có sự chênh lệch (Delta != 0)
+            if (delta != 0)
+            {
+                var transaction = new InventoryTransactionEntity
+                {
+                    WarehouseId = stockTake.WarehouseId,
+                    ProductVariantId = item.ProductVariantId,
+                    Type = InventoryTransactionType.STOCKTAKE_ADJUSTMENT,
+                    QuantityChange = delta,
+                    ReferenceId = stockTake.Id,
+                    ActorId = actorId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await transactionRepo.AddAsync(transaction, cancellationToken);
             }
         }
 
-        // 5. Cập nhật trạng thái phiếu kiểm sang Completed (Hoàn tất)
+        // 6. Cập nhật trạng thái phiếu kiểm sang Completed (Hoàn tất)
         stockTake.Status = StockTakeStatus.Completed;
         stockTakeRepo.Update(stockTake);
 

@@ -28,5 +28,11 @@ public class CustomerDto
     
     public string? Address { get; set; }
     
+    public int RewardPoints { get; set; }
+    
+    public decimal TotalSpent { get; set; }
+    
     public DateTime CreatedAt { get; set; }
+    
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }

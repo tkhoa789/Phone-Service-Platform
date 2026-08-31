@@ -56,9 +56,5 @@ public class UpdateRepairStatusCommandValidator : AbstractValidator<UpdateRepair
 
         RuleFor(x => x.Status)
             .IsInEnum().WithMessage("Trạng thái chuyển dịch không hợp lệ.");
-
-        RuleFor(x => x.ActualCost)
-            .GreaterThanOrEqualTo(0).WithMessage("Chi phí thực tế không được là số âm.")
-            .When(x => x.ActualCost.HasValue);
     }
 }

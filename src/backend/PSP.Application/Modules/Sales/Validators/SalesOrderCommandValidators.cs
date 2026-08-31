@@ -16,9 +16,6 @@ public class CreateSalesOrderCommandValidator : AbstractValidator<CreateSalesOrd
         RuleFor(x => x.CustomerId)
             .NotEmpty().WithMessage("Khách hàng mua hàng không được để trống.");
 
-        RuleFor(x => x.BranchId)
-            .NotEmpty().WithMessage("Chi nhánh lập đơn hàng không được để trống.");
-
         // BR-705: Mỗi hóa đơn/đơn hàng phải có ít nhất một sản phẩm hoặc dịch vụ
         RuleFor(x => x.Items)
             .NotEmpty().WithMessage("Đơn hàng phải chứa ít nhất một sản phẩm.");

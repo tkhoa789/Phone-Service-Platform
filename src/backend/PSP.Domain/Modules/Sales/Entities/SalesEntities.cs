@@ -62,6 +62,9 @@ public class SalesOrderEntity : BaseEntity
     public decimal Discount { get; set; }
     public decimal Total { get; set; }
 
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     // Navigation Properties
     public CustomerEntity Customer { get; set; } = null!;
     public UserEntity User { get; set; } = null!;
@@ -95,13 +98,20 @@ public class SalesOrderItemEntity : BaseEntity
 /// </summary>
 public class InvoiceEntity : BaseEntity
 {
-    public Guid SalesOrderId { get; set; }
+    public Guid? SalesOrderId { get; set; }
+    public Guid? RepairTicketId { get; set; }
+    public Guid? BranchId { get; set; }
     public string Code { get; set; } = string.Empty;
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
     public decimal Amount { get; set; }
 
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     // Navigation Properties
-    public SalesOrderEntity SalesOrder { get; set; } = null!;
+    public BranchEntity? Branch { get; set; }
+    public SalesOrderEntity? SalesOrder { get; set; }
+    public PSP.Domain.Modules.Repair.Entities.RepairTicketEntity? RepairTicket { get; set; }
     public ICollection<InvoiceItemEntity> Items { get; set; } = new List<InvoiceItemEntity>();
     public ICollection<PaymentEntity> Payments { get; set; } = new List<PaymentEntity>();
 }
@@ -140,6 +150,9 @@ public class PaymentEntity : BaseEntity
     public decimal Amount { get; set; }
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public DateTime PaymentDate { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     // Navigation Properties
     public InvoiceEntity Invoice { get; set; } = null!;

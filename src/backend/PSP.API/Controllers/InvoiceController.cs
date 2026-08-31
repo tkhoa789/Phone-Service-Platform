@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Sales.Commands;
@@ -13,6 +14,7 @@ namespace PSP.API.Controllers;
 /// - Tiếp nhận các yêu cầu xuất hóa đơn từ POS.
 /// - Cho phép ghi nhận giao dịch thanh toán và hủy bỏ hóa đơn.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Invoices")]
 public class InvoiceController : BaseApiController
@@ -21,6 +23,7 @@ public class InvoiceController : BaseApiController
     /// API Xuất hóa đơn tài chính mới từ một Đơn bán hàng (SalesOrder).
     /// POST: /api/Invoice
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceCommand command, CancellationToken cancellationToken)
     {
@@ -32,6 +35,7 @@ public class InvoiceController : BaseApiController
     /// API Ghi nhận giao dịch thanh toán mới cho hóa đơn (Chấp nhận thanh toán nhiều lần).
     /// POST: /api/Invoice/payment
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
     [HttpPost("payment")]
     public async Task<IActionResult> Pay([FromBody] CreatePaymentCommand command, CancellationToken cancellationToken)
     {
@@ -43,6 +47,7 @@ public class InvoiceController : BaseApiController
     /// API Hủy hóa đơn tài chính (Chỉ được phép hủy khi hóa đơn chưa thanh toán).
     /// PUT: /api/Invoice/{id}/cancel
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {

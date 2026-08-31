@@ -50,6 +50,18 @@ public class SupplierConfiguration : IEntityTypeConfiguration<SupplierEntity>
             .IsRequired(false)            // Cho phép null
             .HasMaxLength(255);           // Chiều dài tối đa 255 ký tự (nvarchar(255))
 
+        builder.Property(e => e.TaxCode)
+            .IsRequired(false)
+            .HasMaxLength(50);
+
+        builder.Property(e => e.DebtAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(e => e.CreditLimit)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(e => e.PaymentTermsDays);
+
         // 8. [RÀNG BUỘC ĐỘC NHẤT]: Tạo một Unique Index trên cột "Code".
         // Đảm bảo ở mức cơ sở dữ liệu không bao giờ xảy ra tình trạng có hai nhà cung cấp có cùng mã Code.
         builder.HasIndex(e => e.Code)

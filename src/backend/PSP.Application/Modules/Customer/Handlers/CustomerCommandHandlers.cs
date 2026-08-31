@@ -75,21 +75,36 @@ public class CustomerCommandHandlers :
             throw new NotFoundException("Khách hàng", request.Id);
         }
 
-        // 2. Kiểm tra chặn trùng số điện thoại với khách hàng khác
+        // 2. Kiểm tra concurrent updates via RowVersion
+        if (request.RowVersion != null && request.RowVersion.Length > 0 && 
+            !customer.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Thông tin khách hàng đã bị thay đổi bởi một giao dịch khác (ví dụ: cộng điểm thưởng). Vui lòng tải lại trang để xác nhận thông tin mới nhất.");
+        }
+
+        // 3. Kiểm tra chặn trùng số điện thoại với khách hàng khác
         var existing = await repo.FindAsync(c => c.Phone == request.Phone && c.Id != request.Id, cancellationToken);
         if (existing.Any())
         {
             throw new ConflictException($"Số điện thoại '{request.Phone}' đã thuộc về khách hàng khác.");
         }
 
-        // 3. Cập nhật các trường thông tin
+        // 4. Cập nhật các trường thông tin
         customer.FullName = request.FullName;
         customer.Phone = request.Phone;
         customer.Email = request.Email;
         customer.Address = request.Address;
 
         repo.Update(customer);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Thông tin khách hàng đã bị thay đổi bởi người khác. Vui lòng thử lại.");
+        }
 
         return true;
     }

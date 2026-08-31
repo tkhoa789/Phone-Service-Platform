@@ -14,9 +14,6 @@ public class CreateVoucherCommandValidator : AbstractValidator<CreateVoucherComm
 {
     public CreateVoucherCommandValidator()
     {
-        RuleFor(x => x.PromotionId)
-            .NotEmpty().WithMessage("Chương trình khuyến mãi liên kết không được để trống.");
-
         RuleFor(x => x.Code)
             .NotEmpty().WithMessage("Mã Voucher không được để trống.")
             .MaximumLength(30).WithMessage("Mã Voucher tối đa 30 ký tự.")

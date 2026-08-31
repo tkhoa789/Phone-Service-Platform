@@ -24,10 +24,12 @@ public class InventoryQueryHandlers :
     IRequestHandler<GetImeisQuery, IEnumerable<ImeiDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
 
-    public InventoryQueryHandlers(IUnitOfWork unitOfWork)
+    public InventoryQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
     }
 
     /// <summary>
@@ -41,6 +43,14 @@ public class InventoryQueryHandlers :
 
         // 1. Tải danh sách tồn kho từ DB không theo dõi (AsNoTracking)
         var inventories = await inventoryRepo.GetAllAsNoTrackingAsync(cancellationToken);
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            var branchWarehouses = await warehouseRepo.FindAsNoTrackingAsync(w => w.BranchId == userBranchId, cancellationToken);
+            var branchWarehouseIds = branchWarehouses.Select(w => w.Id).ToList();
+            inventories = inventories.Where(x => branchWarehouseIds.Contains(x.WarehouseId));
+        }
 
         // 2. Áp dụng các bộ lọc tìm kiếm trên bộ nhớ RAM
         if (request.WarehouseId.HasValue)
@@ -123,6 +133,15 @@ public class InventoryQueryHandlers :
         if (imei.WarehouseId.HasValue)
         {
             warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(imei.WarehouseId.Value, cancellationToken);
+            
+            // BOLA / Branch Isolation Check
+            if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+            {
+                if (warehouse != null && warehouse.BranchId != userBranchId)
+                {
+                    throw new ForbiddenException("Bạn không có quyền truy cập IMEI của chi nhánh khác.");
+                }
+            }
         }
 
         // 3. Ánh xạ sang DTO
@@ -146,6 +165,14 @@ public class InventoryQueryHandlers :
 
         // 1. Tải danh sách IMEI không theo dõi (AsNoTracking)
         var imeis = await imeiRepo.GetAllAsNoTrackingAsync(cancellationToken);
+
+        // BOLA / Branch Isolation Check
+        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        {
+            var branchWarehouses = await warehouseRepo.FindAsNoTrackingAsync(w => w.BranchId == userBranchId, cancellationToken);
+            var branchWarehouseIds = branchWarehouses.Select(w => w.Id).ToList();
+            imeis = imeis.Where(x => x.WarehouseId.HasValue && branchWarehouseIds.Contains(x.WarehouseId.Value));
+        }
 
         // 2. Áp dụng bộ lọc trên RAM
         if (request.WarehouseId.HasValue)

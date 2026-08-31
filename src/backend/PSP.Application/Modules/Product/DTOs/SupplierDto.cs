@@ -42,6 +42,26 @@ public class SupplierDto
     public string? Address { get; set; }
 
     /// <summary>
+    /// Mã số thuế công ty nhà cung cấp.
+    /// </summary>
+    public string? TaxCode { get; set; }
+
+    /// <summary>
+    /// Số tiền nợ phải trả hiện tại cho Nhà cung cấp.
+    /// </summary>
+    public decimal DebtAmount { get; set; }
+
+    /// <summary>
+    /// Hạn mức nợ tối đa (Credit Limit) cho phép nợ.
+    /// </summary>
+    public decimal CreditLimit { get; set; }
+
+    /// <summary>
+    /// Số ngày được nợ thanh toán (Credit Term Days, e.g. 30 ngày).
+    /// </summary>
+    public int PaymentTermsDays { get; set; }
+
+    /// <summary>
     /// Thời điểm nhà cung cấp này được tạo trên hệ thống.
     /// </summary>
     public DateTime CreatedAt { get; set; }

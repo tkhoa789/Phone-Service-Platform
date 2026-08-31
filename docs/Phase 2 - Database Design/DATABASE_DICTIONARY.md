@@ -293,6 +293,10 @@ Lưu thông tin các đơn vị cung cấp thiết bị và linh kiện.
 | `phone` | VARCHAR(15) | NO | - | - | Điện thoại |
 | `email` | VARCHAR(100) | YES | - | - | Email liên lạc |
 | `address` | VARCHAR(255) | YES | - | - | Địa chỉ trụ sở |
+| `tax_code` | VARCHAR(50) | YES | - | - | Mã số thuế công ty |
+| `debt_amount` | DECIMAL(18,2) | NO | - | `0.00` | Số tiền nợ phải trả hiện tại |
+| `credit_limit` | DECIMAL(18,2) | NO | - | `500000000.00` | Hạn mức nợ tối đa được nợ |
+| `payment_terms_days` | INTEGER | NO | - | `30` | Thời hạn nợ thanh toán (số ngày) |
 | `is_deleted` | BOOLEAN | NO | - | `false` | Đánh dấu xóa mềm |
 | `created_at` | TIMESTAMP | NO | - | `CURRENT_TIMESTAMP` | Thời gian tạo |
 | `updated_at` | TIMESTAMP | NO | - | `CURRENT_TIMESTAMP` | Thời gian cập nhật |
@@ -322,6 +326,21 @@ Chi tiết số lượng và giá nhập của các mặt hàng trong đơn nh�
 | `quantity` | INTEGER | NO | - | - | Số lượng nhập khẩu |
 | `unit_price` | DECIMAL(15,2) | NO | - | - | Giá trị nhập một sản phẩm |
 
+### 5.4 Bảng `supplier_debt_transactions` (Sổ nhật ký giao dịch công nợ Nhà cung cấp)
+Ghi nhận toàn bộ biến động tăng/giảm công nợ AP của từng Nhà cung cấp.
+
+| Tên cột | Kiểu dữ liệu | Nullable | Khóa | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | NO | PK | `uuid_generate_v4()` | Khóa chính |
+| `supplier_id` | UUID | NO | FK | - | Thuộc Nhà cung cấp nào, liên kết `suppliers(id)` |
+| `transaction_type` | VARCHAR(30) | NO | - | `'PAYMENT'` | Loại giao dịch (`INVOICE`, `PAYMENT`, `DEBIT_NOTE`) |
+| `amount` | DECIMAL(18,2) | NO | - | `0.00` | Số tiền phát sinh (tăng hoặc giảm nợ) |
+| `balance_after` | DECIMAL(18,2) | NO | - | `0.00` | Số dư nợ dồn lũy kế ngay sau giao dịch |
+| `reference_no` | VARCHAR(50) | YES | - | - | Mã số chứng từ đối ứng (GRN-XXXX, PAY-XXXX) |
+| `payment_method` | VARCHAR(30) | YES | - | - | Phương thức thanh toán (CASH, VIETQR, BANK_TRANSFER) |
+| `note` | VARCHAR(500) | YES | - | - | Ghi chú nội dung chi / lý do trừ nợ |
+| `created_at` | TIMESTAMP | NO | - | `CURRENT_TIMESTAMP` | Thời điểm phát sinh giao dịch |
+
 ---
 
 ## 6. Customer & Sales Management Domain
@@ -337,6 +356,9 @@ Hồ sơ thông tin khách hàng mua sản phẩm hoặc yêu cầu dịch vụ 
 | `phone` | VARCHAR(15) | NO | UK | - | Số điện thoại liên lạc chính (định danh duy nhất) |
 | `email` | VARCHAR(100) | YES | - | - | Địa chỉ email |
 | `address` | VARCHAR(255) | YES | - | - | Địa chỉ liên lạc |
+| `reward_points` | INTEGER | NO | - | `0` | Tổng điểm thưởng CRM tích lũy |
+| `total_spent` | DECIMAL(15,2) | NO | - | `0.00` | Tổng doanh số chi tiêu tích lũy của khách hàng |
+| `member_tier` | VARCHAR(20) | NO | - | `'BRONZE'` | Hạng thành viên (BRONZE, SILVER, GOLD, DIAMOND) |
 | `is_deleted` | BOOLEAN | NO | - | `false` | Đánh dấu xóa mềm |
 | `created_at` | TIMESTAMP | NO | - | `CURRENT_TIMESTAMP` | Thời gian tạo hồ sơ |
 | `updated_at` | TIMESTAMP | NO | - | `CURRENT_TIMESTAMP` | Thời gian cập nhật |
@@ -382,7 +404,8 @@ Chứng từ hóa đơn pháp lý ghi nhận sau khi đơn hàng được bán.
 | Tên cột | Kiểu dữ liệu | Nullable | Khóa | Mặc định | Mô tả |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `id` | UUID | NO | PK | `uuid_generate_v4()` | Khóa chính |
-| `sales_order_id` | UUID | NO | FK | - | Liên kết đơn hàng nguồn, `sales_orders(id)` |
+| `sales_order_id` | UUID | YES | FK | - | Liên kết đơn hàng nguồn, `sales_orders(id)` |
+| `repair_ticket_id` | UUID | YES | FK | - | Liên kết phiếu sửa chữa nguồn, `repair_tickets(id)` |
 | `code` | VARCHAR(50) | NO | UK | - | Số hóa đơn tài chính (duy nhất) |
 | `status` | VARCHAR(20) | NO | - | `'UNPAID'` | Trạng thái thanh toán (UNPAID, PAID, REFUNDED) |
 | `amount` | DECIMAL(15,2) | NO | - | `0.00` | Tổng giá trị thanh toán hóa đơn |

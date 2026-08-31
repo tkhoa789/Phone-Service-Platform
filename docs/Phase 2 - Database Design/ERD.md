@@ -145,6 +145,7 @@ erDiagram
     ProductVariant ||--o{ IMEI : "dinh_danh"
     Warehouse ||--o{ IMEI : "chua"
     Supplier ||--o{ PurchaseOrder : "cung_cap"
+    Supplier ||--o{ SupplierDebtTransaction : "phat_sinh_nong"
     Warehouse ||--o{ PurchaseOrder : "nhap_vao"
     PurchaseOrder ||--|{ PurchaseOrderItem : "co_chi_tiet"
     ProductVariant ||--o{ PurchaseOrderItem : "nhap_so_luong"
@@ -238,9 +239,26 @@ erDiagram
         string phone
         string email
         string address
+        string tax_code
+        decimal debt_amount
+        decimal credit_limit
+        integer payment_terms_days
         boolean is_deleted
         timestamp created_at
         timestamp updated_at
+    }
+
+    SupplierDebtTransaction {
+        uuid id PK
+        uuid supplier_id FK
+        string transaction_type
+        decimal amount
+        decimal balance_after
+        string reference_no
+        string payment_method
+        string note
+        boolean is_deleted
+        timestamp created_at
     }
 
     PurchaseOrder {
@@ -328,6 +346,8 @@ erDiagram
         string phone UK
         string email
         string address
+        integer reward_points
+        decimal total_spent
         boolean is_deleted
         timestamp created_at
         timestamp updated_at

@@ -4,12 +4,15 @@ using PSP.Application.Modules.Auth.Commands;
 using PSP.Application.Modules.Auth.DTOs;
 using PSP.Application.Modules.Auth.Queries;
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace PSP.API.Controllers;
 
 /// <summary>
 /// "Lễ tân" chuyên phụ trách luồng công việc liên quan đến tài khoản Nhân viên (User).
 /// Không tự viết logic xử lý ở đây. Mọi yêu cầu đều đóng gói gửi xuống cho "Nhà bếp" (MediatR).
 /// </summary>
+[Authorize(Roles = "Owner,Admin")]
 [Route("api/[controller]")]
 [Tags("Users")]
 public class UserController : BaseApiController

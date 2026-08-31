@@ -38,6 +38,8 @@ public record UpdateCustomerCommand : IRequest<bool>
     public string? Email { get; init; }
     
     public string? Address { get; init; }
+    
+    public byte[] RowVersion { get; init; } = Array.Empty<byte>();
 }
 
 /// <summary>

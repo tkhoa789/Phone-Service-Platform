@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Product.Commands;
@@ -10,6 +11,7 @@ namespace PSP.API.Controllers;
 /// CONTROLLER (Lớp tiếp tiếp nhận và xử lý HTTP Request từ Client).
 /// Quản lý toàn bộ các API liên quan đến Dòng sản phẩm (Products) và Biến thể sản phẩm (Product Variants).
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Products")]
 public class ProductController : BaseApiController
@@ -22,6 +24,7 @@ public class ProductController : BaseApiController
     /// API Tạo mới một Dòng sản phẩm (Ví dụ: iPhone 16).
     /// POST: /api/Product
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProductCommand command, CancellationToken cancellationToken)
     {
@@ -33,6 +36,7 @@ public class ProductController : BaseApiController
     /// API Cập nhật thông tin dòng sản phẩm.
     /// PUT: /api/Product/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductCommand command, CancellationToken cancellationToken)
     {
@@ -49,6 +53,7 @@ public class ProductController : BaseApiController
     /// API Xóa dòng sản phẩm (Xóa mềm).
     /// DELETE: /api/Product/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -70,15 +75,14 @@ public class ProductController : BaseApiController
     }
 
     /// <summary>
-    /// API Lấy danh sách tất cả các dòng sản phẩm đang hoạt động.
+    /// API Lấy danh sách dòng sản phẩm có phân trang và filter.
     /// GET: /api/Product
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetProductsPaged([FromQuery] GetProductsPagedQuery query, CancellationToken cancellationToken)
     {
-        var query = new GetAllProductsQuery();
         var result = await Mediator.Send(query, cancellationToken);
-        return Ok(ApiResponse<IEnumerable<ProductDto>>.Success(result));
+        return Ok(ApiResponse<PagedResult<ProductDto>>.Success(result));
     }
 
     // =========================================================================
@@ -89,6 +93,7 @@ public class ProductController : BaseApiController
     /// API Tạo mới một Biến thể sản phẩm thuộc về một dòng sản phẩm cha.
     /// POST: /api/Product/Variant
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost("Variant")]
     public async Task<IActionResult> CreateVariant([FromBody] CreateProductVariantCommand command, CancellationToken cancellationToken)
     {
@@ -100,6 +105,7 @@ public class ProductController : BaseApiController
     /// API Cập nhật thông tin cấu hình, giá của biến thể sản phẩm.
     /// PUT: /api/Product/Variant/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("Variant/{id:guid}")]
     public async Task<IActionResult> UpdateVariant(Guid id, [FromBody] UpdateProductVariantCommand command, CancellationToken cancellationToken)
     {
@@ -116,6 +122,7 @@ public class ProductController : BaseApiController
     /// API Xóa biến thể sản phẩm (Xóa mềm).
     /// DELETE: /api/Product/Variant/{id}
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("Variant/{id:guid}")]
     public async Task<IActionResult> DeleteVariant(Guid id, CancellationToken cancellationToken)
     {

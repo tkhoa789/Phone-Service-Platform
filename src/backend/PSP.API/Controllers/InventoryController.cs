@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
@@ -13,6 +14,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP quản lý Số lượng Tồn kho (Inventory) và Định danh thiết bị (IMEI).
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Inventory")]
 public class InventoryController : BaseApiController
@@ -45,6 +47,7 @@ public class InventoryController : BaseApiController
     /// API Cập nhật định mức tồn tối thiểu cảnh báo cho một dòng hàng tồn kho.
     /// PUT: /api/Inventory/{id}/min-stock
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}/min-stock")]
     public async Task<IActionResult> UpdateMinStock(Guid id, [FromBody] int minimumStock, CancellationToken cancellationToken)
     {
@@ -81,6 +84,7 @@ public class InventoryController : BaseApiController
     /// API Cập nhật trạng thái vòng đời của một mã số IMEI (InStock, Sold, Repairing, WarrantyHold, Disposed).
     /// PUT: /api/Inventory/imei/{imei}/status
     /// </summary>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("imei/{imei}/status")]
     public async Task<IActionResult> UpdateImeiStatus(string imei, [FromBody] string status, CancellationToken cancellationToken)
     {

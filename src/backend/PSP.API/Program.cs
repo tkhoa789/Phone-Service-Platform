@@ -8,6 +8,8 @@ using PSP.API.Middlewares;
 using PSP.API.Services;
 using PSP.Application.Common.Interfaces;
 using PSP.Infrastructure.Data.Seeders;
+using Hangfire;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,27 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 // Đăng ký HttpContextAccessor và CurrentUserService
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Đăng ký dịch vụ SignalR
+builder.Services.AddSignalR();
+
+// =====================================================================
+// CẤU HÌNH ENTERPRISE: REDIS CACHE & HANGFIRE BACKGROUND JOBS
+// =====================================================================
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    options.InstanceName = "PSP_";
+});
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHangfireServer();
 
 // =====================================================================
 // CẤU HÌNH SWAGGER VỚI JWT AUTHENTICATION
@@ -68,7 +91,51 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // =====================================================================
-// CẤU HÌNH JWT AUTHENTICATION
+// CẤU HÌNH BẢO MẬT NÂNG CAO: STRICT CORS POLICY WHITELIST
+// =====================================================================
+builder.Services.AddCors(options =>
+{
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    
+    // Fallback to localhost if misconfigured, to prevent complete lockout during dev
+    if (allowedOrigins == null || allowedOrigins.Length == 0)
+    {
+        allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173" };
+    }
+
+    options.AddPolicy("StrictCorsPolicy", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+// =====================================================================
+// CẤU HÌNH BẢO MẬT NÂNG CAO: API RATE LIMITING (CHỐNG BRUTE-FORCE & DDOS)
+// =====================================================================
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Giới hạn chung: Tối đa 120 requests/phút cho mỗi kết nối IP
+    options.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown_ip";
+        return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: clientIp,
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1)
+            });
+    });
+});
+
+// =====================================================================
+// CẤU HÌNH JWT AUTHENTICATION VỚI KIỂM TRA TRẠNG THÁI TÀI KHOẢN REAL-TIME
 // =====================================================================
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret chưa được cấu hình trong appsettings.json!");
@@ -91,10 +158,48 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.FromSeconds(30)
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        // 1. Hỗ trợ truyền Token qua Query String cho SignalR WebSockets
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && 
+                path.StartsWithSegments("/notificationHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        },
+
+        // 2. Bảo mật nâng cao: Kiểm tra trạng thái tài khoản Real-time trong Database khi xác thực Token.
+        // Nếu Admin khóa tài khoản (Locked/Inactive), Token hiện tại lập tức bị vô hiệu hóa ngay lập tức!
+        OnTokenValidated = async context =>
+        {
+            var userIdClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? context.Principal?.FindFirst("sub")?.Value;
+
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var userId))
+            {
+                using var scope = context.HttpContext.RequestServices.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<PSP.Infrastructure.Data.AppDbContext>();
+
+                var user = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
+                    dbContext.Users, u => u.Id == userId && !u.IsDeleted);
+
+                if (user == null || user.Status != PSP.Domain.Common.Enums.UserStatus.Active)
+                {
+                    context.Fail("Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động bởi Quản trị viên!");
+                }
+            }
+        }
+    };
 });
 
 // =====================================================================
-// KHỞI TẠO ỨNG DỤNG
+// KHỞI TẠO ỨNG DỤNG & MIDDLEWARE PIPELINE BẢO MẬT MULTI-LAYERED
 // =====================================================================
 var app = builder.Build();
 
@@ -109,13 +214,38 @@ app.UseSwaggerUI(c =>
     c.DocumentTitle = "PSP API Documentation";
 });
 
-// Middleware xử lý lỗi tập trung
+// 1. Middleware Tiêm Security Headers OWASP (Chống Clickjacking, MIME Sniffing, XSS)
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
+// 2. Middleware Làm sạch Dữ liệu Đầu vào Anti-XSS (Input Sanitization)
+app.UseMiddleware<InputSanitizationMiddleware>();
+
+// 3. Middleware Gắn Correlation ID
+app.UseMiddleware<CorrelationIdMiddleware>();
+
+// 4. Middleware Xử lý Lỗi Tập trung
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// Pipeline xác thực: UseAuthentication PHẢI đứng TRƯỚC UseAuthorization
+// 4. Kích hoạt Strict CORS Policy Whitelist
+app.UseCors("StrictCorsPolicy");
+
+// 5. Kích hoạt Rate Limiting (Chống Brute-Force & DDoS)
+app.UseRateLimiter();
+
+// 6. Pipeline Xác thực: UseAuthentication PHẢI đứng TRƯỚC UseAuthorization
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 6.5. Middleware Idempotency (Phải sau Auth để lấy UserId/BranchId)
+app.UseMiddleware<IdempotencyMiddleware>();
+
+// 7. Kích hoạt Hangfire Dashboard
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new PSP.API.Filters.HangfireAuthorizationFilter() }
+});
+
 app.MapControllers();
+app.MapHub<PSP.Infrastructure.Hubs.NotificationHub>("/notificationHub");
 
 app.Run();

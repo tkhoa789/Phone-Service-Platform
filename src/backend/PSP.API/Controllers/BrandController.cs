@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PSP.Application.Common.Models;
 using PSP.Application.Modules.Product.Commands;
@@ -11,6 +12,7 @@ namespace PSP.API.Controllers;
 /// Quản lý các API liên quan đến Thương hiệu sản phẩm (Brands).
 /// Kế thừa BaseApiController để sử dụng chung thuộc tính Mediator (MediatR), giúp gửi lệnh/truy vấn xuống tầng nghiệp vụ xử lý.
 /// </summary>
+[Authorize]
 [Route("api/[controller]")]
 [Tags("Brands")]
 public class BrandController : BaseApiController
@@ -22,6 +24,7 @@ public class BrandController : BaseApiController
     /// <param name="command">Dữ liệu tạo mới thương hiệu (mã, tên)</param>
     /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
     /// <returns>Trả về ApiResponse chứa Id của thương hiệu vừa tạo</returns>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBrandCommand command, CancellationToken cancellationToken)
     {
@@ -40,6 +43,7 @@ public class BrandController : BaseApiController
     /// <param name="command">Dữ liệu cập nhật mới trong body request</param>
     /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
     /// <returns>Trả về true nếu cập nhật thành công</returns>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBrandCommand command, CancellationToken cancellationToken)
     {
@@ -60,6 +64,7 @@ public class BrandController : BaseApiController
     /// <param name="id">Id của thương hiệu muốn xóa</param>
     /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
     /// <returns>Trả về true nếu xóa thành công</returns>
+    [Authorize(Roles = "Owner,Admin,Manager")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

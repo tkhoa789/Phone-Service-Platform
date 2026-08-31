@@ -24,7 +24,6 @@ public record CreateSalesOrderItemCommand(
 public record CreateSalesOrderCommand(
     Guid CustomerId,
     string? VoucherCode, // Khách hàng nhập mã (ví dụ: GIAM50K), hệ thống tự tìm và đối soát
-    Guid BranchId,
     List<CreateSalesOrderItemCommand> Items
 ) : IRequest<Guid>;
 
