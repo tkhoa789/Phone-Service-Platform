@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAllCustomers } from '@/features/customers/hooks/useCustomers';
 import type { IntakeState } from '../../pages/RepairIntakePage';
 import { useThemeStore } from '@/stores/themeStore';
 import { Search, UserPlus, CheckCircle2 } from 'lucide-react';
@@ -17,28 +18,14 @@ interface Props {
 export const CustomerStep: React.FC<Props> = ({ state, updateState, onNext }) => {
   const { language } = useThemeStore();
   const [searchTerm, setSearchTerm] = useState('');
-  const [customers, setCustomers] = useState<CustomerDto[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data, isLoading: loading, refetch: refetchCustomers } = useAllCustomers();
+  const customers = Array.isArray(data) ? data : [];
   const [isCreating, setIsCreating] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ fullName: '', phone: '', email: '', address: '' });
   const [creatingSubmit, setCreatingSubmit] = useState(false);
 
-  useEffect(() => {
-    // Note: In a real enterprise app, we'd debounce this and call a search endpoint.
-    // Since we only have getAll() in the service, we fetch all and filter client-side for now.
-    const fetchCustomers = async () => {
-      setLoading(true);
-      try {
-        const data = await customerService.getAll();
-        setCustomers(Array.isArray(data) ? data : []);
-      } catch {
-        toast.error('Failed to load customers');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
-  }, [creatingSubmit]);
+  
 
   const filteredCustomers = customers.filter(
     (c) =>
@@ -57,19 +44,19 @@ export const CustomerStep: React.FC<Props> = ({ state, updateState, onNext }) =>
       toast.error('Vui lòng điền tên và số điện thoại');
       return;
     }
-    setLoading(true);
-    try {
-      const newCust = await customerService.create(newCustomer);
+    setIsSubmitting(true);
+      try {
+        const newCust = await customerService.create(newCustomer);
       toast.success('Khách hàng mới đã được tạo');
       updateState({ customerId: newCust.id, customerName: newCust.fullName, customerPhone: newCust.phone });
-      setCreatingSubmit(!creatingSubmit);
+      refetchCustomers();
       setIsCreating(false);
       onNext();
     } catch {
       toast.error('Lỗi khi tạo khách hàng');
-      setLoading(false);
-    }
-  };
+      setIsSubmitting(false);
+      }
+    };
 
   return (
     <div className="space-y-6">

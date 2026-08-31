@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { usePosVariants } from '@/features/pos/hooks/usePosCatalog';
 import type { IntakeState } from '../../pages/RepairIntakePage';
 import { useThemeStore } from '@/stores/themeStore';
 import { Smartphone, Search, CheckCircle2 } from 'lucide-react';
@@ -22,20 +23,7 @@ export const DeviceStep: React.FC<Props> = ({ state, updateState, onNext, onBack
   const [variants, setVariants] = useState<ProductVariantDto[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchVariants = async () => {
-      setLoading(true);
-      try {
-        const data = await productService.getAllVariants();
-        setVariants(Array.isArray(data) ? data : []);
-      } catch {
-        toast.error('Failed to load devices');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchVariants();
-  }, []);
+  
 
   const filteredVariants = variants.filter(
     (v) =>

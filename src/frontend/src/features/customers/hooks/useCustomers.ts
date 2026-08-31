@@ -82,3 +82,12 @@ export const useDeleteCustomer = () => {
     },
   });
 };
+
+import { customerService } from '@/services/customerService';
+export const useAllCustomers = () => {
+  return useQuery({
+    queryKey: [...customerKeys.all, 'all-list'],
+    queryFn: () => customerService.getAll(),
+    staleTime: 5 * 60 * 1000,
+  });
+};

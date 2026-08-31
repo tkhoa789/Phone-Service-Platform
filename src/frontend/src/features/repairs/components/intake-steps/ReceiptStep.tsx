@@ -18,20 +18,7 @@ export const ReceiptStep: React.FC<Props> = ({ state }) => {
   const [ticket, setTicket] = useState<RepairTicketDto | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchTicket = async () => {
-      if (!state.ticketId) return;
-      try {
-        const data = await serviceService.getRepairById(state.ticketId);
-        setTicket(data);
-      } catch {
-        toast.error('Failed to fetch verified ticket data from backend');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTicket();
-  }, [state.ticketId]);
+  
 
   if (!state.ticketId) {
     return (

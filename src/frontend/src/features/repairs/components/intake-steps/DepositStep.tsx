@@ -34,19 +34,10 @@ export const DepositStep: React.FC<Props> = ({ state, updateState, onNext, onBac
   const deleteTicketMutation = useDeleteRepairTicket();
 
   useEffect(() => {
-    const fetchMethods = async () => {
-      try {
-        const methods = await salesService.getPaymentMethods();
-        setPaymentMethods(methods);
-        if (methods.length > 0) {
-          setSelectedMethod(methods[0].id);
-        }
-      } catch {
-        toast.error('Failed to load payment methods');
-      }
-    };
-    fetchMethods();
-  }, []);
+    if (paymentMethods.length > 0 && !selectedMethod) {
+      setSelectedMethod(paymentMethods[0].id);
+    }
+  }, [paymentMethods, selectedMethod]);
 
   const handleCollectDeposit = async () => {
     const amount = parseFloat(amountInput) || 0;
