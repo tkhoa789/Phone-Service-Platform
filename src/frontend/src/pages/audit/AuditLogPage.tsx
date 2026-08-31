@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { auditLogService } from '../../services/auditLogService';
 import type { AuditLogDto } from '../../types/api.types';
 import { ShieldAlert, Search, Eye, Calendar, User, Database, Code, X } from 'lucide-react';
@@ -10,8 +11,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 export const AuditLogPage: React.FC = () => {
-  const [logs, setLogs] = useState<AuditLogDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading, refetch: loadLogs } = useQuery({
+    queryKey: ['audit-logs'],
+    queryFn: () => auditLogService.getAll()
+  });
+  const logs = Array.isArray(data) ? data : [];
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -22,21 +26,7 @@ export const AuditLogPage: React.FC = () => {
   const { language } = useThemeStore();
   const t = i18nDictionary[language].auditLogs;
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
-
-  const loadLogs = async () => {
-    setLoading(true);
-    try {
-      const data = await auditLogService.getAll();
-      setLogs(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      toast.error('Không thể tải nhật ký Audit Log!');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const filteredLogs = logs.filter((l) => {
     const performed = l.performedBy || l.userFullName || '';

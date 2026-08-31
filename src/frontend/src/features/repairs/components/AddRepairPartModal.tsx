@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X, Wrench, PlusCircle } from 'lucide-react';
 import { productService } from '@/services/productService';
 import type { ProductVariantDto } from '@/types/api.types';
@@ -29,12 +30,7 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
   
   const addPartMutation = useAddRepairPart();
 
-  useEffect(() => {
-    productService.getProducts().then(res => {
-      const allVariants = ((res as any).items || (res as any).data || res).flatMap((p: any) => p.variants || []);
-      setVariants(allVariants);
-    });
-  }, []);
+  
 
   const handleSelectVariant = (id: string) => {
     setSelectedVariantId(id);

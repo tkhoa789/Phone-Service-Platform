@@ -1,24 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../stores/authStore';
-import { dashboardService } from '../../../services/dashboardService';
+import { useDashboardStats } from '../hooks/useDashboard';
 
-function useDashboardService() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      const data = await dashboardService.getStats();
-      setStats(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => {
-    fetchStats();
-  }, []);
-  return { stats, loading, fetchStats };
-}
+
 import { 
   Users, Store, ShieldAlert, Cpu, Database, Activity, Lock, CheckCircle2, 
   TerminalSquare, Box, RefreshCw, ShoppingCart, TrendingUp, DollarSign, 
@@ -37,15 +21,13 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
   const isOwner = user?.roles?.includes('Owner');
   const isAdmin = user?.roles?.includes('Admin');
-  const { stats, loading, fetchStats } = useDashboardService();
+  const { data: stats, isLoading: loading, refetch: fetchStats } = useDashboardStats();
   const navigate = useNavigate();
   const { language } = useThemeStore();
 
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  
 
   const t = language === 'vi' ? {
     ownerBadge: 'QUẢN TRỊ VIÊN CẤP CAO (OWNER)',
@@ -187,7 +169,7 @@ export const DashboardPage: React.FC = () => {
                     {dateOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
                 </div>
-                <Button variant="secondary" onClick={fetchStats} disabled={loading} className="gap-2">
+                <Button variant="secondary" onClick={() => fetchStats()} disabled={loading} className="gap-2">
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {t.refresh}
                 </Button>
                 <Button variant="secondary" onClick={() => navigate('/branches')} className="gap-2">

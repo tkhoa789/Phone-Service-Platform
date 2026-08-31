@@ -1,23 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Bell,
-  Search,
-  Store,
-  Sparkles,
-  ShieldAlert,
-  Bot,
-  Sun,
-  Moon,
-  Globe,
-  ChevronDown,
-  Menu
-} from 'lucide-react';
+import { Menu, Search, Bell, Settings, LogOut, User, Store, ShieldAlert, Sparkles, Moon, Sun, Globe, Bot } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useSystemStore } from '../../stores/systemStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { useNavigate } from 'react-router-dom';
 import { useBranchStore } from '../../stores/branchStore';
-import { branchService } from '../../services/branchService';
+import { useBranches } from '../../features/branches/hooks/useBranches';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -31,23 +19,19 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle }) => {
   const { user } = useAuthStore();
-  const { settings } = useSystemStore();
-  const { theme, language, toggleTheme, setLanguage } = useThemeStore();
+  const { language, setLanguage } = useThemeStore();
+  const { theme, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
 
   const { activeBranchId, activeBranchName, setActiveBranch } = useBranchStore();
-  const [branches, setBranches] = useState<any[]>([]);
 
   const isGlobalAdmin = user?.roles?.includes('Owner') || user?.roles?.includes('Admin') || (useAuthStore.getState().roles || []).includes('Owner') || (useAuthStore.getState().roles || []).includes('Admin');
 
+  // React Query Replacement for manual branch fetching
+  const { data: fetchedBranches = [] } = useBranches();
+  
   useEffect(() => {
-    if (isGlobalAdmin) {
-      branchService.getAll().then((data) => {
-        if (data && data.length > 0) {
-          setBranches(data);
-        }
-      }).catch(() => {});
-    } else if (user) {
+    if (!isGlobalAdmin && user) {
       setActiveBranch(user.branchId || 'default', user.branchName || 'Chi nhánh mặc định');
     }
   }, [isGlobalAdmin, user, setActiveBranch]);
@@ -55,10 +39,13 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
 
+  // Apply theme to document element
   useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark', 'theme-light', 'theme-dark');
-    document.documentElement.classList.add(`theme-${theme}`);
-    document.documentElement.classList.add(theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
   return (
@@ -74,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
           size="icon"
           className="md:hidden shrink-0"
           onClick={onMobileMenuToggle}
-          title="Mở menu"
+          title="Má»Ÿ menu"
         >
           <Menu className="w-5 h-5" />
         </Button>
@@ -83,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10 pointer-events-none" />
           <Input
             type="text"
-            placeholder={language === 'vi' ? 'Tìm kiếm sản phẩm, khách hàng, số IMEI, phiếu sửa...' : 'Search products, customers, IMEI, repairs...'}
+            placeholder={language === 'vi' ? 'Tìm kiếm sản phẩm, khách hàng, IMEI...' : 'Search products, customers, IMEI, repairs...'}
             className="pl-10 h-10 w-full"
           />
         </div>
@@ -98,14 +85,14 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
                 if (val === 'all') {
                   setActiveBranch('', 'Tất cả chi nhánh');
                 } else {
-                  const b = branches.find(x => x.id === val);
+                  const b = fetchedBranches.find((x: any) => x.id === val);
                   if (b) setActiveBranch(b.id, b.name);
                 }
               }}
               className="pl-10 font-bold"
             >
               <option value="all">{language === 'vi' ? '⚡ Tất cả chi nhánh' : '⚡ All Branches'}</option>
-              {branches.map(b => (
+              {fetchedBranches.map((b: any) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </Select>
@@ -138,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
           variant="secondary"
           size="icon"
           onClick={toggleTheme}
-          title={theme === 'light' ? 'Chuyển sang Chủ Đề Đêm (Dark Cyber)' : 'Chuyển sang Chủ Đề Sáng (Light Neumorphism)'}
+          title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}
         >
           {theme === 'light' ? <Moon className="w-4 h-4 text-indigo-600" /> : <Sun className="w-4 h-4 text-amber-500" />}
         </Button>
@@ -182,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
             variant="secondary"
             size="icon"
             onClick={() => { setShowNotifications(!showNotifications); setShowLangMenu(false); }}
-            title="Thông báo hệ thống"
+            title="Thông báo"
             className="relative"
           >
             <Bell className="w-4 h-4" />
@@ -200,12 +187,12 @@ export const Header: React.FC<HeaderProps> = ({ collapsed, onMobileMenuToggle })
                 <Badge variant="success">Real-time</Badge>
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                <div className="p-3 rounded-2xl bg-[var(--neu-bg-base)] border border-slate-400/20 shadow-inner border border-border/50 bg-muted/20">
+                <div className="p-3 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20">
                   <div className="flex items-start gap-2.5">
                     <ShieldAlert className="w-4 h-4 text-[var(--neu-accent-mint)] shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-medium text-[var(--neu-text-title)]">Cảnh báo tồn kho thấp</p>
-                      <p className="text-[11px] text-[var(--neu-text-sub)] mt-0.5 font-normal">iPhone 15 Pro Max 256GB chỉ còn 2 máy tại Trụ sở chính.</p>
+                      <p className="text-[11px] text-[var(--neu-text-sub)] mt-0.5 font-normal">iPhone 15 Pro Max 256GB chỉ còn 2 máy.</p>
                       <span className="text-[10px] text-slate-400 mt-1 block font-mono">5 phút trước</span>
                     </div>
                   </div>
