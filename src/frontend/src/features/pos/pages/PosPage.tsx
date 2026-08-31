@@ -38,6 +38,7 @@ import { voucherService } from '../../../services/voucherService';
 
 // Types
 import type { VoucherDto } from '../../../types/api.types';
+import { Input } from '@/components/ui/Input';
 
 interface CartItem {
   variantId: string;
@@ -256,7 +257,7 @@ export const PosPage: React.FC = () => {
               </div>
               <div className="relative flex-1">
                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
+                <Input
                   ref={barcodeInputRef}
                   type="text"
                   value={barcodeInput}
@@ -378,26 +379,26 @@ export const PosPage: React.FC = () => {
                         <h4 className="font-medium text-foreground leading-tight pr-4">{item.productName} ({item.variantName})</h4>
                         <span className="text-[11px] font-mono font-bold text-muted-foreground">{item.sku}</span>
                       </div>
-                      <button
+                      <Button variant="outline"
                         onClick={() => updateQuantity(item.variantId, -item.quantity)}
                         className="text-muted-foreground hover:text-destructive p-1 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 bg-muted rounded-md px-1 py-0.5 border">
-                        <button onClick={() => updateQuantity(item.variantId, -1)} className="px-2 font-bold hover:text-emerald-600">-</button>
+                        <Button variant="outline" onClick={() => updateQuantity(item.variantId, -1)} className="px-2 font-bold hover:text-emerald-600">-</Button>
                         <span className="font-bold w-6 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.variantId, 1)} className="px-2 font-bold hover:text-emerald-600">+</button>
+                        <Button variant="outline" onClick={() => updateQuantity(item.variantId, 1)} className="px-2 font-bold hover:text-emerald-600">+</Button>
                       </div>
                       <span className="font-medium text-emerald-600">
                         {(item.unitPrice * item.quantity).toLocaleString('vi-VN')} đ
                       </span>
                     </div>
 
-                    <input
+                    <Input
                       type="text"
                       value={item.imei || ''}
                       onChange={(e) => updateImei(item.variantId, e.target.value)}
@@ -414,7 +415,7 @@ export const PosPage: React.FC = () => {
           <div className="p-4 border-t border-border bg-muted/10 space-y-4">
             <div className="flex items-center gap-2">
               <Tag className="w-4 h-4 text-emerald-500 shrink-0" />
-              <input
+              <Input
                 type="text"
                 value={voucherCode}
                 onChange={(e) => setVoucherCode(e.target.value)}

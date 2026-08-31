@@ -178,7 +178,7 @@ export const DashboardPage: React.FC = () => {
             icon={<Crown className="w-6 h-6 animate-pulse" />}
             actions={
               <>
-                <div className="flex items-center bg-[var(--neu-bg-base)] rounded-xl border border-[var(--neu-border)] shadow-[var(--neu-shadow-inset)] w-36 overflow-hidden">
+                <div className="flex items-center bg-[var(--neu-bg-base)] rounded-xl border border-[var(--neu-border)] shadow-inner border border-border/50 bg-muted/20 w-36 overflow-hidden">
                   <Select
                     value={dateRange}
                     onChange={(e) => setDateRange(e.target.value as any)}
@@ -211,7 +211,7 @@ export const DashboardPage: React.FC = () => {
               <Card key={idx} className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--neu-text-sub)]">{kpi.label}</span>
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] flex items-center justify-center text-[var(--neu-accent-mint)]">
+                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
                     {kpi.icon}
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export const DashboardPage: React.FC = () => {
                    Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)
                 ) : stats?.branchRevenue && stats.branchRevenue.length > 0 ? (
                   stats.branchRevenue.map((b: any, idx: number) => (
-                    <div key={b.branchId || idx} className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] space-y-2">
+                    <div key={b.branchId || idx} className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 space-y-2">
                       <div className="flex justify-between text-xs font-medium">
                         <span className="text-[var(--neu-text-title)] flex items-center gap-2">
                           <Store className="w-4 h-4 text-[var(--neu-accent-mint)]" /> {b.branchName}
@@ -253,7 +253,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] space-y-2">
+                  <div className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 space-y-2">
                     <div className="flex justify-between text-xs font-medium">
                       <span className="text-[var(--neu-text-title)] flex items-center gap-2">
                         <Store className="w-4 h-4 text-[var(--neu-accent-mint)]" /> {t.hqText}
@@ -270,7 +270,7 @@ export const DashboardPage: React.FC = () => {
 
             <Card className="p-6 flex flex-col justify-between border-emerald-500/20">
               <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] flex items-center justify-center text-[var(--neu-accent-mint)]">
+                <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
                   <Bot className="w-6 h-6" />
                 </div>
                 <div>
@@ -319,7 +319,7 @@ export const DashboardPage: React.FC = () => {
               <Card key={idx} className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--neu-text-sub)]">{kpi.label}</span>
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] flex items-center justify-center text-[var(--neu-accent-mint)]">
+                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
                     {kpi.icon}
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export const DashboardPage: React.FC = () => {
                 { name: 'Redis Cache (Stack)', icon: <Box className="w-5 h-5 text-rose-500" /> },
                 { name: 'Vite 8.1.5 + React 19', icon: <Cpu className="w-5 h-5 text-emerald-500" /> },
               ].map((engine, idx) => (
-                <div key={idx} className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] flex items-center gap-3">
+                <div key={idx} className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] flex items-center justify-center shrink-0">
                     {engine.icon}
                   </div>
@@ -373,7 +373,7 @@ export const DashboardPage: React.FC = () => {
             icon={<Sparkles className="w-6 h-6 text-amber-500" />}
             actions={
               <>
-                <div className="flex items-center bg-[var(--neu-bg-base)] rounded-xl border border-[var(--neu-border)] shadow-[var(--neu-shadow-inset)] w-36 overflow-hidden">
+                <div className="flex items-center bg-[var(--neu-bg-base)] rounded-xl border border-[var(--neu-border)] shadow-inner border border-border/50 bg-muted/20 w-36 overflow-hidden">
                   <Select
                     value={dateRange}
                     onChange={(e) => setDateRange(e.target.value as any)}
@@ -403,7 +403,7 @@ export const DashboardPage: React.FC = () => {
               <Card key={idx} className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--neu-text-sub)]">{kpi.label}</span>
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-inset)] flex items-center justify-center text-[var(--neu-accent-mint)]">
+                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
                     {kpi.icon}
                   </div>
                 </div>

@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* ========================================================= */
+/* 🎨 TYPEUI DYNAMIC THEME SYSTEM (PURE CSS VARIABLES ONLY)  */
+/* ========================================================= */
+
+:root, html.theme-light, html.light {
+  --neu-bg-base: #e2e8f0;
+  --neu-text-title: #2d3748;
+  --neu-text-sub: #4a5568;
+  --neu-accent-mint: #059669;
+  --neu-accent-mint-glow: #10b981;
+  --neu-shadow-outer: 8px 8px 18px #b8c4d4, -8px -8px 18px #ffffff;
+  --neu-shadow-hover: 10px 10px 22px #9aaabf, -10px -10px 22px #ffffff;
+  --neu-shadow-inset: inset 4px 4px 9px #b8c4d4, inset -4px -4px 9px #ffffff;
+  --neu-shadow-button: 6px 6px 14px #b8c4d4, -6px -6px 14px #ffffff;
+  --neu-border: rgba(255, 255, 255, 0.8);
+}
+
+html.theme-dark, html.dark {
+  --neu-bg-base: #0f172a;
+  --neu-text-title: #f8fafc;
+  --neu-text-sub: #94a3b8;
+  --neu-accent-mint: #00ff9d;
+  --neu-accent-mint-glow: #00ff9d;
+  --neu-shadow-outer: 8px 8px 18px #080d1a, -8px -8px 18px #1e293b;
+  --neu-shadow-hover: 10px 10px 22px #050810, -10px -10px 22px #26334d;
+  --neu-shadow-inset: inset 4px 4px 9px #080d1a, inset -4px -4px 9px #1e293b;
+  --neu-shadow-button: 6px 6px 14px #080d1a, -6px -6px 14px #1e293b;
+  --neu-border: rgba(255, 255, 255, 0.1);
+}
+
+@layer base {
+  *, ::before, ::after {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  }
+
+  html, body {
+    background-color: var(--neu-bg-base) !important;
+    color: var(--neu-text-sub) !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    font-weight: 400 !important;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    color: var(--neu-text-title) !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.01em;
+  }
+
+  p, span, label, td, th {
+    color: var(--neu-text-sub);
+    font-weight: 400;
+  }
+}
+
+/* ========================================================= */
+/* ⚡ HIGH-CONTRAST PURE WHITE BUTTON TEXT OVERRIDES          */
+/* ========================================================= */
+.text-white,
+.text-white *,
+button.text-white,
+button.text-white *,
+button[class*="from-emerald"],
+button[class*="from-emerald"] *,
+button[class*="bg-emerald"],
+button[class*="bg-emerald"] * {
+  color: #ffffff !important;
+}
+
+.font-bold, .font-extrabold, .font-semibold, [class*="font-bold"], [class*="font-extrabold"] {
+  font-weight: 500 !important;
+}
+
+/* ========================================================= */
+/* 🌑 CLEAN DARK CYBER OVERRIDES (ZERO SCREEN OVERLAY)       */
+/* ========================================================= */
+
+html.dark, html.theme-dark {
+  background-color: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+html.dark body, html.theme-dark body,
+html.dark main, html.theme-dark main,
+html.dark #root, html.theme-dark #root {
+  background-color: #0f172a !important;
+  box-shadow: none !important;
+}
+
+/* Scrollbar Integration */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--neu-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  box-shadow: inset 2px 2px 4px #94a3b8;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neu-accent-mint);
+}
