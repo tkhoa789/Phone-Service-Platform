@@ -40,6 +40,7 @@ import { voucherService } from '../../../services/voucherService';
 // Types
 import type { VoucherDto, ProductVariantDto } from '../../../types/api.types';
 import { Input } from '@/components/ui/Input';
+import { generateUUID } from '../../../utils/uuid';
 
 
 interface PosReceiptViewModel {
@@ -100,7 +101,7 @@ export const PosPage: React.FC = () => {
   const [lastOrderDetails, setLastOrderDetails] = useState<PosReceiptViewModel | null>(null);
 
   // CRITICAL INVARIANT: Idempotency Key
-  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const idempotencyKeyRef = useRef<string>(generateUUID());
 
   // Focus barcode input on mount
   useEffect(() => {
@@ -226,7 +227,7 @@ export const PosPage: React.FC = () => {
     });
 
     // Reset idempotency ONLY after success
-    idempotencyKeyRef.current = crypto.randomUUID();
+    idempotencyKeyRef.current = generateUUID();
     
     setShowPaymentModal(false);
     toast.success(

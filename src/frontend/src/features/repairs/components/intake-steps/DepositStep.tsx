@@ -9,6 +9,7 @@ import type { PaymentMethodDto } from '@/types/api.types';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { generateUUID } from '@/utils/uuid';
 
 interface Props {
   state: IntakeState;
@@ -54,7 +55,7 @@ export const DepositStep: React.FC<Props> = ({ state, updateState, onNext, onBac
       
               // Step 1: Create Ticket if not exists
         if (!currentTicketId) {
-          const createTicketIdempotency = crypto.randomUUID();
+          const createTicketIdempotency = generateUUID();
           currentTicketId = await createTicketMutation.mutateAsync({
             command: {
             branchId: '00000000-0000-0000-0000-000000000001',
@@ -85,7 +86,7 @@ export const DepositStep: React.FC<Props> = ({ state, updateState, onNext, onBac
 
       // Step 2: Generate Idempotency Key
       if (!idempotencyKeyRef.current) {
-        idempotencyKeyRef.current = crypto.randomUUID();
+        idempotencyKeyRef.current = generateUUID();
       }
 
                       // Step 3: Collect Deposit
