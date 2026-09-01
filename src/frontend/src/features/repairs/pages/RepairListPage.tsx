@@ -61,60 +61,62 @@ export const RepairListPage: React.FC = () => {
       </div>
 
       <DataTable isLoading={isLoading} isEmpty={!data?.items?.length} emptyTitle={language === 'vi' ? 'Không có phiếu sửa chữa nào' : 'No repair tickets found'}>
-        <thead className="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Mã Phiếu' : 'Ticket ID'}</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Khách Hàng' : 'Customer'}</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Thiết Bị' : 'Device'}</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Tổng Phí' : 'Total Cost'}</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Trạng Thái' : 'Status'}</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Thao Tác' : 'Actions'}</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-slate-200">
-          {(data?.items || []).map((r: RepairTicketDto) => (
-            <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-              <td className="px-6 py-4">
-                <div className="font-semibold text-slate-900">{r.ticketCode}</div>
-                <div className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="font-medium text-slate-900">{r.customerName}</div>
-                <div className="text-xs text-slate-500">{r.customerPhone}</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="font-medium text-slate-900">{r.productName || r.deviceModel || 'Unknown Device'}</div>
-                <div className="text-xs text-slate-500">{r.imei || r.productSku || 'N/A'}</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="font-medium text-emerald-600">{(r.totalAmount || r.totalCost || 0).toLocaleString()} ₫</div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex flex-col gap-1 items-start">
-                  <Badge variant={getRepairStatusColor(r.status)}>{getRepairStatusLabel(r.status, language)}</Badge>
-                  {getValidTransitions(r.status).length > 0 && (
-                    <Select className="h-7 text-xs w-full min-w-[120px] mt-1" value="" onChange={(e) => handleStatusChange(r.id, e.target.value as RepairTicketStatus)} disabled={updateStatus.isPending}>
-                      <option value="" disabled>{language === 'vi' ? 'Chuyển...' : 'Change...'}</option>
-                      {getValidTransitions(r.status).map(ts => (
-                        <option key={ts} value={ts}>{getRepairStatusLabel(ts, language)}</option>
-                      ))}
-                    </Select>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4">
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => setSelectedPrint(r)}><Printer className="w-4 h-4" /></Button>
-                  <Button variant="outline" onClick={() => setSelectedTracker(r)}><ShieldCheck className="w-4 h-4" /></Button>
-                  <Button variant="outline" onClick={() => setSelectedChecklist(r)}><CheckCircle2 className="w-4 h-4" /></Button>
-                  {['Diagnosing', 'Repairing', 'WaitingForParts'].includes(r.status) && (
-                    <Button variant="primary" onClick={() => setSelectedPart(r)}><Wrench className="w-4 h-4" /></Button>
-                  )}
-                </div>
-              </td>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Mã Phiếu' : 'Ticket ID'}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Khách Hàng' : 'Customer'}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Thiết Bị' : 'Device'}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Tổng Phí' : 'Total Cost'}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Trạng Thái' : 'Status'}</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Thao Tác' : 'Actions'}</th>
             </tr>
-          ))}
-        </tbody>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-200">
+            {(data?.items || []).map((r: RepairTicketDto, idx: number) => (
+              <tr key={r.id || idx} className="hover:bg-slate-50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="font-semibold text-slate-900">{r.ticketCode}</div>
+                  <div className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString()}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-medium text-slate-900">{r.customerName}</div>
+                  <div className="text-xs text-slate-500">{r.customerPhone}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-medium text-slate-900">{r.productName || r.deviceModel || 'Unknown Device'}</div>
+                  <div className="text-xs text-slate-500">{r.imei || r.productSku || 'N/A'}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-medium text-emerald-600">{(r.totalAmount || r.totalCost || 0).toLocaleString()} ₫</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col gap-1 items-start">
+                    <Badge variant={getRepairStatusColor(r.status)}>{getRepairStatusLabel(r.status, language)}</Badge>
+                    {getValidTransitions(r.status).length > 0 && (
+                      <Select className="h-7 text-xs w-full min-w-[120px] mt-1" value="" onChange={(e) => handleStatusChange(r.id, e.target.value as RepairTicketStatus)} disabled={updateStatus.isPending}>
+                        <option value="" disabled>{language === 'vi' ? 'Chuyển...' : 'Change...'}</option>
+                        {getValidTransitions(r.status).map(ts => (
+                          <option key={ts} value={ts}>{getRepairStatusLabel(ts, language)}</option>
+                        ))}
+                      </Select>
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={() => setSelectedPrint(r)}><Printer className="w-4 h-4" /></Button>
+                    <Button variant="outline" onClick={() => setSelectedTracker(r)}><ShieldCheck className="w-4 h-4" /></Button>
+                    <Button variant="outline" onClick={() => setSelectedChecklist(r)}><CheckCircle2 className="w-4 h-4" /></Button>
+                    {['Diagnosing', 'Repairing', 'WaitingForParts'].includes(r.status) && (
+                      <Button variant="primary" onClick={() => setSelectedPart(r)}><Wrench className="w-4 h-4" /></Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </DataTable>
 
       {data?.totalCount && data.totalCount > 10 && (

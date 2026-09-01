@@ -134,11 +134,11 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 Không tìm thấy tùy chọn phù hợp với "{searchQuery}"
               </div>
             ) : (
-              filteredOptions.map((opt) => {
+              filteredOptions.map((opt, idx) => {
                 const isSelected = opt.value === value;
                 return (
                   <div
-                    key={opt.value}
+                    key={`${opt.value}-${idx}`}
                     onClick={() => !opt.disabled && handleSelect(opt.value)}
                     className={`px-3.5 py-2.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all text-xs ${
                       isSelected

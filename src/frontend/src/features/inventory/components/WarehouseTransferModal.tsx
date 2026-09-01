@@ -144,7 +144,7 @@ export const WarehouseTransferModal: React.FC<WarehouseTransferModalProps> = ({
                     </tr>
                   ) : (
                     selectedItems.map((item, idx) => (
-                      <tr key={item.sku} className="hover:bg-slate-50 transition-colors">
+                      <tr key={`${item.sku}-${idx}`} className="hover:bg-slate-50 transition-colors">
                         <td className="p-3 text-center text-slate-400">{idx + 1}</td>
                         <td className="p-3">
                           <div className="font-mono text-xs text-primary font-bold mb-0.5">{item.sku}</div>

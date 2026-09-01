@@ -174,8 +174,8 @@ export const InventoryPage: React.FC = () => {
               ) : paginatedInventories.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center text-slate-400">{tInv.emptyInventory || 'Trống'}</td></tr>
               ) : (
-                paginatedInventories.map((inv: InventoryDto) => (
-                  <tr key={inv.sku} className="hover:bg-slate-50">
+                paginatedInventories.map((inv: InventoryDto, idx: number) => (
+                  <tr key={inv.id || `${inv.sku}-${idx}`} className="hover:bg-slate-50">
                     <td className="p-3 font-medium">{inv.variantName}</td>
                     <td className="p-3 font-mono font-bold text-primary">{inv.sku}</td>
                     <td className="p-3 text-center font-bold text-primary">{inv.quantity}</td>

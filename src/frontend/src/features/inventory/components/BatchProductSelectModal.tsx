@@ -103,12 +103,12 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
               {language === 'vi' ? 'Không tìm thấy sản phẩm phù hợp trong kho' : 'No matching products in warehouse'}
             </div>
           ) : (
-            filteredList.map((item) => {
+            filteredList.map((item, idx) => {
               const state = itemsMap[item.sku] || { selected: false, qty: 1 };
 
               return (
                 <Card
-                  key={item.sku}
+                  key={`${item.sku}-${idx}`}
                   className={`p-3 transition-colors cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
                     state.selected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-slate-50'
                   }`}

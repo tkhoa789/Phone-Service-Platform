@@ -126,13 +126,13 @@ export const StockTakePage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                inventoryList.map((item) => {
+                inventoryList.map((item, idx) => {
                   const actualQty = stockTakeList[item.sku] ?? item.quantity;
                   const diff = actualQty - item.quantity;
                   const isModified = diff !== 0;
 
                   return (
-                    <tr key={item.sku} className={`transition-colors ${isModified ? 'bg-primary/5' : 'hover:bg-slate-50'}`}>
+                    <tr key={item.id || `${item.sku}-${idx}`} className={`transition-colors ${isModified ? 'bg-primary/5' : 'hover:bg-slate-50'}`}>
                       <td className="p-3 pl-4 font-mono text-primary font-bold">{item.sku}</td>
                       <td className="p-3 font-medium text-slate-800">{item.variantName}</td>
                       <td className="p-3 text-center font-bold text-slate-600">
