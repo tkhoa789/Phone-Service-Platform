@@ -124,20 +124,20 @@ export const UserProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 font-sans max-w-4xl mx-auto pb-10 text-[var(--neu-text-sub)]">
+    <div className="space-y-6 font-sans max-w-4xl mx-auto pb-10 text-muted-foreground">
       {/* Header Banner */}
-      <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {/* Avatar */}
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-xl flex items-center justify-center shadow-[var(--neu-shadow-outer)] shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-700 text-white font-bold text-xl flex items-center justify-center shadow-md shrink-0">
             {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div>
-            <h1 className="font-heading font-medium text-2xl text-[var(--neu-text-title)] tracking-tight">
+            <h1 className="font-heading font-medium text-2xl text-foreground tracking-tight">
               {user?.fullName || (isVi ? 'Tài khoản người dùng' : 'User Account')}
             </h1>
-            <p className="text-xs font-mono mt-0.5 text-[var(--neu-text-sub)]">
-              @<span className="text-[var(--neu-accent-mint)] font-bold">{user?.username}</span>
+            <p className="text-xs font-mono mt-0.5 text-muted-foreground">
+              @<span className="text-primary font-bold">{user?.username}</span>
             </p>
           </div>
         </div>
@@ -151,39 +151,39 @@ export const UserProfilePage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left: RBAC Info Card */}
-        <div className="md:col-span-1 p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] space-y-4">
-          <h2 className="font-heading font-medium text-sm text-[var(--neu-text-title)] flex items-center gap-2 pb-2 border-b border-slate-400/20">
-            <Shield className="w-4 h-4 text-[var(--neu-accent-mint)]" />
+        <div className="md:col-span-1 p-6 rounded-3xl bg-card border border-border/50 shadow-md space-y-4">
+          <h2 className="font-heading font-medium text-sm text-foreground flex items-center gap-2 pb-2 border-b border-slate-400/20">
+            <Shield className="w-4 h-4 text-primary" />
             {isVi ? 'Thông Tin Phân Quyền Hạn' : 'RBAC Role & Permissions'}
           </h2>
 
           <div className="space-y-3 text-xs">
             <div>
-              <span className="text-[var(--neu-text-sub)] font-medium block mb-1">
+              <span className="text-muted-foreground font-medium block mb-1">
                 {isVi ? 'Chi nhánh làm việc:' : 'Assigned branch:'}
               </span>
-              <div className="p-2.5 rounded-xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-inner border border-border/50 bg-muted/20 flex items-center gap-2 text-[var(--neu-text-title)] font-medium">
-                <Building2 className="w-4 h-4 text-[var(--neu-accent-mint)] shrink-0" />
+              <div className="p-2.5 rounded-xl bg-card border border-border/50 shadow-inner border border-border/50 bg-muted/20 flex items-center gap-2 text-foreground font-medium">
+                <Building2 className="w-4 h-4 text-primary shrink-0" />
                 <span>{user?.branchName || (isVi ? 'Trụ sở chính (Tất cả chi nhánh)' : 'HQ (All Branches)')}</span>
               </div>
             </div>
 
             <div>
-              <span className="text-[var(--neu-text-sub)] font-medium block mb-1">
+              <span className="text-muted-foreground font-medium block mb-1">
                 {isVi ? 'Phạm vi quyền hạn:' : 'Permission scope:'}
               </span>
-              <p className="p-2.5 rounded-xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-inner border border-border/50 bg-muted/20 text-[11px] text-[var(--neu-text-sub)] leading-relaxed font-normal">
+              <p className="p-2.5 rounded-xl bg-card border border-border/50 shadow-inner border border-border/50 bg-muted/20 text-[11px] text-muted-foreground leading-relaxed font-normal">
                 {isVi ? activeRoleInfo.desc : activeRoleInfo.descEn}
               </p>
             </div>
 
-            <div className="pt-2 border-t border-slate-400/20 text-[11px] text-[var(--neu-text-sub)] space-y-1.5 font-normal">
+            <div className="pt-2 border-t border-slate-400/20 text-[11px] text-muted-foreground space-y-1.5 font-normal">
               <p className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--neu-accent-mint)]" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                 {isVi ? 'Đã xác thực JWT Token' : 'JWT Token Verified'}
               </p>
               <p className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--neu-accent-mint)]" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                 {isVi ? 'Đã gán phạm vi Chi nhánh' : 'Branch Scope Assigned'}
               </p>
             </div>
@@ -193,47 +193,47 @@ export const UserProfilePage: React.FC = () => {
         {/* Right: Update Profile + Change Password */}
         <div className="md:col-span-2 space-y-6">
           {/* Update Personal Info */}
-          <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] space-y-4">
-            <h2 className="font-heading font-medium text-sm text-[var(--neu-text-title)] flex items-center gap-2 pb-3 border-b border-slate-400/20">
-              <User className="w-4 h-4 text-[var(--neu-accent-mint)]" />
+          <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md space-y-4">
+            <h2 className="font-heading font-medium text-sm text-foreground flex items-center gap-2 pb-3 border-b border-slate-400/20">
+              <User className="w-4 h-4 text-primary" />
               {isVi ? 'Cập Nhật Thông Tin Cá Nhân' : 'Update Personal Information'}
             </h2>
 
             <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
               <div>
-                <label className="text-[var(--neu-text-title)] font-medium block mb-1">
+                <label className="text-foreground font-medium block mb-1">
                   {isVi ? 'Họ & Tên *' : 'Full Name *'}
                 </label>
                 <Input
                   type="text"
                   value={profileData.fullName}
                   onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
-                  className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[var(--neu-text-title)] font-medium block mb-1">Email *</label>
+                  <label className="text-foreground font-medium block mb-1">Email *</label>
                   <Input
                     type="email"
                     value={profileData.email}
                     onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                    className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="text-[var(--neu-text-title)] font-medium block mb-1">
+                  <label className="text-foreground font-medium block mb-1">
                     {isVi ? 'Số điện thoại *' : 'Phone Number *'}
                   </label>
                   <Input
                     type="text"
                     value={profileData.phone}
                     onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                    className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-mono font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-mono font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                     required
                   />
                 </div>
@@ -243,7 +243,7 @@ export const UserProfilePage: React.FC = () => {
                 <Button variant="outline"
                   type="submit"
                   disabled={loadingProfile}
-                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-90 disabled:opacity-60 text-white font-medium text-xs flex items-center gap-2 transition-all shadow-[var(--neu-shadow-button)] cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-90 disabled:opacity-60 text-white font-medium text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   {loadingProfile
@@ -255,15 +255,15 @@ export const UserProfilePage: React.FC = () => {
           </div>
 
           {/* Change Password */}
-          <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] space-y-4">
-            <h2 className="font-heading font-medium text-sm text-[var(--neu-text-title)] flex items-center gap-2 pb-3 border-b border-slate-400/20">
+          <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md space-y-4">
+            <h2 className="font-heading font-medium text-sm text-foreground flex items-center gap-2 pb-3 border-b border-slate-400/20">
               <KeyRound className="w-4 h-4 text-purple-400" />
               {isVi ? 'Đổi Mật Khẩu Cá Nhân' : 'Change Account Password'}
             </h2>
 
             <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
               <div>
-                <label className="text-[var(--neu-text-title)] font-medium block mb-1">
+                <label className="text-foreground font-medium block mb-1">
                   {isVi ? 'Mật khẩu mới *' : 'New Password *'}
                 </label>
                 <Input
@@ -271,13 +271,13 @@ export const UserProfilePage: React.FC = () => {
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                   placeholder={isVi ? 'Nhập mật khẩu mới (ít nhất 6 ký tự)...' : 'Enter new password (min. 6 chars)...'}
-                  className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                  className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[var(--neu-text-title)] font-medium block mb-1">
+                <label className="text-foreground font-medium block mb-1">
                   {isVi ? 'Nhập lại Mật khẩu mới *' : 'Confirm New Password *'}
                 </label>
                 <Input
@@ -285,7 +285,7 @@ export const UserProfilePage: React.FC = () => {
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                   placeholder={isVi ? 'Xác nhận lại mật khẩu mới...' : 'Re-enter new password...'}
-                  className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                  className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
                   required
                 />
               </div>
@@ -294,7 +294,7 @@ export const UserProfilePage: React.FC = () => {
                 <Button variant="outline"
                   type="submit"
                   disabled={loadingPassword}
-                  className="px-5 py-2.5 rounded-2xl text-white font-medium text-xs flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-[var(--neu-shadow-button)] cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl text-white font-medium text-xs flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-60 shadow-sm cursor-pointer"
                   style={{ background: 'linear-gradient(to right, #7c3aed, #9333ea, #7c3aed)' }}
                 >
                   <Lock className="w-4 h-4" />

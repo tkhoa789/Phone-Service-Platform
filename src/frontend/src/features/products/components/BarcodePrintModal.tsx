@@ -37,14 +37,14 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[var(--neu-bg-base)] rounded-3xl p-6 border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] space-y-5 text-[var(--neu-text-title)] animate-in fade-in zoom-in-95">
+      <div className="w-full max-w-md bg-card rounded-3xl p-6 border border-border/50 shadow-md space-y-5 text-foreground animate-in fade-in zoom-in-95">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-400/20 pb-3">
-          <h3 className="font-heading font-medium text-base text-[var(--neu-text-title)] flex items-center gap-2">
-            <Printer className="w-5 h-5 text-[var(--neu-accent-mint)]" />
+          <h3 className="font-heading font-medium text-base text-foreground flex items-center gap-2">
+            <Printer className="w-5 h-5 text-primary" />
             <span>{language === 'vi' ? 'In Tem Mã Vạch Barcode / QR Label' : 'Print Barcode / QR Label'}</span>
           </h3>
-          <Button variant="outline" onClick={onClose} className="p-1.5 rounded-xl bg-[var(--neu-bg-base)] text-slate-400 hover:text-[var(--neu-text-title)] shadow-[var(--neu-shadow-button)] transition-all cursor-pointer">
+          <Button variant="outline" onClick={onClose} className="p-1.5 rounded-xl bg-card text-slate-400 hover:text-foreground shadow-sm transition-all cursor-pointer">
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -106,13 +106,13 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
         {/* Print Options Form */}
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <label className="text-[var(--neu-text-title)] font-medium block mb-1">
+            <label className="text-foreground font-medium block mb-1">
               {language === 'vi' ? 'Kích Thước Tem Nhãn *' : 'Label Size *'}
             </label>
             <select
               value={labelSize}
               onChange={(e) => setLabelSize(e.target.value)}
-              className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-xl px-3 py-2 text-xs text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
+              className="w-full bg-card border border-slate-300/40 rounded-xl px-3 py-2 text-xs text-foreground shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
             >
               <option value="50x30">Standard Thermal (50mm x 30mm)</option>
               <option value="35x22">Jewelry/Phone Sticker (35mm x 22mm)</option>
@@ -121,7 +121,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
           </div>
 
           <div>
-            <label className="text-[var(--neu-text-title)] font-medium block mb-1">
+            <label className="text-foreground font-medium block mb-1">
               {language === 'vi' ? 'Số Lượng Tem Cần In *' : 'Print Quantity *'}
             </label>
             <Input
@@ -130,7 +130,7 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
               max={100}
               value={printQty}
               onChange={(e) => setPrintQty(Number(e.target.value))}
-              className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-xl px-3 py-2 text-xs font-mono font-bold text-[var(--neu-accent-mint)] shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+              className="w-full bg-card border border-slate-300/40 rounded-xl px-3 py-2 text-xs font-mono font-bold text-primary shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
               required
             />
           </div>
@@ -141,14 +141,14 @@ export const BarcodePrintModal: React.FC<BarcodePrintModalProps> = ({
           <Button variant="outline"
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-2xl bg-[var(--neu-bg-base)] text-[var(--neu-text-sub)] hover:text-[var(--neu-text-title)] font-medium shadow-[var(--neu-shadow-button)] active:shadow-inner border border-border/50 bg-muted/20 transition-all cursor-pointer text-xs"
+            className="flex-1 py-2.5 rounded-2xl bg-card text-muted-foreground hover:text-foreground font-medium shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-all cursor-pointer text-xs"
           >
             {language === 'vi' ? 'Đóng' : 'Close'}
           </Button>
           <Button variant="outline"
             type="button"
             onClick={handlePrint}
-            className="flex-[2] py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-medium flex items-center justify-center gap-2 shadow-[var(--neu-shadow-button)] transition-all cursor-pointer text-xs"
+            className="flex-[2] py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-medium flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer text-xs"
           >
             <Printer className="w-4 h-4" />
             <span>{language === 'vi' ? `In ${printQty} Tem Ngay` : `Print ${printQty} Labels`}</span>

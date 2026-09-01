@@ -16,7 +16,7 @@ export const MainLayout: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-[var(--neu-bg-base)] text-[var(--neu-text-sub)] flex font-sans transition-colors duration-300 antialiased selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-card text-muted-foreground flex font-sans transition-colors duration-300 antialiased selection:bg-emerald-500/30">
       {/* Sidebar Navigation */}
       <Sidebar 
         collapsed={collapsed} 

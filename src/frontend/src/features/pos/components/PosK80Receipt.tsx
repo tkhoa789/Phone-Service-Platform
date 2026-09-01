@@ -1,5 +1,6 @@
 import React from 'react';
 import { Printer, X, CheckCircle2 } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
 import { useSystemStore } from '../../../stores/systemStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { useBranchStore } from '../../../stores/branchStore';
@@ -54,9 +55,9 @@ export const PosK80Receipt: React.FC<PosK80ReceiptProps> = ({
             <CheckCircle2 className="w-5 h-5 text-emerald-400" />
             <h3 className="font-heading font-bold text-sm text-white">Thanh Toán Hoàn Tất</h3>
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-white h-8 w-8">
+              <X className="w-5 h-5" />
+            </Button>
         </div>
 
         {/* K80 Thermal Receipt Container */}
@@ -142,18 +143,19 @@ export const PosK80Receipt: React.FC<PosK80ReceiptProps> = ({
 
         {/* Action Buttons */}
         <div className="flex gap-3 no-print">
-          <button
-            onClick={handlePrint}
-            className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all"
-          >
-            <Printer className="w-4 h-4" /> In Hóa Đơn (K80)
-          </button>
-          <button
-            onClick={onClose}
-            className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all"
-          >
-            Hoàn tất
-          </button>
+          <Button
+              onClick={handlePrint}
+              className="flex-1 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+            >
+              <Printer className="w-4 h-4" /> In Hóa Đơn (K80)
+            </Button>
+          <Button
+              variant="secondary"
+              onClick={onClose}
+              className="px-5 py-3 rounded-2xl font-semibold text-xs transition-all"
+            >
+              Hoàn tất
+            </Button>
         </div>
       </div>
     </div>

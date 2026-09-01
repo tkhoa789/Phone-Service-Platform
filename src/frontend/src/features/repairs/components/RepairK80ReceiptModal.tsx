@@ -4,8 +4,24 @@ import { useThemeStore } from '@/stores/themeStore';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 
+export interface RepairReceiptTicketViewModel {
+  ticketCode?: string;
+  code?: string;
+  totalAmount?: number;
+  totalCost?: number;
+  laborCost?: number;
+  createdAt?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deviceModel?: string;
+  productName?: string;
+  imei?: string;
+  serialImei?: string;
+  problemDescription?: string;
+}
+
 interface RepairK80ReceiptModalProps {
-  ticket: any;
+  ticket: RepairReceiptTicketViewModel;
   onClose: () => void;
 }
 

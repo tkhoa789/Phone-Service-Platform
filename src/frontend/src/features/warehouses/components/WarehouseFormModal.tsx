@@ -52,7 +52,7 @@ export const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ warehous
     }
   }, [warehouse, reset]);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: import("../schemas/warehouse.schema").CreateWarehouseFormValues) => {
     try {
       if (isEditing) {
         await updateMutation.mutateAsync({
@@ -90,15 +90,15 @@ export const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ warehous
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-3xl shadow-[var(--neu-shadow-outer)] overflow-hidden flex flex-col">
+      <div className="w-full max-w-lg bg-card border border-border/50 rounded-3xl shadow-md overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-400/20 bg-[var(--neu-bg-base)]">
+        <div className="flex items-center justify-between p-6 border-b border-slate-400/20 bg-card">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-indigo-500 border border-indigo-500/30">
+            <div className="w-10 h-10 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-indigo-500 border border-indigo-500/30">
               <Warehouse className="w-5 h-5" />
             </div>
-            <h2 className="text-lg font-heading font-bold text-[var(--neu-text-title)]">
+            <h2 className="text-lg font-heading font-bold text-foreground">
               {isEditing 
                 ? (language === 'vi' ? 'Sửa Thông Tin Kho' : 'Edit Warehouse')
                 : (language === 'vi' ? 'Thêm Kho Mới' : 'Add New Warehouse')}
@@ -107,7 +107,7 @@ export const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ warehous
           <Button variant="outline"
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-slate-500/10 transition-colors cursor-pointer"
-          >
+           disabled={isSubmitting}>
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -118,12 +118,12 @@ export const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ warehous
             {!isEditing && (
               <>
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-[var(--neu-text-sub)]">
+                  <label className="block text-xs font-bold text-muted-foreground">
                     {language === 'vi' ? 'Chi Nhánh Quản Lý *' : 'Branch *'}
                   </label>
                   <select
                     {...control.register('branchId')}
-                    className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-4 py-3 text-xs text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+                    className="w-full bg-card border border-slate-300/40 rounded-2xl px-4 py-3 text-xs text-foreground shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
                     disabled={isLoadingBranches}
                   >
                     <option value="">{language === 'vi' ? '-- Chọn chi nhánh --' : '-- Select branch --'}</option>
@@ -173,12 +173,12 @@ export const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ warehous
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-400/20 bg-[var(--neu-bg-base)] flex justify-end gap-3">
+        <div className="p-6 border-t border-slate-400/20 bg-card flex justify-end gap-3">
           <Button variant="outline"
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-5 py-2.5 rounded-2xl font-medium text-xs text-[var(--neu-text-title)] bg-[var(--neu-bg-base)] border border-slate-400/30 shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 rounded-2xl font-medium text-xs text-foreground bg-card border border-slate-400/30 shadow-sm hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             {tCommon.cancel}
           </Button>
@@ -187,7 +187,7 @@ export const WarehouseFormModal: React.FC<WarehouseFormModalProps> = ({ warehous
             type="submit"
             form="warehouse-form"
             disabled={isSubmitting}
-            className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white font-medium text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-70"
+            className="px-6 py-2.5 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-70"
           >
             <CheckCircle2 className="w-4 h-4" />
             {isSubmitting 

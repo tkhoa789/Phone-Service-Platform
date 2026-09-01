@@ -48,10 +48,10 @@ export const AIFloatingButton: React.FC = () => {
       {!isOpen && (
         <Button variant="outline"
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-[var(--neu-bg-base)] border border-[var(--neu-border)] text-emerald-600 flex items-center justify-center shadow-[var(--neu-shadow-button)] active:shadow-inner border border-border/50 bg-muted/20 hover:scale-105 transition-all duration-300 group relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          className="w-14 h-14 rounded-full bg-card border border-border/50 text-emerald-600 flex items-center justify-center shadow-sm active:shadow-inner border border-border/50 bg-muted/20 hover:scale-105 transition-all duration-300 group relative focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           title="Hỏi nhanh Trợ Lý AI"
         >
-          <Bot className="w-7 h-7 text-[var(--neu-accent-mint)] group-hover:rotate-12 transition-transform" />
+          <Bot className="w-7 h-7 text-primary group-hover:rotate-12 transition-transform" />
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border border-white">
             <Sparkles className="w-2.5 h-2.5 text-white" />
           </span>
@@ -62,16 +62,16 @@ export const AIFloatingButton: React.FC = () => {
       {isOpen && (
         <Card className="w-[380px] h-[550px] max-w-[90vw] max-h-[80vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
           {/* Drawer Header */}
-          <div className="p-4 border-b border-[var(--neu-border)] flex items-center justify-between shadow-inner border border-border/50 bg-muted/20">
+          <div className="p-4 border-b border-border/50 flex items-center justify-between shadow-inner border border-border/50 bg-muted/20">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-button)] flex items-center justify-center text-[var(--neu-accent-mint)]">
+              <div className="w-10 h-10 rounded-xl bg-card border border-border/50 shadow-sm flex items-center justify-center text-primary">
                 <Bot className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-heading font-medium text-sm text-[var(--neu-text-title)] flex items-center gap-1.5">
-                  Trợ Lý AI RAG <Sparkles className="w-3 h-3 text-[var(--neu-accent-mint)] animate-pulse" />
+                <h3 className="font-heading font-medium text-sm text-foreground flex items-center gap-1.5">
+                  Trợ Lý AI RAG <Sparkles className="w-3 h-3 text-primary animate-pulse" />
                 </h3>
-                <span className="text-[10px] text-[var(--neu-text-sub)]">Ollama Qwen 2.5:7b</span>
+                <span className="text-[10px] text-muted-foreground">Ollama Qwen 2.5:7b</span>
               </div>
             </div>
 
@@ -87,8 +87,8 @@ export const AIFloatingButton: React.FC = () => {
                 <div
                   className={`max-w-[85%] px-4 py-2.5 rounded-2xl whitespace-pre-wrap ${
                     m.sender === 'user'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-sm shadow-[var(--neu-shadow-button)]'
-                      : 'bg-[var(--neu-bg-base)] border border-[var(--neu-border)] text-[var(--neu-text-title)] rounded-tl-sm shadow-inner border border-border/50 bg-muted/20'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-sm shadow-sm'
+                      : 'bg-card border border-border/50 text-foreground rounded-tl-sm shadow-inner border border-border/50 bg-muted/20'
                   }`}
                 >
                   {m.text}
@@ -96,14 +96,14 @@ export const AIFloatingButton: React.FC = () => {
               </div>
             ))}
             {loading && (
-              <div className="text-[11px] text-[var(--neu-accent-mint)] font-medium animate-pulse flex items-center gap-1.5 p-2">
+              <div className="text-[11px] text-primary font-medium animate-pulse flex items-center gap-1.5 p-2">
                 <Bot className="w-3.5 h-3.5" /> AI đang suy nghĩ...
               </div>
             )}
           </div>
 
           {/* Drawer Input */}
-          <div className="p-3 border-t border-[var(--neu-border)] bg-[var(--neu-bg-base)] flex items-center gap-2">
+          <div className="p-3 border-t border-border/50 bg-card flex items-center gap-2">
             <Input
               type="text"
               value={input}

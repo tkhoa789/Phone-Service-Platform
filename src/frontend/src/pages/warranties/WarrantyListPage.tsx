@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { serviceService } from '../../services/serviceService';
 import { useThemeStore } from '../../stores/themeStore';

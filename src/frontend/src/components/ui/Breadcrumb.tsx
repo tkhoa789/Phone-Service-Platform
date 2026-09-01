@@ -19,7 +19,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ className }) => {
           <li>
             <NavLink
               to="/dashboard"
-              className="text-[var(--neu-text-sub)] hover:text-[var(--neu-accent-mint)] transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-md"
+              className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-md"
             >
               <Home className="w-4 h-4" />
               <span className="font-medium">Dashboard</span>
@@ -32,11 +32,11 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ className }) => {
 
   return (
     <nav aria-label="Breadcrumb" className={cn('flex items-center text-sm mb-6', className)}>
-      <ol className="flex items-center gap-2 text-[var(--neu-text-sub)] overflow-x-auto whitespace-nowrap scrollbar-hide py-1">
+      <ol className="flex items-center gap-2 text-muted-foreground overflow-x-auto whitespace-nowrap scrollbar-hide py-1">
         <li>
           <NavLink
             to="/dashboard"
-            className="hover:text-[var(--neu-accent-mint)] transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-md"
+            className="hover:text-primary transition-colors flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-md"
           >
             <Home className="w-4 h-4" />
           </NavLink>
@@ -55,13 +55,13 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ className }) => {
               </li>
               <li>
                 {isLast ? (
-                  <span className="text-[var(--neu-text-title)] font-semibold px-1" aria-current="page">
+                  <span className="text-foreground font-semibold px-1" aria-current="page">
                     {label}
                   </span>
                 ) : (
                   <NavLink
                     to={to}
-                    className="hover:text-[var(--neu-accent-mint)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-md px-1"
+                    className="hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 rounded-md px-1"
                   >
                     {label}
                   </NavLink>

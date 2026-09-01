@@ -15,7 +15,7 @@ const icons = {
 };
 
 const variants = {
-  default: 'bg-[var(--neu-bg-base)] text-[var(--neu-text-sub)] border-slate-300/30',
+  default: 'bg-card text-muted-foreground border-slate-300/30',
   success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
   warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
   error: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
@@ -30,7 +30,7 @@ export const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
         ref={ref}
         role="alert"
         className={cn(
-          'relative w-full rounded-2xl border p-4 flex gap-3 shadow-[var(--neu-shadow-inset)]',
+          'relative w-full rounded-2xl border p-4 flex gap-3 shadow-inner',
           variants[variant],
           className
         )}

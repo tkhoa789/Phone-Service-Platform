@@ -11,6 +11,7 @@ import {
   usePosCustomers,
 } from '../hooks/usePosCatalog';
 import { usePosCheckout } from '../hooks/usePosCheckout';
+import { usePosStock } from '../hooks/usePosStock';
 import { useValidateVoucher } from '../hooks/usePosCatalog'; // actually I'll manually call validate to avoid unneeded renders
 
 // UI Components
@@ -37,8 +38,22 @@ import toast from 'react-hot-toast';
 import { voucherService } from '../../../services/voucherService';
 
 // Types
-import type { VoucherDto } from '../../../types/api.types';
+import type { VoucherDto, ProductVariantDto } from '../../../types/api.types';
 import { Input } from '@/components/ui/Input';
+
+
+interface PosReceiptViewModel {
+  orderId: string;
+  customerName: string;
+  customerPhone?: string;
+  items: CartItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  paymentMethod: 'CASH' | 'BANK_TRANSFER';
+  cashGiven?: number;
+  changeGiven?: number;
+}
 
 interface CartItem {
   variantId: string;
@@ -51,6 +66,7 @@ interface CartItem {
 }
 
 export const PosPage: React.FC = () => {
+  const { user } = useAuthStore();
   const { language } = useThemeStore();
   const tPos = i18nDictionary[language].pos;
 
@@ -59,6 +75,7 @@ export const PosPage: React.FC = () => {
   // Data Fetching
   const { data: products = [], isLoading: loadingProducts } = usePosProducts();
   const { data: variants = [] } = usePosVariants();
+  const { data: stockMap = {} } = usePosStock(user?.branchId);
   const { data: categories = [] } = usePosCategories();
   const { data: customers = [] } = usePosCustomers();
   
@@ -80,7 +97,7 @@ export const PosPage: React.FC = () => {
   // Modals & Transaction State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showK80Receipt, setShowK80Receipt] = useState(false);
-  const [lastOrderDetails, setLastOrderDetails] = useState<any>(null);
+  const [lastOrderDetails, setLastOrderDetails] = useState<PosReceiptViewModel | null>(null);
 
   // CRITICAL INVARIANT: Idempotency Key
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
@@ -114,7 +131,12 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  const addToCart = (variant: any, productName: string) => {
+  const addToCart = (variant: ProductVariantDto, productName: string) => {
+    const stock = stockMap[variant.id] || 0;
+    if (stock <= 0) {
+      toast.error('Sản phẩm đã hết hàng!');
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.variantId === variant.id);
       if (existing) {
@@ -129,7 +151,7 @@ export const PosPage: React.FC = () => {
         productName,
         variantName: variant.name,
         sku: variant.sku,
-        unitPrice: variant.price,
+        unitPrice: variant.salePrice,
         quantity: 1,
       }];
     });
@@ -320,13 +342,13 @@ export const PosPage: React.FC = () => {
                           <Package className="w-12 h-12 text-muted-foreground/30" />
                         )}
                         <span className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm px-2 py-0.5 rounded-md text-[10px] font-bold border shadow-sm">
-                          {(displayVariant as any).stockQuantity > 0 ? `SL: ${(displayVariant as any).stockQuantity}` : 'Hết hàng'}
+                          { (stockMap[displayVariant.id] || 0) > 0 ? `SL: ${stockMap[displayVariant.id] || 0}` : 'Hết hàng' }
                         </span>
                       </div>
                       <div className="p-3 flex-1 flex flex-col justify-between">
                         <h3 className="font-medium text-sm line-clamp-2 leading-tight">{p.name}</h3>
                         <div className="mt-2 text-emerald-600 font-bold text-sm">
-                          {displayVariant.price.toLocaleString('vi-VN')} đ
+                          {displayVariant.salePrice.toLocaleString('vi-VN')} đ
                         </div>
                       </div>
                     </div>

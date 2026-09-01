@@ -1,12 +1,14 @@
 import { axiosClient } from '../utils/axiosClient';
-import type { ApiResponse, CustomerDto, CreateCustomerCommand } from '../types/api.types';
+import type { ApiResponse,
+  PagedResult, CustomerDto, CreateCustomerCommand } from '../types/api.types';
 
 export const customerService = {
   getAll: async (search?: string): Promise<CustomerDto[]> => {
-    const response = await axiosClient.get<ApiResponse<CustomerDto[]>>('/Customer', {
+    const response = await axiosClient.get<ApiResponse<PagedResult<CustomerDto> | CustomerDto[]>>('/Customer', {
       params: { search },
     });
-    return response.data.data;
+    const data = response.data.data;
+    return 'items' in data ? data.items : data;
   },
 
   getById: async (id: string): Promise<CustomerDto> => {

@@ -12,6 +12,7 @@ import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
+import type { InventoryDto } from '../../../types/api.types';
 
 
 export const InventoryPage: React.FC = () => {
@@ -28,7 +29,7 @@ export const InventoryPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
-  const [selectedAuditItem, setSelectedAuditItem] = useState<any>(null);
+  const [selectedAuditItem, setSelectedAuditItem] = useState<InventoryDto | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showTrackerModal, setShowTrackerModal] = useState(false);
 
@@ -52,25 +53,25 @@ export const InventoryPage: React.FC = () => {
   const columns = [
     {
       header: tInv.colVariantName,
-      accessor: (inv: any) => <span className="font-medium">{inv.variantName}</span>
+      accessor: (inv: InventoryDto) => <span className="font-medium">{inv.variantName}</span>
     },
     {
       header: tInv.colSku,
-      accessor: (inv: any) => <span className="font-mono font-bold text-primary">{inv.sku}</span>
+      accessor: (inv: InventoryDto) => <span className="font-mono font-bold text-primary">{inv.sku}</span>
     },
     {
       header: tInv.colAvailableStock,
-      accessor: (inv: any) => <span className="font-bold text-primary">{inv.quantity}</span>,
+      accessor: (inv: InventoryDto) => <span className="font-bold text-primary">{inv.quantity}</span>,
       className: 'text-center'
     },
     {
       header: tInv.colMinStock,
-      accessor: (inv: any) => <span className="font-mono text-slate-500">{inv.minimumStock || 5}</span>,
+      accessor: (inv: InventoryDto) => <span className="font-mono text-slate-500">{inv.minimumStock || 5}</span>,
       className: 'text-center'
     },
     {
       header: tInv.colStockStatus,
-      accessor: (inv: any) => inv.isLowStock ? (
+      accessor: (inv: InventoryDto) => inv.isLowStock ? (
         <Badge variant="warning"><AlertTriangle className="w-3.5 h-3.5 mr-1" /> {tInv.statusLowStock}</Badge>
       ) : (
         <Badge variant="success"><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {tInv.statusSafe}</Badge>
@@ -79,7 +80,7 @@ export const InventoryPage: React.FC = () => {
     },
     {
       header: language === 'vi' ? 'Thao Tác' : 'Actions',
-      accessor: (inv: any) => (
+      accessor: (inv: InventoryDto) => (
         <div className="flex justify-end">
           <Button
             size="sm"
@@ -173,7 +174,7 @@ export const InventoryPage: React.FC = () => {
               ) : paginatedInventories.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center text-slate-400">{tInv.emptyInventory || 'Trống'}</td></tr>
               ) : (
-                paginatedInventories.map((inv: any) => (
+                paginatedInventories.map((inv: InventoryDto) => (
                   <tr key={inv.sku} className="hover:bg-slate-50">
                     <td className="p-3 font-medium">{inv.variantName}</td>
                     <td className="p-3 font-mono font-bold text-primary">{inv.sku}</td>

@@ -23,12 +23,19 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
   onSuccess,
 }) => {
   const { language } = useThemeStore();
-  const [variants, setVariants] = useState<ProductVariantDto[]>([]);
+  
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(0);
   
   const addPartMutation = useAddRepairPart();
+
+  const { data: variantsData, isLoading } = useQuery({
+    queryKey: ['repair-variants-all'],
+    queryFn: () => productService.getAllVariants()
+  });
+
+  const variants = variantsData || [];
 
   
 
@@ -36,7 +43,7 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
     setSelectedVariantId(id);
     const selected = variants.find(v => v.id === id);
     if (selected) {
-      setUnitPrice(selected.salePrice || selected.price || 0);
+      setUnitPrice(selected.salePrice || 0);
     }
   };
 
@@ -68,6 +75,12 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
           
         
 
+        {isLoading ? (
+        <div className="py-8 flex flex-col items-center justify-center text-slate-500">
+          <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-primary animate-spin mb-4" />
+          <p>{language === 'vi' ? 'Đang tải danh sách linh kiện...' : 'Loading parts list...'}</p>
+        </div>
+      ) : (
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -126,7 +139,7 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
             </Button>
           </div>
         </form>
-      
+      )}
     </Dialog>
   );
 };

@@ -55,7 +55,7 @@ const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRol
         <div className="absolute -top-12 -left-12 w-40 h-40 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
 
         {/* 3D Shield Lock Icon */}
-        <div className="w-20 h-20 rounded-3xl bg-[var(--neu-bg-base)] border border-rose-500/40 shadow-[var(--neu-shadow-inset)] flex items-center justify-center mx-auto text-rose-500">
+        <div className="w-20 h-20 rounded-3xl bg-card border border-rose-500/40 shadow-inner flex items-center justify-center mx-auto text-rose-500">
           <ShieldAlert className="w-10 h-10 animate-bounce" />
         </div>
 
@@ -63,10 +63,10 @@ const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRol
           <span className="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-500 text-[11px] font-mono font-bold uppercase tracking-wider">
             HTTP 403 Forbidden — Access Denied
           </span>
-          <h1 className="font-heading font-medium text-2xl text-[var(--neu-text-title)] tracking-tight">
+          <h1 className="font-heading font-medium text-2xl text-foreground tracking-tight">
             {language === 'vi' ? 'Quyền Truy Cập Bị Hạn Chế' : 'Access Restricted'}
           </h1>
-          <p className="text-xs text-[var(--neu-text-sub)] max-w-md mx-auto leading-relaxed">
+          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
             {language === 'vi'
               ? 'Tài khoản của bạn không có đủ thẩm quyền nghiệp vụ để truy cập vào phân vùng này. Vui lòng liên hệ Chủ sở hữu (Owner) hoặc Admin IT!'
               : 'Your user account lacks the required role permissions to access this module. Please contact the Owner or System Administrator!'}
@@ -74,15 +74,15 @@ const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRol
         </div>
 
         {/* Current User Role Info */}
-        <div className="p-4 rounded-2xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-inset)] text-xs text-left space-y-3 font-mono">
+        <div className="p-4 rounded-2xl bg-card border border-border/50 shadow-inner text-xs text-left space-y-3 font-mono">
           <div className="flex items-center justify-between">
-            <span className="text-[var(--neu-text-sub)]">{language === 'vi' ? 'Vai trò tài khoản hiện tại:' : 'Your Current Role:'}</span>
+            <span className="text-muted-foreground">{language === 'vi' ? 'Vai trò tài khoản hiện tại:' : 'Your Current Role:'}</span>
             <Badge variant="warning">{userRoles?.join(', ') || 'Standard Member'}</Badge>
           </div>
 
           {allowedRoles && (
-            <div className="flex items-center justify-between pt-3 border-t border-[var(--neu-border)]">
-              <span className="text-[var(--neu-text-sub)]">{language === 'vi' ? 'Yêu cầu tối thiểu:' : 'Required Roles:'}</span>
+            <div className="flex items-center justify-between pt-3 border-t border-border/50">
+              <span className="text-muted-foreground">{language === 'vi' ? 'Yêu cầu tối thiểu:' : 'Required Roles:'}</span>
               <Badge variant="success">{allowedRoles.join(' / ')}</Badge>
             </div>
           )}

@@ -102,9 +102,9 @@ export const CustomerListPage: React.FC = () => {
       <PageHeader
         title={tCust.customersTitle}
         description={tCust.customersSubtitle}
-        icon={<Users className="w-6 h-6 text-blue-500" />}
+        icon={<Users className="w-6 h-6 text-primary" />}
         actions={
-          <Button onClick={handleCreate} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2" variant="danger">
             <Plus className="w-4 h-4" />
             {language === 'vi' ? 'Thêm Khách Hàng' : 'Add Customer'}
           </Button>

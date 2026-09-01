@@ -65,14 +65,14 @@ export const TransferTrackerModal: React.FC<TransferTrackerModalProps> = ({
             
             placeholder={language === 'vi' ? 'Tìm theo mã phiếu, kho xuất, kho nhập...' : 'Search transfer tickets...'}
             value={searchTerm}
-            onChange={(e: any) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1"
           />
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-slate-400 shrink-0" />
             <select
               value={filterStatus}
-              onChange={(e: any) => setFilterStatus(e.target.value as any)}
+              onChange={(e) => setFilterStatus(e.target.value as 'ALL' | 'SHIPPING' | 'COMPLETED')}
               className="bg-white border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-auto"
             >
               <option value="ALL">🌐 {language === 'vi' ? 'Tất cả trạng thái' : 'All Statuses'}</option>

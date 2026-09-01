@@ -131,13 +131,13 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({ branch, onClos
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isPending}
+             
             >
               {tCommon.cancel}
             </Button>
             <Button
               type="submit"
-              disabled={isPending}
+             
             >
               {isPending ? tCommon.loading : tCommon.save}
             </Button>

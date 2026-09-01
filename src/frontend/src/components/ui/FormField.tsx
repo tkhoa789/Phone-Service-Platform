@@ -31,7 +31,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <div className={cn('flex flex-col gap-1.5 w-full', className)}>
       {label && (
-        <label htmlFor={id} className="text-sm font-medium text-[var(--neu-text-title)]">
+        <label htmlFor={id} className="text-sm font-medium text-foreground">
           {label}
         </label>
       )}

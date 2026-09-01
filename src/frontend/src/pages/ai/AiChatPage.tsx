@@ -98,46 +98,46 @@ export const AiChatPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 font-sans text-[var(--neu-text-sub)]">
+    <div className="space-y-6 font-sans text-muted-foreground">
       {/* Action Header Banner */}
-      <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)] border border-emerald-500/30">
+          <div className="w-12 h-12 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-primary border border-emerald-500/30">
             <Bot className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-heading font-medium text-2xl text-[var(--neu-text-title)] tracking-tight flex items-center gap-2">
-              {tAi.aiChatTitle} <Sparkles className="w-4 h-4 text-[var(--neu-accent-mint)] animate-pulse" />
+            <h1 className="font-heading font-medium text-2xl text-foreground tracking-tight flex items-center gap-2">
+              {tAi.aiChatTitle} <Sparkles className="w-4 h-4 text-primary animate-pulse" />
             </h1>
-            <p className="text-xs text-[var(--neu-text-sub)] mt-0.5 font-normal">{tAi.aiChatSubtitle}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 font-normal">{tAi.aiChatSubtitle}</p>
           </div>
         </div>
 
         <Button variant="outline"
           onClick={() => setShowIngestModal(true)}
-          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-medium text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+          className="px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 cursor-pointer shrink-0"
         >
           <Database className="w-4 h-4" /> {tAi.btnIngestKnowledge}
         </Button>
       </div>
 
       {/* Main Chat Frame */}
-      <div className="rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] overflow-hidden flex flex-col h-[640px]">
+      <div className="rounded-3xl bg-card border border-border/50 shadow-md overflow-hidden flex flex-col h-[640px]">
         {/* Messages Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs bg-[var(--neu-bg-base)]">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs bg-card">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
                 className={`max-w-[80%] p-4 rounded-3xl space-y-2 whitespace-pre-wrap ${
                   m.sender === 'user'
-                    ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-tr-none font-medium shadow-[var(--neu-shadow-button)]'
-                    : 'bg-[var(--neu-bg-base)] border border-slate-400/20 text-[var(--neu-text-title)] rounded-tl-none shadow-[var(--neu-shadow-outer)]'
+                    ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-tr-none font-medium shadow-sm'
+                    : 'bg-card border border-slate-400/20 text-foreground rounded-tl-none shadow-md'
                 }`}
               >
                 <div className="leading-relaxed text-sm">
                   {m.text ? m.text : (
                     m.sender === 'ai' && idx === messages.length - 1 ? (
-                      <div className="flex items-center gap-1.5 h-5 text-[var(--neu-accent-mint)] opacity-80">
+                      <div className="flex items-center gap-1.5 h-5 text-primary opacity-80">
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -146,12 +146,12 @@ export const AiChatPage: React.FC = () => {
                   )}
                 </div>
                 {m.docs && m.docs.length > 0 && (
-                  <div className="pt-2 border-t border-slate-400/20 text-[11px] text-[var(--neu-accent-mint)] space-y-1">
+                  <div className="pt-2 border-t border-slate-400/20 text-[11px] text-primary space-y-1">
                     <p className="font-bold flex items-center gap-1">
                       <FileText className="w-3.5 h-3.5" /> {tAi.refDocsLabel}
                     </p>
                     {m.docs.map((d, dIdx) => (
-                      <span key={dIdx} className="inline-block bg-[var(--neu-bg-base)] px-2.5 py-1 rounded-xl border border-emerald-500/30 text-[var(--neu-accent-mint)] font-mono text-[10px] mr-1 font-bold shadow-inner border border-border/50 bg-muted/20">
+                      <span key={dIdx} className="inline-block bg-card px-2.5 py-1 rounded-xl border border-emerald-500/30 text-primary font-mono text-[10px] mr-1 font-bold shadow-inner border border-border/50 bg-muted/20">
                         {d}
                       </span>
                     ))}
@@ -163,9 +163,9 @@ export const AiChatPage: React.FC = () => {
         </div>
 
         {/* Quick Suggest Prompts Bar */}
-        <div className="px-6 py-3 bg-[var(--neu-bg-base)] border-t border-slate-400/20 flex items-center gap-2 overflow-x-auto text-xs shadow-inner border border-border/50 bg-muted/20">
-          <span className="text-[var(--neu-text-title)] font-medium shrink-0 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-[var(--neu-accent-mint)]" /> {tAi.promptSuggestionsLabel}
+        <div className="px-6 py-3 bg-card border-t border-slate-400/20 flex items-center gap-2 overflow-x-auto text-xs shadow-inner border border-border/50 bg-muted/20">
+          <span className="text-foreground font-medium shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3.5 h-3.5 text-primary" /> {tAi.promptSuggestionsLabel}
           </span>
           {[
             tAi.prompt1,
@@ -175,7 +175,7 @@ export const AiChatPage: React.FC = () => {
             <Button variant="outline"
               key={pIdx}
               onClick={() => handleSend(prompt)}
-              className="px-3.5 py-1.5 rounded-xl bg-[var(--neu-bg-base)] hover:text-[var(--neu-accent-mint)] text-[var(--neu-text-title)] font-medium border border-slate-400/20 shrink-0 transition-all shadow-[var(--neu-shadow-button)] active:shadow-inner border border-border/50 bg-muted/20 text-xs cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-card hover:text-primary text-foreground font-medium border border-slate-400/20 shrink-0 transition-all shadow-sm active:shadow-inner border border-border/50 bg-muted/20 text-xs cursor-pointer"
             >
               {prompt}
             </Button>
@@ -183,19 +183,19 @@ export const AiChatPage: React.FC = () => {
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 bg-[var(--neu-bg-base)] border-t border-slate-400/20 flex items-center gap-3">
+        <div className="p-4 bg-card border-t border-slate-400/20 flex items-center gap-3">
           <Input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder={tAi.inputPlaceholder}
-            className="flex-1 bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-4 py-3 text-xs text-[var(--neu-text-title)] font-normal placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-inner border border-border/50 bg-muted/20"
+            className="flex-1 bg-card border border-slate-300/40 rounded-2xl px-4 py-3 text-xs text-foreground font-normal placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-inner border border-border/50 bg-muted/20"
           />
           <Button variant="outline"
             onClick={() => handleSend()}
             disabled={loading || !input.trim()}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-40 text-white font-medium text-xs shadow-[var(--neu-shadow-button)] flex items-center gap-2 transition-all cursor-pointer shrink-0"
+            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-40 text-white font-medium text-xs shadow-sm flex items-center gap-2 transition-all cursor-pointer shrink-0"
           >
             <Send className="w-4 h-4" /> {tAi.btnSend}
           </Button>
@@ -205,35 +205,35 @@ export const AiChatPage: React.FC = () => {
       {/* Ingest Document Modal */}
       {showIngestModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[var(--neu-bg-base)] rounded-3xl p-6 border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] space-y-5 text-[var(--neu-text-title)] animate-in fade-in zoom-in-95">
+          <div className="w-full max-w-lg bg-card rounded-3xl p-6 border border-border/50 shadow-md space-y-5 text-foreground animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-400/20 pb-3">
-              <h3 className="font-heading font-medium text-base text-[var(--neu-text-title)] flex items-center gap-2">
-                <Database className="w-5 h-5 text-[var(--neu-accent-mint)]" /> {tAi.modalTitle}
+              <h3 className="font-heading font-medium text-base text-foreground flex items-center gap-2">
+                <Database className="w-5 h-5 text-primary" /> {tAi.modalTitle}
               </h3>
-              <Button variant="outline" onClick={() => setShowIngestModal(false)} className="p-1.5 rounded-xl bg-[var(--neu-bg-base)] text-slate-400 hover:text-[var(--neu-text-title)] shadow-[var(--neu-shadow-button)] transition-all cursor-pointer">
+              <Button variant="outline" onClick={() => setShowIngestModal(false)} className="p-1.5 rounded-xl bg-card text-slate-400 hover:text-foreground shadow-sm transition-all cursor-pointer">
                 <X className="w-5 h-5" />
               </Button>
             </div>
 
             <form onSubmit={handleIngest} className="space-y-4 text-xs">
               <div>
-                <label className="text-[var(--neu-text-title)] font-medium block mb-1">{tAi.titleLabel}</label>
+                <label className="text-foreground font-medium block mb-1">{tAi.titleLabel}</label>
                 <Input
                   type="text"
                   value={docTitle}
                   onChange={(e) => setDocTitle(e.target.value)}
                   placeholder="Quy định đổi trả máy lỗi nguồn trong 30 ngày..."
-                  className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-medium placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-[var(--neu-text-title)] font-medium block mb-1">{tAi.categoryLabel}</label>
+                <label className="text-foreground font-medium block mb-1">{tAi.categoryLabel}</label>
                 <select
                   value={docCategory}
                   onChange={(e) => setDocCategory(e.target.value)}
-                  className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] font-medium shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
+                  className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground font-medium shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
                 >
                   <option value="Chính sách" className="bg-slate-900 text-white">{tAi.catPolicy}</option>
                   <option value="Bán hàng" className="bg-slate-900 text-white">{tAi.catSales}</option>
@@ -243,13 +243,13 @@ export const AiChatPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[var(--neu-text-title)] font-medium block mb-1">{tAi.contentLabel}</label>
+                <label className="text-foreground font-medium block mb-1">{tAi.contentLabel}</label>
                 <textarea
                   rows={5}
                   value={docContent}
                   onChange={(e) => setDocContent(e.target.value)}
                   placeholder="Nhập toàn bộ nội dung chính sách hoặc quy trình nghiệp vụ..."
-                  className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-[var(--neu-text-title)] placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  className="w-full bg-card border border-slate-300/40 rounded-2xl px-3.5 py-2.5 text-xs text-foreground placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                   required
                 />
               </div>
@@ -258,14 +258,14 @@ export const AiChatPage: React.FC = () => {
                 <Button variant="outline"
                   type="button"
                   onClick={() => setShowIngestModal(false)}
-                  className="flex-1 py-2.5 rounded-2xl bg-[var(--neu-bg-base)] text-[var(--neu-text-sub)] hover:text-[var(--neu-text-title)] font-medium shadow-[var(--neu-shadow-button)] active:shadow-inner border border-border/50 bg-muted/20 transition-all cursor-pointer"
+                  className="flex-1 py-2.5 rounded-2xl bg-card text-muted-foreground hover:text-foreground font-medium shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-all cursor-pointer"
                 >
                   {tCommon.cancel}
                 </Button>
                 <Button variant="outline"
                   type="submit"
                   disabled={ingesting}
-                  className="flex-[2] py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-medium flex items-center justify-center gap-2 shadow-[var(--neu-shadow-button)] transition-all cursor-pointer"
+                  className="flex-[2] py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-medium flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" /> {ingesting ? tAi.ingesting : tAi.btnIngest}
                 </Button>

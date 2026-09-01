@@ -49,14 +49,14 @@ export const AuditLogPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 font-sans" style={{ color: 'var(--neu-text-title)' }}>
+    <div className="space-y-5 font-sans text-foreground">
       {/* Top Bar */}
       <div
         className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl"
         style={{
-          background: 'var(--neu-bg-base)',
-          border: '1px solid var(--neu-border)',
-          boxShadow: 'var(--neu-shadow-outer)',
+          backgroundColor: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border) / 0.5)",
+          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
         }}
       >
         <div className="flex items-center gap-3">
@@ -73,11 +73,11 @@ export const AuditLogPage: React.FC = () => {
           <div>
             <h1
               className="font-heading text-lg"
-              style={{ color: 'var(--neu-text-title)', fontWeight: 500 }}
+              style={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
             >
               {t.auditTitle}
             </h1>
-            <p className="text-xs" style={{ color: 'var(--neu-text-sub)' }}>
+            <p className="text-xs text-muted-foreground">
               {t.auditSubtitle}
             </p>
           </div>
@@ -87,8 +87,7 @@ export const AuditLogPage: React.FC = () => {
       {/* Search Input */}
       <div className="relative">
         <Search
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4"
-          style={{ color: 'var(--neu-text-sub)' }}
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
         />
         <Input
           type="text"
@@ -97,10 +96,10 @@ export const AuditLogPage: React.FC = () => {
           placeholder={t.searchPlaceholder}
           className="w-full rounded-2xl pl-10 pr-4 py-3 text-xs focus:outline-none transition-all"
           style={{
-            background: 'var(--neu-bg-base)',
+            backgroundColor: "hsl(var(--card))",
             border: '1px solid rgba(148,163,184,0.35)',
-            boxShadow: 'var(--neu-shadow-inset)',
-            color: 'var(--neu-text-title)',
+            boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+            color: "hsl(var(--foreground))",
           }}
         />
       </div>
@@ -109,17 +108,17 @@ export const AuditLogPage: React.FC = () => {
       <div
         className="rounded-3xl overflow-hidden p-4 space-y-3"
         style={{
-          background: 'var(--neu-bg-base)',
-          border: '1px solid var(--neu-border)',
-          boxShadow: 'var(--neu-shadow-outer)',
+          backgroundColor: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border) / 0.5)",
+          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
         }}
       >
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead
               style={{
-                background: 'var(--neu-bg-base)',
-                color: 'var(--neu-text-title)',
+                backgroundColor: "hsl(var(--card))",
+                color: "hsl(var(--foreground))",
                 borderBottom: '1px solid rgba(148,163,184,0.18)',
               }}
             >
@@ -134,19 +133,19 @@ export const AuditLogPage: React.FC = () => {
             <tbody
               className="divide-y"
               style={{
-                color: 'var(--neu-text-title)',
+                color: "hsl(var(--foreground))",
                 borderColor: 'rgba(148,163,184,0.12)',
               }}
             >
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center" style={{ color: 'var(--neu-text-sub)' }}>
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     {t.loading}
                   </td>
                 </tr>
               ) : paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center" style={{ color: 'var(--neu-text-sub)' }}>
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     {t.emptyLogs}
                   </td>
                 </tr>
@@ -159,10 +158,10 @@ export const AuditLogPage: React.FC = () => {
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(148,163,184,0.06)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <td className="p-3.5 font-mono" style={{ color: 'var(--neu-text-sub)' }}>
+                    <td className="p-3.5 font-mono text-muted-foreground">
                       {new Date(log.createdDate || log.createdAt).toLocaleString('vi-VN')}
                     </td>
-                    <td className="p-3.5 font-medium flex items-center gap-1.5" style={{ color: 'var(--neu-text-title)' }}>
+                    <td className="p-3.5 font-medium flex items-center gap-1.5 text-foreground">
                       <Database className="w-3.5 h-3.5" style={{ color: '#818cf8' }} />
                       {log.entityName}
                     </td>
@@ -175,14 +174,14 @@ export const AuditLogPage: React.FC = () => {
                             ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                             : 'bg-red-500/20 text-red-300 border border-red-500/30'
                         }`}
-                        style={{ boxShadow: 'var(--neu-shadow-inset)' }}
+                        style={{ boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)" }}
                       >
                         {log.action}
                       </span>
                     </td>
-                    <td className="p-3.5 font-medium" style={{ color: 'var(--neu-text-title)' }}>
+                    <td className="p-3.5 font-medium text-foreground">
                       <span className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5" style={{ color: 'var(--neu-text-sub)' }} />
+                        <User className="w-3.5 h-3.5 text-muted-foreground" />
                         {log.performedBy || log.userFullName || t.systemAdmin}
                       </span>
                     </td>
@@ -191,10 +190,10 @@ export const AuditLogPage: React.FC = () => {
                         onClick={() => setSelectedLog(log)}
                         className="px-3 py-1.5 rounded-xl font-medium transition-all inline-flex items-center gap-1.5 hover:opacity-80"
                         style={{
-                          background: 'var(--neu-bg-base)',
-                          color: 'var(--neu-accent-mint)',
+                          backgroundColor: "hsl(var(--card))",
+                          color: "hsl(var(--primary))",
                           border: '1px solid rgba(16,185,129,0.28)',
-                          boxShadow: 'var(--neu-shadow-button)',
+                          boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
                         }}
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -223,39 +222,38 @@ export const AuditLogPage: React.FC = () => {
           <div
             className="w-full max-w-3xl rounded-3xl p-6 space-y-4 max-h-[85vh] overflow-y-auto"
             style={{
-              background: 'var(--neu-bg-base)',
-              border: '1px solid var(--neu-border)',
-              boxShadow: 'var(--neu-shadow-outer)',
-              color: 'var(--neu-text-title)',
+              backgroundColor: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border) / 0.5)",
+              boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+              color: "hsl(var(--foreground))",
             }}
           >
             <div
               className="flex items-center justify-between pb-3"
-              style={{ borderBottom: '1px solid var(--neu-border)' }}
+              style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}
             >
               <div>
                 <h3
                   className="font-heading text-base flex items-center gap-2"
-                  style={{ color: 'var(--neu-text-title)', fontWeight: 500 }}
+                  style={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
                 >
                   <Code className="w-5 h-5" style={{ color: '#818cf8' }} />
                   {t.diffModalTitle}
                 </h3>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--neu-text-sub)' }}>
+                <p className="text-xs mt-0.5 text-muted-foreground">
                   {t.diffEntity}{' '}
-                  <span className="font-medium" style={{ color: 'var(--neu-text-title)' }}>
+                  <span className="font-medium text-foreground">
                     {selectedLog.entityName}
                   </span>{' '}
                   | {t.diffAction}{' '}
-                  <span className="font-mono" style={{ color: 'var(--neu-accent-mint)' }}>
+                  <span className="font-mono text-primary">
                     {selectedLog.action}
                   </span>
                 </p>
               </div>
               <Button variant="outline"
                 onClick={() => setSelectedLog(null)}
-                className="p-1 transition-opacity hover:opacity-70"
-                style={{ color: 'var(--neu-text-sub)' }}
+                className="p-1 transition-opacity hover:opacity-70 text-muted-foreground"
               >
                 <X className="w-5 h-5" />
               </Button>
@@ -294,10 +292,10 @@ export const AuditLogPage: React.FC = () => {
                 onClick={() => setSelectedLog(null)}
                 className="px-5 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
                 style={{
-                  background: 'var(--neu-bg-base)',
-                  border: '1px solid var(--neu-border)',
-                  boxShadow: 'var(--neu-shadow-button)',
-                  color: 'var(--neu-text-title)',
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border) / 0.5)",
+                  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+                  color: "hsl(var(--foreground))",
                 }}
               >
                 {i18nDictionary[language].common.close}

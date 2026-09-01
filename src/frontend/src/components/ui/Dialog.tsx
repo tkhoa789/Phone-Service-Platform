@@ -108,7 +108,7 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, descr
         aria-labelledby={title ? 'dialog-title' : undefined}
         aria-describedby={description ? 'dialog-description' : undefined}
         className={cn(
-          'relative w-full max-w-lg bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 focus:outline-none',
+          'relative w-full max-w-lg bg-card border border-border/50 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 focus:outline-none',
           className
         )}
       >
@@ -125,12 +125,12 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, descr
         {(title || description) && (
           <div className="mb-6 pr-8">
             {title && (
-              <h2 id="dialog-title" className="text-xl font-heading font-bold text-[var(--neu-text-title)]">
+              <h2 id="dialog-title" className="text-xl font-heading font-bold text-foreground">
                 {title}
               </h2>
             )}
             {description && (
-              <p id="dialog-description" className="text-sm text-[var(--neu-text-sub)] mt-1">
+              <p id="dialog-description" className="text-sm text-muted-foreground mt-1">
                 {description}
               </p>
             )}

@@ -7,6 +7,7 @@ import { i18nDictionary } from '../../../locales/dictionary';
 import type { UserDto } from '../../../types/api.types';
 import { userSchema, type UserFormValues } from '../schemas/user.schema';
 import { useCreateUser, useUpdateUser } from '../hooks/useUsers';
+import type { CreateUserCommand, UpdateUserCommand } from '../../../services/userService';
 import { FormWrapper } from '../../../components/forms/FormWrapper';
 import { ControlledInput } from '../../../components/forms/ControlledInput';
 import { SearchableSelect } from '../../../components/common/SearchableSelect';
@@ -78,10 +79,10 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ initialUser, onClo
       };
 
       if (initialUser) {
-        await updateMutation.mutateAsync({ id: initialUser.id, command: command as any });
+        await updateMutation.mutateAsync({ id: initialUser.id, command: { ...command, id: initialUser.id } as UpdateUserCommand });
         toast.success(language === 'vi' ? 'Cập nhật nhân viên thành công!' : 'User updated!');
       } else {
-        await createMutation.mutateAsync(command as any);
+        await createMutation.mutateAsync(command as CreateUserCommand);
         toast.success(language === 'vi' ? 'Tạo nhân viên thành công!' : 'New user created!');
       }
       onSuccess?.();
@@ -208,13 +209,13 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ initialUser, onClo
               type="button"
               variant="outline"
               onClick={onClose}
-              disabled={isPending}
+             
             >
               {tCommon.cancel}
             </Button>
             <Button
               type="submit"
-              disabled={isPending}
+             
             >
               {isPending ? tCommon.loading : tCommon.save}
             </Button>

@@ -12,7 +12,7 @@ interface FormFieldProps {
 export const FormField: React.FC<FormFieldProps> = ({ label, error, children, required, className }) => {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label className="text-sm font-medium text-[var(--neu-text-title)]">
+      <label className="text-sm font-medium text-foreground">
         {label}
         {required && <span className="text-rose-500 ml-1">*</span>}
       </label>

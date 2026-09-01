@@ -92,7 +92,7 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
         <Input
           
           value={searchTerm}
-          onChange={(e: any) => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           placeholder={language === 'vi' ? 'Tìm kiếm tên sản phẩm, mã SKU...' : 'Search by name or SKU...'}
           className="shrink-0"
         />
@@ -135,7 +135,7 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
                   {state.selected && (
                     <div 
                       className="flex items-center gap-2 shrink-0 ml-7 sm:ml-0"
-                      onClick={(e: any) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <span className="text-xs text-slate-500">{language === 'vi' ? 'Số lượng:' : 'Qty:'}</span>
                       <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-md p-0.5">
@@ -151,7 +151,7 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
                           min={1}
                           max={item.quantity}
                           value={state.qty}
-                          onChange={(e: any) => updateQuantity(item.sku, Number(e.target.value), item.quantity)}
+                          onChange={(e) => updateQuantity(item.sku, Number(e.target.value), item.quantity)}
                           className="w-12 text-center text-sm font-mono font-medium focus:outline-none"
                         />
                         <Button variant="outline"

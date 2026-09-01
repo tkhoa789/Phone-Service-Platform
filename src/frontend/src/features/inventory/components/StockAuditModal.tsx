@@ -76,13 +76,13 @@ export const StockAuditModal: React.FC<StockAuditModalProps> = ({
           <Input
             type="number"
             value={actualQuantity}
-            onChange={(e: any) => setActualQuantity(e.target.value === '' ? '' : Number(e.target.value))}
+            onChange={(e) => setActualQuantity(e.target.value === '' ? '' : Number(e.target.value))}
             className="font-mono font-bold text-primary text-lg"
             required
             min={0}
           />
           {typeof actualQuantity === 'number' && diff !== 0 && (
-            <p className={`text-xs mt-2 font-medium ${diff > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+            <p className={`text-xs mt-2 font-medium ${diff > 0 ? 'text-emerald-600' : 'text-destructive'}`}>
               {language === 'vi' ? 'Độ lệch:' : 'Variance:'} {diff > 0 ? '+' : ''}{diff}
             </p>
           )}

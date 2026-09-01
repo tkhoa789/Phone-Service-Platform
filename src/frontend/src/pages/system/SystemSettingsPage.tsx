@@ -85,23 +85,23 @@ export const SystemSettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 font-sans max-w-5xl mx-auto pb-10" style={{ color: 'var(--neu-text-title)' }}>
+    <div className="space-y-6 font-sans max-w-5xl mx-auto pb-10 text-foreground">
       {/* Action Header Banner */}
       <div
         className="p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4"
         style={{
-          background: 'var(--neu-bg-base)',
-          border: '1px solid var(--neu-border)',
-          boxShadow: 'var(--neu-shadow-outer)',
+          backgroundColor: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border) / 0.5)",
+          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
         }}
       >
         <div className="flex items-center gap-4">
           <div
             className="w-12 h-12 rounded-2xl flex items-center justify-center"
             style={{
-              background: 'var(--neu-bg-base)',
-              boxShadow: 'var(--neu-shadow-inset)',
-              color: 'var(--neu-accent-mint)',
+              backgroundColor: "hsl(var(--card))",
+              boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+              color: "hsl(var(--primary))",
             }}
           >
             <Settings className="w-6 h-6" />
@@ -109,11 +109,11 @@ export const SystemSettingsPage: React.FC = () => {
           <div>
             <h1
               className="font-heading text-2xl tracking-tight"
-              style={{ color: 'var(--neu-text-title)', fontWeight: 500 }}
+              style={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
             >
               {t.settingsTitle}
             </h1>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--neu-text-sub)' }}>
+            <p className="text-xs mt-0.5 text-muted-foreground">
               {t.settingsSubtitle}
             </p>
           </div>
@@ -137,29 +137,29 @@ export const SystemSettingsPage: React.FC = () => {
         <div
           className="p-6 rounded-3xl space-y-5"
           style={{
-            background: 'var(--neu-bg-base)',
-            border: '1px solid var(--neu-border)',
-            boxShadow: 'var(--neu-shadow-outer)',
+            backgroundColor: "hsl(var(--card))",
+            border: "1px solid hsl(var(--border) / 0.5)",
+            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
           }}
         >
           <div
             className="pb-3 flex items-center justify-between"
-            style={{ borderBottom: '1px solid var(--neu-border)' }}
+            style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}
           >
             <h2
               className="font-heading text-base flex items-center gap-2"
-              style={{ color: 'var(--neu-text-title)', fontWeight: 500 }}
+              style={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
             >
-              <Building className="w-5 h-5" style={{ color: 'var(--neu-accent-mint)' }} />
+              <Building className="w-5 h-5 text-primary" />
               {t.section1Title}
             </h2>
             <span
               className="px-3 py-1 rounded-2xl text-[11px] font-medium"
               style={{
                 background: 'rgba(16,185,129,0.15)',
-                color: 'var(--neu-accent-mint)',
+                color: "hsl(var(--primary))",
                 border: '1px solid rgba(16,185,129,0.35)',
-                boxShadow: 'var(--neu-shadow-inset)',
+                boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
               }}
             >
               {t.section1Badge}
@@ -169,8 +169,7 @@ export const SystemSettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label
-                className="text-xs block mb-1.5 font-medium"
-                style={{ color: 'var(--neu-text-title)' }}
+                className="text-xs block mb-1.5 font-medium text-foreground"
               >
                 {t.systemNameLabel}
               </label>
@@ -181,22 +180,21 @@ export const SystemSettingsPage: React.FC = () => {
                 placeholder="Ví dụ: Di Động Việt, PSP Enterprise..."
                 className="w-full rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all"
                 style={{
-                  background: 'var(--neu-bg-base)',
+                  backgroundColor: "hsl(var(--card))",
                   border: '1px solid rgba(148,163,184,0.35)',
-                  boxShadow: 'var(--neu-shadow-inset)',
-                  color: 'var(--neu-text-title)',
+                  boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+                  color: "hsl(var(--foreground))",
                 }}
                 required
               />
-              <p className="text-[11px] mt-1" style={{ color: 'var(--neu-text-sub)' }}>
+              <p className="text-[11px] mt-1 text-muted-foreground">
                 {t.systemNameHint}
               </p>
             </div>
 
             <div>
               <label
-                className="text-xs block mb-1.5 font-medium"
-                style={{ color: 'var(--neu-text-title)' }}
+                className="text-xs block mb-1.5 font-medium text-foreground"
               >
                 {t.storePhoneLabel}
               </label>
@@ -207,10 +205,10 @@ export const SystemSettingsPage: React.FC = () => {
                 placeholder="0901 234 567"
                 className="w-full rounded-2xl px-4 py-2.5 text-xs font-mono font-medium focus:outline-none transition-all"
                 style={{
-                  background: 'var(--neu-bg-base)',
+                  backgroundColor: "hsl(var(--card))",
                   border: '1px solid rgba(148,163,184,0.35)',
-                  boxShadow: 'var(--neu-shadow-inset)',
-                  color: 'var(--neu-text-title)',
+                  boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+                  color: "hsl(var(--foreground))",
                 }}
                 required
               />
@@ -219,8 +217,7 @@ export const SystemSettingsPage: React.FC = () => {
 
           <div>
             <label
-              className="text-xs block mb-1.5 font-medium"
-              style={{ color: 'var(--neu-text-title)' }}
+              className="text-xs block mb-1.5 font-medium text-foreground"
             >
               {t.storeAddressLabel}
             </label>
@@ -231,10 +228,10 @@ export const SystemSettingsPage: React.FC = () => {
               placeholder="123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh..."
               className="w-full rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all"
               style={{
-                background: 'var(--neu-bg-base)',
+                backgroundColor: "hsl(var(--card))",
                 border: '1px solid rgba(148,163,184,0.35)',
-                boxShadow: 'var(--neu-shadow-inset)',
-                color: 'var(--neu-text-title)',
+                boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+                color: "hsl(var(--foreground))",
               }}
               required
             />
@@ -244,30 +241,29 @@ export const SystemSettingsPage: React.FC = () => {
           <div
             className="p-4 rounded-2xl space-y-3"
             style={{
-              background: 'var(--neu-bg-base)',
-              border: '1px solid var(--neu-border)',
-              boxShadow: 'var(--neu-shadow-inset)',
+              backgroundColor: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border) / 0.5)",
+              boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
             }}
           >
             <label
-              className="text-xs font-medium flex items-center gap-2"
-              style={{ color: 'var(--neu-text-title)' }}
+              className="text-xs font-medium flex items-center gap-2 text-foreground"
             >
               <ImageIcon className="w-4 h-4 text-purple-400" />
               {t.logoLabel}
             </label>
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative w-16 h-16 aspect-square rounded-2xl overflow-hidden shrink-0 flex items-center justify-center bg-[var(--neu-bg-base)]">
+              <div className="relative w-16 h-16 aspect-square rounded-2xl overflow-hidden shrink-0 flex items-center justify-center bg-card">
                 {formData.systemLogoUrl ? (
                   <img src={formData.systemLogoUrl} alt="Logo Preview" className="w-full h-full aspect-square object-cover" />
                 ) : (
-                  <Building className="w-8 h-8" style={{ color: 'var(--neu-text-sub)' }} />
+                  <Building className="w-8 h-8 text-muted-foreground" />
                 )}
                 <div
                   className="pointer-events-none absolute inset-0 rounded-2xl z-10"
                   style={{
-                    border: '1px solid var(--neu-border)',
-                    boxShadow: 'var(--neu-shadow-inset)',
+                    border: "1px solid hsl(var(--border) / 0.5)",
+                    boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
                   }}
                 />
               </div>
@@ -284,15 +280,15 @@ export const SystemSettingsPage: React.FC = () => {
                   htmlFor="logoUploadInput"
                   className="px-4 py-2 rounded-xl text-purple-400 font-medium text-xs inline-flex items-center gap-2 cursor-pointer hover:opacity-80 transition-all"
                   style={{
-                    background: 'var(--neu-bg-base)',
+                    backgroundColor: "hsl(var(--card))",
                     border: '1px solid rgba(168,85,247,0.35)',
-                    boxShadow: 'var(--neu-shadow-button)',
+                    boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
                   }}
                 >
                   <Upload className="w-4 h-4" />
                   {uploadingLogo ? t.uploading : t.uploadLogoBtn}
                 </label>
-                <p className="text-[11px]" style={{ color: 'var(--neu-text-sub)' }}>
+                <p className="text-[11px] text-muted-foreground">
                   {t.logoHint}
                 </p>
               </div>
@@ -304,29 +300,29 @@ export const SystemSettingsPage: React.FC = () => {
         <div
           className="p-6 rounded-3xl space-y-5"
           style={{
-            background: 'var(--neu-bg-base)',
-            border: '1px solid var(--neu-border)',
-            boxShadow: 'var(--neu-shadow-outer)',
+            backgroundColor: "hsl(var(--card))",
+            border: "1px solid hsl(var(--border) / 0.5)",
+            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
           }}
         >
           <div
             className="pb-3 flex items-center justify-between"
-            style={{ borderBottom: '1px solid var(--neu-border)' }}
+            style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}
           >
             <h2
               className="font-heading text-base flex items-center gap-2"
-              style={{ color: 'var(--neu-text-title)', fontWeight: 500 }}
+              style={{ color: "hsl(var(--foreground))", fontWeight: 500 }}
             >
-              <QrCode className="w-5 h-5" style={{ color: 'var(--neu-accent-mint)' }} />
+              <QrCode className="w-5 h-5 text-primary" />
               {t.section2Title}
             </h2>
             <span
               className="px-3 py-1 rounded-2xl text-[11px] font-medium"
               style={{
                 background: 'rgba(16,185,129,0.15)',
-                color: 'var(--neu-accent-mint)',
+                color: "hsl(var(--primary))",
                 border: '1px solid rgba(16,185,129,0.35)',
-                boxShadow: 'var(--neu-shadow-inset)',
+                boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
               }}
             >
               {t.section2Badge}
@@ -336,8 +332,7 @@ export const SystemSettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label
-                className="text-xs block mb-1.5 font-medium"
-                style={{ color: 'var(--neu-text-title)' }}
+                className="text-xs block mb-1.5 font-medium text-foreground"
               >
                 {t.bankLabel}
               </label>
@@ -360,10 +355,10 @@ export const SystemSettingsPage: React.FC = () => {
                 }}
                 className="w-full rounded-2xl px-4 py-2.5 text-xs font-medium focus:outline-none transition-all"
                 style={{
-                  background: 'var(--neu-bg-base)',
+                  backgroundColor: "hsl(var(--card))",
                   border: '1px solid rgba(148,163,184,0.35)',
-                  boxShadow: 'var(--neu-shadow-inset)',
-                  color: 'var(--neu-text-title)',
+                  boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+                  color: "hsl(var(--foreground))",
                 }}
               >
                 <option value="970422">MBBank (MB - 970422)</option>
@@ -376,8 +371,7 @@ export const SystemSettingsPage: React.FC = () => {
 
             <div>
               <label
-                className="text-xs block mb-1.5 font-medium"
-                style={{ color: 'var(--neu-text-title)' }}
+                className="text-xs block mb-1.5 font-medium text-foreground"
               >
                 {t.accountNoLabel}
               </label>
@@ -388,10 +382,10 @@ export const SystemSettingsPage: React.FC = () => {
                 placeholder="Ví dụ: 038921104"
                 className="w-full rounded-2xl px-4 py-2.5 text-xs font-mono font-medium focus:outline-none transition-all"
                 style={{
-                  background: 'var(--neu-bg-base)',
+                  backgroundColor: "hsl(var(--card))",
                   border: '1px solid rgba(148,163,184,0.35)',
-                  boxShadow: 'var(--neu-shadow-inset)',
-                  color: 'var(--neu-accent-mint)',
+                  boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+                  color: "hsl(var(--primary))",
                 }}
                 required
               />
@@ -400,8 +394,7 @@ export const SystemSettingsPage: React.FC = () => {
 
           <div>
             <label
-              className="text-xs block mb-1.5 font-medium"
-              style={{ color: 'var(--neu-text-title)' }}
+              className="text-xs block mb-1.5 font-medium text-foreground"
             >
               {t.accountHolderLabel}
             </label>
@@ -412,10 +405,10 @@ export const SystemSettingsPage: React.FC = () => {
               placeholder="CONG TY PHONG SERVICE PLATFORM"
               className="w-full rounded-2xl px-4 py-2.5 text-xs font-medium uppercase focus:outline-none transition-all"
               style={{
-                background: 'var(--neu-bg-base)',
+                backgroundColor: "hsl(var(--card))",
                 border: '1px solid rgba(148,163,184,0.35)',
-                boxShadow: 'var(--neu-shadow-inset)',
-                color: 'var(--neu-text-title)',
+                boxShadow: "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+                color: "hsl(var(--foreground))",
               }}
               required
             />
@@ -428,10 +421,10 @@ export const SystemSettingsPage: React.FC = () => {
               border: '1px solid rgba(245,158,11,0.28)',
             }}
           >
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--neu-accent-mint)' }} />
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
             <div className="space-y-1">
-              <p className="font-medium" style={{ color: 'var(--neu-text-title)' }}>{t.vietQrNote}</p>
-              <p className="text-[11px]" style={{ color: 'var(--neu-text-sub)' }}>
+              <p className="font-medium text-foreground">{t.vietQrNote}</p>
+              <p className="text-[11px] text-muted-foreground">
                 {formData.vietQrAccountNo} — {formData.vietQrBankName}
               </p>
             </div>

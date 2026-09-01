@@ -59,17 +59,17 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-[var(--neu-bg-base)] w-full max-w-4xl rounded-3xl shadow-[var(--neu-shadow-outer)] border border-[var(--neu-border)] flex flex-col max-h-[90vh]">
+      <div className="bg-card w-full max-w-4xl rounded-3xl shadow-md border border-border/50 flex flex-col max-h-[90vh]">
         
-        <div className="flex items-center justify-between p-6 border-b border-[var(--neu-border)]">
+        <div className="flex items-center justify-between p-6 border-b border-border/50">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-[var(--neu-text-title)]">
+            <h2 className="text-xl font-bold text-foreground">
               Chi Tiết Phiếu Nhập
             </h2>
             {po && (
               <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg border ${
                 po.status === 'Draft' ? 'bg-slate-100 text-slate-700 border-slate-200' :
-                po.status === 'Confirmed' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                po.status === 'Confirmed' ? 'bg-primary/10 text-blue-700 border-blue-200' :
                 po.status === 'Received' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                 'bg-rose-100 text-rose-700 border-rose-200'
               }`}>
@@ -77,7 +77,7 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
               </span>
             )}
           </div>
-          <Button variant="outline" onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500">
+          <Button variant="danger" onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500">
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -97,7 +97,7 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
                 </div>
                 <div className="p-4 rounded-2xl border border-slate-200 bg-white">
                   <div className="text-xs text-slate-500 font-bold mb-1">Tổng Tiền</div>
-                  <div className="font-mono font-bold text-blue-600">{formatCurrency(po.totalAmount)}</div>
+                  <div className="font-mono font-bold text-primary">{formatCurrency(po.totalAmount)}</div>
                 </div>
                 <div className="p-4 rounded-2xl border border-slate-200 bg-white">
                   <div className="text-xs text-slate-500 font-bold mb-1 flex items-center gap-1"><Package className="w-3 h-3"/> Nhà Cung Cấp</div>
@@ -129,7 +129,7 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
                           <td className="px-4 py-3 font-mono text-xs">{item.sku}</td>
                           <td className="px-4 py-3">{item.quantity}</td>
                           <td className="px-4 py-3">{formatCurrency(item.unitPrice)}</td>
-                          <td className="px-4 py-3 font-mono text-blue-600 font-bold">{formatCurrency(item.amount)}</td>
+                          <td className="px-4 py-3 font-mono text-primary font-bold">{formatCurrency(item.amount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -140,7 +140,7 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
           )}
         </div>
 
-        <div className="p-6 border-t border-[var(--neu-border)] bg-slate-50/50 flex flex-wrap items-center justify-between gap-3 rounded-b-3xl">
+        <div className="p-6 border-t border-border/50 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3 rounded-b-3xl">
           <div className="flex gap-2">
             {po?.status === 'Draft' && (
               <Button variant="outline"
@@ -162,14 +162,14 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
           <div className="flex gap-2">
             <Button variant="outline"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-2xl font-bold text-slate-500 bg-[var(--neu-bg-base)] border border-slate-300 shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all text-xs"
+              className="px-5 py-2.5 rounded-2xl font-bold text-slate-500 bg-card border border-slate-300 shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-xs"
             >
               Đóng
             </Button>
             {po?.status === 'Draft' && (
               <Button variant="outline"
                 onClick={onEdit}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
               >
                 <Edit className="w-4 h-4" /> Chỉnh Sửa
               </Button>
@@ -177,7 +177,7 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
             {(po?.status === 'Draft' || po?.status === 'Confirmed') && (
               <Button variant="outline"
                 onClick={() => setShowCompleteModal(true)}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-xs shadow-sm hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
               >
                 <CheckCircle2 className="w-4 h-4" /> Nhận Hàng (Hoàn Tất)
               </Button>

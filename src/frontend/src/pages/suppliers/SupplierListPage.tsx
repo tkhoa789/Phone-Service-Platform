@@ -92,7 +92,7 @@ export const SupplierListPage: React.FC = () => {
       <PageHeader
         title={tSup.suppliersTitle}
         description={tSup.suppliersSubtitle}
-        icon={<Building2 className="w-6 h-6 text-blue-500" />}
+        icon={<Building2 className="w-6 h-6 text-primary" />}
         actions={
           <Button onClick={() => { setEditingSupplier(null); setShowFormModal(true); }} className="gap-2">
             <Plus className="w-4 h-4" />
@@ -132,7 +132,7 @@ export const SupplierListPage: React.FC = () => {
                   <tr key={s.id} className="hover:bg-muted/50 transition-colors">
                     <td className="p-4 align-top">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shrink-0">
                           {s.name.charAt(0).toUpperCase()}
                         </div>
                         <div>

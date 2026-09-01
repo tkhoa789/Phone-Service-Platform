@@ -74,35 +74,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
 
   return (
     <aside
-      className={`fixed top-0 left-0 z-40 h-screen transition-all duration-200 ease-in-out bg-[var(--neu-bg-base)] shadow-[var(--neu-shadow-outer)] flex flex-col border-r border-[var(--neu-border)] -translate-x-full md:translate-x-0 ${
+      className={`fixed top-0 left-0 z-40 h-screen transition-all duration-200 ease-in-out bg-card shadow-md flex flex-col border-r border-border/50 -translate-x-full md:translate-x-0 ${
         collapsed ? 'md:w-20' : 'md:w-64'
       }`}
     >
       {/* Floating Border Toggle Button */}
       <Button variant="outline"
         onClick={onToggleCollapse}
-        className="absolute -right-3.5 top-4 z-50 w-7 h-7 rounded-full bg-[var(--neu-bg-base)] border border-slate-300/40 text-slate-500 hover:text-[var(--neu-accent-mint)] shadow-[var(--neu-shadow-button)] hidden md:flex items-center justify-center transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        className="absolute -right-3.5 top-4 z-50 w-7 h-7 rounded-full bg-card border border-slate-300/40 text-slate-500 hover:text-primary shadow-sm hidden md:flex items-center justify-center transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
         title={collapsed ? 'Mở rộng' : 'Thu gọn'}
       >
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </Button>
 
       {/* Brand Header */}
-      <div className={`h-16 flex items-center border-b border-[var(--neu-border)] px-4 shrink-0 ${collapsed ? 'justify-center' : 'justify-start'}`}>
+      <div className={`h-16 flex items-center border-b border-border/50 px-4 shrink-0 ${collapsed ? 'justify-center' : 'justify-start'}`}>
         <div className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center w-full' : ''}`}>
-          <div className="relative w-10 h-10 aspect-square rounded-2xl bg-[var(--neu-bg-base)] overflow-hidden flex items-center justify-center text-[var(--neu-accent-mint)] shrink-0 shadow-inner border border-border/50 bg-muted/20">
+          <div className="relative w-10 h-10 aspect-square rounded-2xl bg-card overflow-hidden flex items-center justify-center text-primary shrink-0 shadow-inner border border-border/50 bg-muted/20">
             {settings.systemLogoUrl ? (
               <img src={settings.systemLogoUrl} alt="Logo" className="w-full h-full aspect-square object-cover" />
             ) : (
-              <Smartphone className="w-5 h-5 text-[var(--neu-accent-mint)]" />
+              <Smartphone className="w-5 h-5 text-primary" />
             )}
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="font-heading font-bold text-sm text-[var(--neu-text-title)] tracking-tight leading-tight truncate max-w-[140px]" title={settings.systemName}>
+              <span className="font-heading font-bold text-sm text-foreground tracking-tight leading-tight truncate max-w-[140px]" title={settings.systemName}>
                 {settings.systemName}
               </span>
-              <span className="text-[10px] text-[var(--neu-text-sub)] font-medium leading-none mt-1">Enterprise POS</span>
+              <span className="text-[10px] text-muted-foreground font-medium leading-none mt-1">Enterprise POS</span>
             </div>
           )}
         </div>
@@ -125,16 +125,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
               to={item.path}
               className={`flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all duration-200 group relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 ${
                 isActive
-                  ? 'bg-[var(--neu-bg-base)] text-[var(--neu-text-title)] font-medium shadow-inner border border-border/50 bg-muted/20 border-l-4 border-[var(--neu-accent-mint)]'
-                  : 'text-[var(--neu-text-sub)] hover:text-[var(--neu-accent-mint)] bg-transparent hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:shadow-sm'
+                  ? 'bg-card text-foreground font-medium shadow-inner border border-border/50 bg-muted/20 border-l-4 border-[var(--neu-accent-mint)]'
+                  : 'text-muted-foreground hover:text-primary bg-transparent hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:shadow-sm'
               }`}
               title={collapsed ? title : undefined}
             >
-              <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-[var(--neu-accent-mint)] font-bold' : 'text-[var(--neu-text-sub)] group-hover:text-[var(--neu-accent-mint)]'}`} />
+              <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-primary font-bold' : 'text-muted-foreground group-hover:text-primary'}`} />
               
               {!collapsed && (
                 <div className="flex items-center justify-between flex-1 overflow-hidden">
-                  <span className={`truncate text-sm ${isActive ? 'font-medium text-[var(--neu-text-title)]' : 'font-normal'}`}>{title}</span>
+                  <span className={`truncate text-sm ${isActive ? 'font-medium text-foreground' : 'font-normal'}`}>{title}</span>
                   {item.badge && (
                     <Badge variant={isActive ? 'success' : 'default'} className="text-[10px] py-0 px-1.5 rounded-full">
                       {item.badge}
@@ -152,28 +152,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
       </nav>
 
       {/* User Footer Profile & Account Control */}
-      <div className="h-16 border-t border-[var(--neu-border)] bg-[var(--neu-bg-base)] shrink-0 flex items-center px-3">
+      <div className="h-16 border-t border-border/50 bg-card shrink-0 flex items-center px-3">
         {collapsed ? (
           <Button variant="outline"
             onClick={() => navigate('/profile')}
-            className="w-10 h-10 aspect-square rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white font-bold flex items-center justify-center text-sm mx-auto shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-10 h-10 aspect-square rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white font-bold flex items-center justify-center text-sm mx-auto shadow-sm hover:scale-[1.02] active:scale-95 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             title={commonTranslations.profile}
           >
             {user?.fullName?.charAt(0) || 'U'}
           </Button>
         ) : (
-          <div className="w-full flex items-center justify-between gap-2 p-1.5 rounded-2xl bg-[var(--neu-bg-base)] border border-transparent shadow-inner border border-border/50 bg-muted/20 transition-all">
+          <div className="w-full flex items-center justify-between gap-2 p-1.5 rounded-2xl bg-card border border-transparent shadow-inner border border-border/50 bg-muted/20 transition-all">
             <Button variant="outline"
               onClick={() => navigate('/profile')}
               className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50 rounded-xl"
               title={commonTranslations.profile}
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-[var(--neu-shadow-button)]">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
                 {user?.fullName?.charAt(0) || 'U'}
               </div>
               <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="text-xs font-medium text-[var(--neu-text-title)] truncate leading-tight">{user?.fullName || 'Nội bộ System'}</p>
-                <p className="text-[10px] text-[var(--neu-accent-mint)] font-mono font-bold truncate leading-tight mt-0.5">
+                <p className="text-xs font-medium text-foreground truncate leading-tight">{user?.fullName || 'Nội bộ System'}</p>
+                <p className="text-[10px] text-primary font-mono font-bold truncate leading-tight mt-0.5">
                   {roles[0] || 'Member'}
                 </p>
               </div>

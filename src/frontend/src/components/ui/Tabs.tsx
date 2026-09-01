@@ -21,7 +21,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
       role="tablist"
       aria-orientation="horizontal"
       className={cn(
-        'inline-flex h-12 items-center justify-center rounded-2xl bg-[var(--neu-bg-base)] p-1 text-[var(--neu-text-sub)] shadow-[var(--neu-shadow-inset)]',
+        'inline-flex h-12 items-center justify-center rounded-2xl bg-card p-1 text-muted-foreground shadow-inner',
         fullWidth && 'w-full flex',
         className
       )}
@@ -41,8 +41,8 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
               'inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50',
               fullWidth && 'flex-1',
               isActive
-                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-[var(--neu-shadow-button)]'
-                : 'hover:text-[var(--neu-text-title)] hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-sm'
+                : 'hover:text-foreground hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
             )}
           >
             {tab.icon && <span className="mr-2 shrink-0">{tab.icon}</span>}

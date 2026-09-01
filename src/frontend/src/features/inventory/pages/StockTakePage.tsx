@@ -148,7 +148,7 @@ export const StockTakePage: React.FC = () => {
                       </td>
                       <td className="p-3 text-center font-mono font-bold">
                         {isModified ? (
-                          <span className={diff > 0 ? 'text-emerald-600' : 'text-red-500'}>
+                          <span className={diff > 0 ? 'text-emerald-600' : 'text-destructive'}>
                             {diff > 0 ? '+' : ''}{diff}
                           </span>
                         ) : (

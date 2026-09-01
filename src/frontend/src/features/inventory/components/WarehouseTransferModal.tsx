@@ -85,7 +85,7 @@ export const WarehouseTransferModal: React.FC<WarehouseTransferModalProps> = ({
               </label>
               <select
                 value={fromBranchId}
-                onChange={(e: any) => setFromBranchId(e.target.value)}
+                onChange={(e) => setFromBranchId(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 {branches.map((b) => (
@@ -100,7 +100,7 @@ export const WarehouseTransferModal: React.FC<WarehouseTransferModalProps> = ({
               </label>
               <select
                 value={toBranchId}
-                onChange={(e: any) => setToBranchId(e.target.value)}
+                onChange={(e) => setToBranchId(e.target.value)}
                 className="w-full bg-white border border-primary/30 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 {branches.map((b) => (
@@ -160,7 +160,7 @@ export const WarehouseTransferModal: React.FC<WarehouseTransferModalProps> = ({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            className="text-destructive hover:text-destructive hover:bg-red-50"
                             onClick={() => removeSelectedItem(item.sku)}
                           >
                             <Trash2 className="w-4 h-4" />

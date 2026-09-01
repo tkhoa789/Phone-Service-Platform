@@ -12,6 +12,12 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 
+export interface IntakeCheckpoint {
+  checkPointName: string;
+  isPassed: boolean;
+  issueDescription?: string;
+}
+
 export interface IntakeState {
   customerId?: string;
   customerName?: string;
@@ -23,7 +29,7 @@ export interface IntakeState {
   
   problemDescription?: string;
   cosmeticCondition?: string;
-  checkpoints?: any[];
+  checkpoints?: IntakeCheckpoint[];
   
   estimatedCost?: number;
   
@@ -66,7 +72,7 @@ export const RepairIntakePage: React.FC = () => {
   return (
     <div className="space-y-6 font-sans text-slate-500">
       {/* Header */}
-      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-[var(--neu-shadow-outer)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="outline"
             onClick={() => navigate('/repairs')}
@@ -86,7 +92,7 @@ export const RepairIntakePage: React.FC = () => {
       </div>
 
       {/* Progress Bar */}
-      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-[var(--neu-shadow-outer)]">
+      <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-md">
         <div className="flex items-center justify-between relative">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-slate-400/20 z-0"></div>
           {STEPS.map((step) => {

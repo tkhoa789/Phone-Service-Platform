@@ -84,7 +84,7 @@ export const PurchaseOrderListPage: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Draft': return 'bg-slate-100 text-slate-700 border-slate-200';
-      case 'Confirmed': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Confirmed': return 'bg-primary/10 text-blue-700 border-blue-200';
       case 'Received': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'Cancelled': return 'bg-rose-100 text-rose-700 border-rose-200';
       default: return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -96,25 +96,25 @@ export const PurchaseOrderListPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 font-sans text-[var(--neu-text-sub)]">
+    <div className="space-y-6 font-sans text-muted-foreground">
       {/* Top Banner */}
-      <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-blue-600 border border-blue-500/30">
+          <div className="w-12 h-12 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-primary border border-blue-500/30">
             <FileText className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-heading font-medium text-2xl text-[var(--neu-text-title)] tracking-tight">
+            <h1 className="font-heading font-medium text-2xl text-foreground tracking-tight">
               {language === 'vi' ? 'Phiếu Nhập Kho' : 'Purchase Orders'}
             </h1>
-            <p className="text-xs text-[var(--neu-text-sub)] mt-0.5 font-normal">
+            <p className="text-xs text-muted-foreground mt-0.5 font-normal">
               {language === 'vi' ? 'Quản lý đơn đặt hàng và nhập kho từ nhà cung cấp' : 'Manage supplier purchase orders and stock receiving'}
             </p>
           </div>
         </div>
         <Button variant="outline"
           onClick={handleCreate}
-          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-medium text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> {language === 'vi' ? 'Tạo Phiếu Nhập' : 'Create PO'}
         </Button>
@@ -123,21 +123,21 @@ export const PurchaseOrderListPage: React.FC = () => {
       {/* Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
           <Input
             type="text"
             value={searchTerm}
             onChange={(e) => updateSearchParams({ search: e.target.value, page: '1' })}
             placeholder={language === 'vi' ? 'Tìm theo mã phiếu, NCC, kho...' : 'Search code, supplier, warehouse...'}
-            className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl pl-11 pr-4 py-3 text-xs text-[var(--neu-text-title)] placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all font-normal"
+            className="w-full bg-card border border-slate-300/40 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all font-normal"
           />
         </div>
         <div className="relative md:w-64">
-          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
           <select
             value={statusFilter}
             onChange={(e) => updateSearchParams({ status: e.target.value, page: '1' })}
-            className="w-full appearance-none bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl pl-11 pr-10 py-3 text-xs text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium cursor-pointer"
+            className="w-full appearance-none bg-card border border-slate-300/40 rounded-2xl pl-11 pr-10 py-3 text-xs text-foreground shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium cursor-pointer"
           >
             <option value="">{language === 'vi' ? 'Tất cả trạng thái' : 'All statuses'}</option>
             <option value="Draft">Draft (Nháp)</option>
@@ -152,11 +152,11 @@ export const PurchaseOrderListPage: React.FC = () => {
       </div>
 
       {/* Data Table */}
-      <div className="rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] overflow-hidden">
+      <div className="rounded-3xl bg-card border border-border/50 shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/50 border-b border-[var(--neu-border)]">
+              <tr className="bg-slate-50/50 border-b border-border/50">
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Mã Phiếu' : 'PO Code'}</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Nhà Cung Cấp' : 'Supplier'}</th>
                 <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">{language === 'vi' ? 'Kho Nhận' : 'Warehouse'}</th>
@@ -183,10 +183,10 @@ export const PurchaseOrderListPage: React.FC = () => {
                     className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
                   >
                     <td className="px-6 py-4">
-                      <span className="font-mono font-medium text-[var(--neu-text-title)] group-hover:text-blue-600 transition-colors">{po.code}</span>
+                      <span className="font-mono font-medium text-foreground group-hover:text-primary transition-colors">{po.code}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-[var(--neu-text-title)]">{po.supplierName}</div>
+                      <div className="font-medium text-foreground">{po.supplierName}</div>
                     </td>
                     <td className="px-6 py-4 text-xs">
                       {po.warehouseName}
@@ -195,7 +195,7 @@ export const PurchaseOrderListPage: React.FC = () => {
                       {new Date(po.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-mono font-bold text-[var(--neu-text-title)]">{formatCurrency(po.totalAmount)}</span>
+                      <span className="font-mono font-bold text-foreground">{formatCurrency(po.totalAmount)}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(po.status)}`}>
@@ -211,7 +211,7 @@ export const PurchaseOrderListPage: React.FC = () => {
 
         {/* Pagination */}
         {totalItems > 0 && (
-          <div className="p-4 border-t border-[var(--neu-border)] bg-slate-50/30">
+          <div className="p-4 border-t border-border/50 bg-slate-50/30">
             <Pagination
               currentPage={currentPage}
               totalItems={totalItems}

@@ -111,7 +111,7 @@ export const CustomerStep: React.FC<Props> = ({ state, updateState, onNext }) =>
               />
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <Button type="button" variant="ghost" onClick={() => setIsCreating(false)}>Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => setIsCreating(false)} disabled={isSubmitting || creatingSubmit}>Hủy Bỏ</Button>
               <Button type="submit" variant="success">Save & Select</Button>
             </div>
           </form>

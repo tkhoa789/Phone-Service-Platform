@@ -1,22 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { branchService } from '../../../services/branchService';
 import type { BranchDto, CreateBranchCommand } from '../../../types/api.types';
 import toast from 'react-hot-toast';
 
-export const branchKeys = {
-  all: ['branches'] as const,
-  lists: () => [...branchKeys.all, 'list'] as const,
-  list: (filters: string) => [...branchKeys.lists(), { filters }] as const,
-  details: () => [...branchKeys.all, 'detail'] as const,
-  detail: (id: string) => [...branchKeys.details(), id] as const,
-};
-
-export function useBranches() {
-  return useQuery({
-    queryKey: branchKeys.lists(),
-    queryFn: () => branchService.getAll(),
-  });
-}
+export { branchKeys, useBranches } from '../../../entities/branch/queries';
+import { branchKeys } from '../../../entities/branch/queries';
 
 export function useCreateBranch() {
   const queryClient = useQueryClient();
@@ -49,7 +37,7 @@ export function useDeleteBranch() {
       queryClient.invalidateQueries({ queryKey: branchKeys.lists() });
     },
     onError: () => {
-      toast.error('Không thể xóa chi nhánh đang hoạt động!');
+      toast.error('KhÃ´ng thá»ƒ xÃ³a chi nhÃ¡nh Ä‘ang hoáº¡t Ä‘á»™ng!');
     }
   });
 }

@@ -160,7 +160,7 @@ export const DashboardPage: React.FC = () => {
             icon={<Crown className="w-6 h-6 animate-pulse" />}
             actions={
               <>
-                <div className="flex items-center bg-[var(--neu-bg-base)] rounded-xl border border-[var(--neu-border)] shadow-inner border border-border/50 bg-muted/20 w-36 overflow-hidden">
+                <div className="flex items-center bg-card rounded-xl border border-border/50 shadow-inner border border-border/50 bg-muted/20 w-36 overflow-hidden">
                   <Select
                     value={dateRange}
                     onChange={(e) => setDateRange(e.target.value as any)}
@@ -192,16 +192,16 @@ export const DashboardPage: React.FC = () => {
             ].map((kpi, idx) => (
               <Card key={idx} className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--neu-text-sub)]">{kpi.label}</span>
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
+                  <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
+                  <div className="w-10 h-10 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-primary">
                     {kpi.icon}
                   </div>
                 </div>
                 <div>
-                  <div className="font-heading font-bold text-2xl text-[var(--neu-text-title)]">
+                  <div className="font-heading font-bold text-2xl text-foreground">
                     {loading ? <Skeleton className="h-8 w-24 rounded-lg" /> : kpi.isCurrency ? formatCurrency(kpi.value as number) : `${kpi.value} ${kpi.suffix}`}
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-[var(--neu-text-sub)] font-medium mt-1">
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium mt-1">
                     {kpi.noteIcon} {kpi.note}
                   </div>
                 </div>
@@ -212,22 +212,22 @@ export const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 p-6 space-y-4 flex flex-col">
               <div className="flex items-center justify-between">
-                <h3 className="font-heading font-medium text-base text-[var(--neu-text-title)] flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-[var(--neu-accent-mint)]" /> {t.branchStructureTitle}
+                <h3 className="font-heading font-medium text-base text-foreground flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" /> {t.branchStructureTitle}
                 </h3>
-                <span className="text-xs text-[var(--neu-text-sub)] font-normal">{t.autoUpdated}</span>
+                <span className="text-xs text-muted-foreground font-normal">{t.autoUpdated}</span>
               </div>
               <div className="space-y-3 flex-1 overflow-y-auto pr-2">
                 {loading ? (
                    Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)
                 ) : stats?.branchRevenue && stats.branchRevenue.length > 0 ? (
-                  stats.branchRevenue.map((b: any, idx: number) => (
-                    <div key={b.branchId || idx} className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 space-y-2">
+                  stats.branchRevenue.map((b, idx: number) => (
+                    <div key={b.branchId || idx} className="p-4 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 space-y-2">
                       <div className="flex justify-between text-xs font-medium">
-                        <span className="text-[var(--neu-text-title)] flex items-center gap-2">
-                          <Store className="w-4 h-4 text-[var(--neu-accent-mint)]" /> {b.branchName}
+                        <span className="text-foreground flex items-center gap-2">
+                          <Store className="w-4 h-4 text-primary" /> {b.branchName}
                         </span>
-                        <span className="text-[var(--neu-accent-mint)] font-bold">{formatCurrency(b.revenue)}</span>
+                        <span className="text-primary font-bold">{formatCurrency(b.revenue)}</span>
                       </div>
                       <div className="w-full h-2.5 rounded-full bg-slate-500/10 overflow-hidden">
                         <div className="h-full bg-[var(--neu-accent-mint)] rounded-full" style={{ width: `${Math.min(100, Math.max(15, (b.revenue / (stats.totalRevenue || 1)) * 100))}%` }} />
@@ -235,12 +235,12 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 space-y-2">
+                  <div className="p-4 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 space-y-2">
                     <div className="flex justify-between text-xs font-medium">
-                      <span className="text-[var(--neu-text-title)] flex items-center gap-2">
-                        <Store className="w-4 h-4 text-[var(--neu-accent-mint)]" /> {t.hqText}
+                      <span className="text-foreground flex items-center gap-2">
+                        <Store className="w-4 h-4 text-primary" /> {t.hqText}
                       </span>
-                      <span className="text-[var(--neu-accent-mint)] font-bold">128.500.000 ₫</span>
+                      <span className="text-primary font-bold">128.500.000 ₫</span>
                     </div>
                     <div className="w-full h-2.5 rounded-full bg-slate-500/10 overflow-hidden">
                       <div className="h-full bg-[var(--neu-accent-mint)] rounded-full" style={{ width: '45%' }} />
@@ -252,19 +252,19 @@ export const DashboardPage: React.FC = () => {
 
             <Card className="p-6 flex flex-col justify-between border-emerald-500/20">
               <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
+                <div className="w-12 h-12 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-primary">
                   <Bot className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-heading font-medium text-lg text-[var(--neu-text-title)]">{t.aiInsightsTitle}</h3>
-                  <p className="text-xs text-[var(--neu-text-sub)] leading-relaxed mt-2">
+                  <h3 className="font-heading font-medium text-lg text-foreground">{t.aiInsightsTitle}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-2">
                     {language === 'vi' ? 'Hệ thống đã tự động kết nối với Vector Database. Bạn có thể đặt câu hỏi về doanh thu, tồn kho hoặc xu hướng khách hàng.' : 'System connected to Vector Database. Ask any questions regarding revenue, inventory, or customer trends.'}
                   </p>
                 </div>
               </div>
               <Button variant="secondary" onClick={() => navigate('/ai-chat')} className="w-full mt-6 justify-between group">
-                <span className="flex items-center gap-2"><Bot className="w-4 h-4 text-[var(--neu-accent-mint)]" /> {t.askChainAi}</span>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[var(--neu-accent-mint)] transition-colors" />
+                <span className="flex items-center gap-2"><Bot className="w-4 h-4 text-primary" /> {t.askChainAi}</span>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
               </Button>
             </Card>
           </div>
@@ -300,16 +300,16 @@ export const DashboardPage: React.FC = () => {
             ].map((kpi, idx) => (
               <Card key={idx} className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--neu-text-sub)]">{kpi.label}</span>
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
+                  <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
+                  <div className="w-10 h-10 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-primary">
                     {kpi.icon}
                   </div>
                 </div>
                 <div>
-                  <div className="font-heading font-bold text-2xl text-[var(--neu-text-title)]">
+                  <div className="font-heading font-bold text-2xl text-foreground">
                     {kpi.value} <span className="text-lg font-medium">{kpi.suffix}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-[var(--neu-text-sub)] font-medium mt-1">
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium mt-1">
                     {kpi.note}
                   </div>
                 </div>
@@ -319,10 +319,10 @@ export const DashboardPage: React.FC = () => {
 
           <Card className="p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-heading font-medium text-base text-[var(--neu-text-title)] flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-[var(--neu-accent-mint)]" /> {t.systemEnginesTitle}
+              <h3 className="font-heading font-medium text-base text-foreground flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-primary" /> {t.systemEnginesTitle}
               </h3>
-              <span className="text-xs text-[var(--neu-accent-mint)] flex items-center gap-1.5 font-bold">
+              <span className="text-xs text-primary flex items-center gap-1.5 font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> {t.allOperational}
               </span>
             </div>
@@ -330,15 +330,15 @@ export const DashboardPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { name: 'ASP.NET Core .NET 10', icon: <TerminalSquare className="w-5 h-5 text-indigo-500" /> },
-                { name: 'SQL Server 2022', icon: <Database className="w-5 h-5 text-blue-500" /> },
+                { name: 'SQL Server 2022', icon: <Database className="w-5 h-5 text-primary" /> },
                 { name: 'Redis Cache (Stack)', icon: <Box className="w-5 h-5 text-rose-500" /> },
                 { name: 'Vite 8.1.5 + React 19', icon: <Cpu className="w-5 h-5 text-emerald-500" /> },
               ].map((engine, idx) => (
-                <div key={idx} className="p-4 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] flex items-center justify-center shrink-0">
+                <div key={idx} className="p-4 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-card border border-border/50 flex items-center justify-center shrink-0">
                     {engine.icon}
                   </div>
-                  <p className="text-xs font-medium text-[var(--neu-text-title)]">{engine.name}</p>
+                  <p className="text-xs font-medium text-foreground">{engine.name}</p>
                 </div>
               ))}
             </div>
@@ -355,7 +355,7 @@ export const DashboardPage: React.FC = () => {
             icon={<Sparkles className="w-6 h-6 text-amber-500" />}
             actions={
               <>
-                <div className="flex items-center bg-[var(--neu-bg-base)] rounded-xl border border-[var(--neu-border)] shadow-inner border border-border/50 bg-muted/20 w-36 overflow-hidden">
+                <div className="flex items-center bg-card rounded-xl border border-border/50 shadow-inner border border-border/50 bg-muted/20 w-36 overflow-hidden">
                   <Select
                     value={dateRange}
                     onChange={(e) => setDateRange(e.target.value as any)}
@@ -384,16 +384,16 @@ export const DashboardPage: React.FC = () => {
             ].map((kpi, idx) => (
               <Card key={idx} className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[var(--neu-text-sub)]">{kpi.label}</span>
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-[var(--neu-accent-mint)]">
+                  <span className="text-xs font-medium text-muted-foreground">{kpi.label}</span>
+                  <div className="w-10 h-10 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-primary">
                     {kpi.icon}
                   </div>
                 </div>
                 <div>
-                  <div className="font-heading font-bold text-2xl text-[var(--neu-text-title)]">
+                  <div className="font-heading font-bold text-2xl text-foreground">
                     {loading ? <Skeleton className="h-8 w-24 rounded-lg" /> : kpi.isCurrency ? formatCurrency(kpi.value as number) : `${kpi.value} ${kpi.suffix}`}
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-[var(--neu-text-sub)] font-medium mt-1">
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium mt-1">
                     {kpi.note}
                   </div>
                 </div>

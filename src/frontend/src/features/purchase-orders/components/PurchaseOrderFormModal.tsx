@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import type { PurchaseOrderItemDto } from '../types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import type { ProductDto, ProductVariantDto } from '../../../types/api.types';
 
 interface PurchaseOrderFormModalProps {
   isOpen: boolean;
@@ -97,14 +98,14 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
     append({
       productVariantId: variant.id,
       quantity: 1,
-      unitPrice: variant.price || 0,
+      unitPrice: variant.costPrice || 0,
     });
   };
 
   const onSubmit = async (data: CreatePurchaseOrderFormValues) => {
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: poId!, data: { ...data, id: poId } as any });
+        await updateMutation.mutateAsync({ id: poId!, data: { ...data, id: poId } as import("../types").UpdatePurchaseOrderCommand });
         toast.success('Cập nhật phiếu nhập kho thành công!');
       } else {
         await createMutation.mutateAsync(data);
@@ -113,7 +114,7 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
       onClose();
     } catch (error: any) {
       if (error?.response?.data?.message) {
-        toast.error(error.response.data.message);
+        toast.error(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
       } else {
         toast.error(isEdit ? 'Lỗi cập nhật phiếu nhập' : 'Lỗi tạo phiếu nhập');
       }
@@ -124,19 +125,19 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-[var(--neu-bg-base)] w-full max-w-4xl rounded-3xl shadow-[var(--neu-shadow-outer)] border border-[var(--neu-border)] flex flex-col max-h-[90vh]">
+      <div className="bg-card w-full max-w-4xl rounded-3xl shadow-md border border-border/50 flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[var(--neu-border)]">
+        <div className="flex items-center justify-between p-6 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center border border-blue-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-blue-500/20">
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[var(--neu-text-title)]">
+              <h2 className="text-xl font-bold text-foreground">
                 {isEdit ? 'Cập Nhật Phiếu Nhập Kho' : 'Tạo Phiếu Nhập Kho'}
               </h2>
-              <p className="text-xs text-[var(--neu-text-sub)]">
+              <p className="text-xs text-muted-foreground">
                 {isEdit ? 'Chỉnh sửa thông tin đơn hàng nháp' : 'Nhập hàng mới từ nhà cung cấp'}
               </p>
             </div>
@@ -155,19 +156,19 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-[var(--neu-text-title)] uppercase tracking-wider mb-2">Mã Phiếu</label>
+                  <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-2">Mã Phiếu</label>
                   <Input
                     {...register('code')}
                     disabled={isEdit}
-                    className="w-full bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-2xl px-4 py-3 text-sm text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:ring-2 focus:ring-blue-500/30 outline-none disabled:opacity-50"
+                    className="w-full bg-card border border-border/50 rounded-2xl px-4 py-3 text-sm text-foreground shadow-inner border border-border/50 bg-muted/20 focus:ring-2 focus:ring-blue-500/30 outline-none disabled:opacity-50"
                   />
                   {errors.code && <p className="text-rose-500 text-xs mt-1">{errors.code.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[var(--neu-text-title)] uppercase tracking-wider mb-2">Nhà Cung Cấp *</label>
+                  <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-2">Nhà Cung Cấp *</label>
                   <select
                     {...register('supplierId')}
-                    className="w-full bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-2xl px-4 py-3 text-sm text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:ring-2 focus:ring-blue-500/30 outline-none"
+                    className="w-full bg-card border border-border/50 rounded-2xl px-4 py-3 text-sm text-foreground shadow-inner border border-border/50 bg-muted/20 focus:ring-2 focus:ring-blue-500/30 outline-none"
                   >
                     <option value="">-- Chọn Nhà Cung Cấp --</option>
                     {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -175,10 +176,10 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                   {errors.supplierId && <p className="text-rose-500 text-xs mt-1">{errors.supplierId.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-[var(--neu-text-title)] uppercase tracking-wider mb-2">Kho Nhập *</label>
+                  <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-2">Kho Nhập *</label>
                   <select
                     {...register('warehouseId')}
-                    className="w-full bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-2xl px-4 py-3 text-sm text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:ring-2 focus:ring-blue-500/30 outline-none"
+                    className="w-full bg-card border border-border/50 rounded-2xl px-4 py-3 text-sm text-foreground shadow-inner border border-border/50 bg-muted/20 focus:ring-2 focus:ring-blue-500/30 outline-none"
                   >
                     <option value="">-- Chọn Kho --</option>
                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -187,8 +188,8 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                 </div>
               </div>
 
-              <div className="border-t border-[var(--neu-border)] pt-6">
-                <h3 className="text-sm font-bold text-[var(--neu-text-title)] uppercase tracking-wider mb-4">Chi tiết mặt hàng</h3>
+              <div className="border-t border-border/50 pt-6">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4">Chi tiết mặt hàng</h3>
                 
                 {/* Product Selector */}
                 <div className="flex gap-4 mb-4">
@@ -196,10 +197,10 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                     <select
                       value={selectedProductId}
                       onChange={(e) => setSelectedProductId(e.target.value)}
-                      className="w-full bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-2xl px-4 py-2.5 text-sm shadow-inner border border-border/50 bg-muted/20 outline-none"
+                      className="w-full bg-card border border-border/50 rounded-2xl px-4 py-2.5 text-sm shadow-inner border border-border/50 bg-muted/20 outline-none"
                     >
                       <option value="">-- Chọn Sản Phẩm --</option>
-                      {products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {products.map((p: ProductDto) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                   <div className="flex-1">
@@ -207,10 +208,10 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                       onChange={(e) => handleAddVariant(e.target.value)}
                       value=""
                       disabled={!selectedProductId}
-                      className="w-full bg-[var(--neu-bg-base)] border border-[var(--neu-border)] rounded-2xl px-4 py-2.5 text-sm shadow-inner border border-border/50 bg-muted/20 outline-none disabled:opacity-50"
+                      className="w-full bg-card border border-border/50 rounded-2xl px-4 py-2.5 text-sm shadow-inner border border-border/50 bg-muted/20 outline-none disabled:opacity-50"
                     >
                       <option value="">-- Chọn Biến Thể để Thêm --</option>
-                      {variants.map((v: any) => <option key={v.id} value={v.id}>{v.sku || v.id}</option>)}
+                      {variants.map((v: ProductVariantDto) => <option key={v.id} value={v.id}>{v.sku || v.id}</option>)}
                     </select>
                   </div>
                 </div>
@@ -218,10 +219,10 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                 {errors.items && <p className="text-rose-500 text-xs mb-2">{errors.items.message}</p>}
 
                 {/* Items Table */}
-                <div className="bg-slate-50/50 rounded-2xl border border-[var(--neu-border)] overflow-hidden">
+                <div className="bg-slate-50/50 rounded-2xl border border-border/50 overflow-hidden">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-[var(--neu-border)]">
+                      <tr className="border-b border-border/50">
                         <th className="px-4 py-3 font-bold text-slate-500">Mặt Hàng</th>
                         <th className="px-4 py-3 font-bold text-slate-500 w-32">Số Lượng</th>
                         <th className="px-4 py-3 font-bold text-slate-500 w-40">Đơn Giá</th>
@@ -233,7 +234,7 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                       {fields.length === 0 && (
                         <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Chưa có mặt hàng nào.</td></tr>
                       )}
-                      {fields.map((field: any, index) => {
+                      {fields.map((field: Record<string, any>, index) => {
                         const qty = watch(`items.${index}.quantity`) || 0;
                         const price = watch(`items.${index}.unitPrice`) || 0;
                         const amount = qty * price;
@@ -256,7 +257,7 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
                                 className="w-full border border-slate-200 rounded-lg px-2 py-1 text-sm outline-none focus:border-blue-500"
                               />
                             </td>
-                            <td className="px-4 py-3 font-mono font-bold text-blue-600">
+                            <td className="px-4 py-3 font-mono font-bold text-primary">
                               {amount.toLocaleString('vi-VN')} ₫
                             </td>
                             <td className="px-4 py-3">
@@ -285,11 +286,11 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-[var(--neu-border)] bg-slate-50/50 flex justify-end gap-3 rounded-b-3xl">
+        <div className="p-6 border-t border-border/50 bg-slate-50/50 flex justify-end gap-3 rounded-b-3xl">
           <Button variant="outline"
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-2xl font-bold text-slate-500 bg-[var(--neu-bg-base)] border border-slate-300 shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all text-xs"
+            className="px-5 py-2.5 rounded-2xl font-bold text-slate-500 bg-card border border-slate-300 shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-xs"
           >
             {tCommon.cancel}
           </Button>
@@ -297,7 +298,7 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
             type="submit"
             form="po-form"
             disabled={isSubmitting || (isEdit && isLoadingDetail)}
-            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-sm hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
             {tCommon.save}

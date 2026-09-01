@@ -89,8 +89,8 @@ export const PublicWarrantyCheckPage: React.FC = () => {
         </form>
 
         {error && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 text-xs text-red-300 animate-in fade-in">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-destructive/10 border border-red-500/30 flex items-start gap-3 text-xs text-red-300 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}

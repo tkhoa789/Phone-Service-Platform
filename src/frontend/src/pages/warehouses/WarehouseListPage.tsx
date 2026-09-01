@@ -77,25 +77,25 @@ export const WarehouseListPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 font-sans text-[var(--neu-text-sub)]">
+    <div className="space-y-6 font-sans text-muted-foreground">
       {/* Top Banner */}
-      <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-indigo-500 border border-indigo-500/30">
+          <div className="w-12 h-12 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center text-indigo-500 border border-indigo-500/30">
             <Warehouse className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-heading font-medium text-2xl text-[var(--neu-text-title)] tracking-tight">
+            <h1 className="font-heading font-medium text-2xl text-foreground tracking-tight">
               {language === 'vi' ? 'Quản Lý Kho Hàng' : 'Warehouse Management'}
             </h1>
-            <p className="text-xs text-[var(--neu-text-sub)] mt-0.5 font-normal">
+            <p className="text-xs text-muted-foreground mt-0.5 font-normal">
               {language === 'vi' ? 'Quản lý danh sách kho bãi của các chi nhánh' : 'Manage branch warehouses'}
             </p>
           </div>
         </div>
-        <Button variant="outline"
+        <Button variant="danger"
           onClick={handleCreate}
-          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white font-medium text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+          className="px-5 py-2.5 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> {language === 'vi' ? 'Thêm Kho Mới' : 'Add Warehouse'}
         </Button>
@@ -103,23 +103,23 @@ export const WarehouseListPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-5 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex items-center justify-between">
+        <div className="p-5 rounded-3xl bg-card border border-border/50 shadow-md flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1">
               {language === 'vi' ? 'Tổng Số Kho' : 'Total Warehouses'}
             </p>
-            <h3 className="text-2xl font-bold font-mono text-[var(--neu-text-title)]">{allWarehouses.length}</h3>
+            <h3 className="text-2xl font-bold font-mono text-foreground">{allWarehouses.length}</h3>
           </div>
           <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 shadow-inner border border-border/50 bg-muted/20 border border-indigo-500/20">
             <Warehouse className="w-5 h-5" />
           </div>
         </div>
-        <div className="p-5 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex items-center justify-between">
+        <div className="p-5 rounded-3xl bg-card border border-border/50 shadow-md flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1">
               {language === 'vi' ? 'Chi Nhánh Đang Hoạt Động' : 'Active Branches'}
             </p>
-            <h3 className="text-2xl font-bold font-mono text-[var(--neu-text-title)]">{branches.length}</h3>
+            <h3 className="text-2xl font-bold font-mono text-foreground">{branches.length}</h3>
           </div>
           <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 shadow-inner border border-border/50 bg-muted/20 border border-emerald-500/20">
             <Building2 className="w-5 h-5" />
@@ -136,14 +136,14 @@ export const WarehouseListPage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => updateSearchParams({ search: e.target.value, page: '1' })}
             placeholder={language === 'vi' ? 'Tìm kiếm kho hàng...' : 'Search warehouses...'}
-            className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl pl-11 pr-4 py-3 text-xs text-[var(--neu-text-title)] placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-normal"
+            className="w-full bg-card border border-slate-300/40 rounded-2xl pl-11 pr-4 py-3 text-xs text-foreground placeholder-slate-400 shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-normal"
           />
         </div>
         <div className="w-full md:w-64">
           <select
             value={branchFilter}
             onChange={(e) => updateSearchParams({ branchId: e.target.value, page: '1' })}
-            className="w-full bg-[var(--neu-bg-base)] border border-slate-300/40 rounded-2xl px-4 py-3 text-xs text-[var(--neu-text-title)] shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
+            className="w-full bg-card border border-slate-300/40 rounded-2xl px-4 py-3 text-xs text-foreground shadow-inner border border-border/50 bg-muted/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all"
           >
             <option value="">{language === 'vi' ? 'Tất cả chi nhánh' : 'All Branches'}</option>
             {branches.map(b => (
@@ -165,14 +165,14 @@ export const WarehouseListPage: React.FC = () => {
           </div>
         ) : (
           paginatedWarehouses.map((w) => (
-            <div key={w.id} className="p-5 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex flex-col gap-4">
+            <div key={w.id} className="p-5 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col gap-4">
               <div className="flex justify-between items-start gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[var(--neu-bg-base)] shadow-inner border border-border/50 bg-muted/20 text-indigo-500 flex items-center justify-center font-bold text-lg border border-indigo-500/30 shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 text-indigo-500 flex items-center justify-center font-bold text-lg border border-indigo-500/30 shrink-0">
                     {w.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[var(--neu-text-title)] text-sm">{w.name}</h3>
+                    <h3 className="font-semibold text-foreground text-sm">{w.name}</h3>
                     <p className="font-mono text-[10px] text-slate-400 bg-slate-500/10 px-1.5 py-0.5 rounded-md inline-block mt-1">
                       {w.code}
                     </p>
@@ -181,14 +181,14 @@ export const WarehouseListPage: React.FC = () => {
                 <div className="flex gap-1.5 shrink-0">
                   <Button variant="outline"
                     onClick={() => handleEdit(w)}
-                    className="p-2 rounded-xl bg-[var(--neu-bg-base)] text-indigo-500 shadow-[var(--neu-shadow-button)] active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
+                    className="p-2 rounded-xl bg-card text-indigo-500 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
                     title={tCommon.edit}
                   >
                     <Edit className="w-3.5 h-3.5" />
                   </Button>
                   <Button variant="outline"
                     onClick={() => handleDelete(w.id, w.name)}
-                    className="p-2 rounded-xl bg-[var(--neu-bg-base)] text-rose-500 hover:text-rose-600 shadow-[var(--neu-shadow-button)] active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
+                    className="p-2 rounded-xl bg-card text-rose-500 hover:text-rose-600 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
                     title={tCommon.delete}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -203,7 +203,7 @@ export const WarehouseListPage: React.FC = () => {
                       {language === 'vi' ? 'Chi Nhánh' : 'Branch'}
                     </span>
                   </div>
-                  <div className="font-medium text-[var(--neu-text-title)] flex items-center gap-1.5 truncate">
+                  <div className="font-medium text-foreground flex items-center gap-1.5 truncate">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span className="truncate">{w.branchName || '—'}</span>
                   </div>
@@ -214,7 +214,7 @@ export const WarehouseListPage: React.FC = () => {
                       {language === 'vi' ? 'Ngày Tạo' : 'Created At'}
                     </span>
                   </div>
-                  <div className="font-medium text-[var(--neu-text-title)] flex items-center gap-1.5 truncate">
+                  <div className="font-medium text-foreground flex items-center gap-1.5 truncate">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>{new Date(w.createdAt).toLocaleDateString('vi-VN')}</span>
                   </div>

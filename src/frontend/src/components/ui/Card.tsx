@@ -6,7 +6,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('rounded-3xl bg-[var(--neu-bg-base)] text-[var(--neu-text-title)] shadow-[var(--neu-shadow-outer)] border border-[var(--neu-border)] overflow-hidden', className)}
+    className={cn('rounded-3xl bg-card text-foreground shadow-md border border-border/50 overflow-hidden', className)}
     {...props}
   />
 ));
@@ -18,12 +18,12 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
 CardHeader.displayName = 'CardHeader';
 
 export const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(({ className, ...props }, ref) => (
-  <h3 ref={ref} className={cn('font-medium leading-none tracking-tight text-[var(--neu-text-title)]', className)} {...props} />
+  <h3 ref={ref} className={cn('font-medium leading-none tracking-tight text-foreground', className)} {...props} />
 ));
 CardTitle.displayName = 'CardTitle';
 
 export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-[var(--neu-text-sub)]', className)} {...props} />
+  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
 ));
 CardDescription.displayName = 'CardDescription';
 

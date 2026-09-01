@@ -16,7 +16,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label htmlFor={id} className="text-sm font-medium text-[var(--neu-text-title)]">
+          <label htmlFor={id} className="text-sm font-medium text-foreground">
             {label}
           </label>
         )}
@@ -28,11 +28,11 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             aria-invalid={!!error}
             className={cn(
               'appearance-none flex h-10 w-full rounded-2xl border px-3 py-2 pr-10 text-sm transition-colors cursor-pointer',
-              'bg-[var(--neu-bg-base)] text-[var(--neu-text-title)]',
+              'bg-card text-foreground',
               'focus:outline-none focus:ring-2 focus:ring-offset-1',
               error 
                 ? 'border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.1)] focus:ring-rose-500/50' 
-                : 'border-slate-300/20 shadow-[var(--neu-shadow-inset)] focus:border-emerald-500/50 focus:ring-emerald-500/20',
+                : 'border-slate-300/20 shadow-inner focus:border-emerald-500/50 focus:ring-emerald-500/20',
               'disabled:cursor-not-allowed disabled:opacity-50',
               className
             )}

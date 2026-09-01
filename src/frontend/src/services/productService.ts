@@ -1,6 +1,7 @@
 import { axiosClient } from '../utils/axiosClient';
 import type {
   ApiResponse,
+  PagedResult,
   ProductDto,
   ProductVariantDto,
   CreateProductCommand,
@@ -13,12 +14,14 @@ import type {
 export const productService = {
   // Products
   getAll: async (params?: { categoryId?: string; brandId?: string; search?: string }): Promise<ProductDto[]> => {
-    const response = await axiosClient.get<ApiResponse<ProductDto[]>>('/Product', { params });
-    return response.data.data;
+    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto> | ProductDto[]>>('/Product', { params });
+    const data = response.data.data;
+    return 'items' in data ? data.items : data;
   },
   getProducts: async (params?: { categoryId?: string; brandId?: string; search?: string }): Promise<ProductDto[]> => {
-    const response = await axiosClient.get<ApiResponse<ProductDto[]>>('/Product', { params });
-    return response.data.data;
+    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto> | ProductDto[]>>('/Product', { params });
+    const data = response.data.data;
+    return 'items' in data ? data.items : data;
   },
 
   getById: async (id: string): Promise<ProductDto> => {

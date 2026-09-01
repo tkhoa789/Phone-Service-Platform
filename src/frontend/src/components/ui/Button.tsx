@@ -10,12 +10,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles = {
-  primary: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white shadow-[var(--neu-shadow-button)]',
-  secondary: 'bg-[var(--neu-bg-base)] text-[var(--neu-text-title)] border border-slate-400/20 hover:text-[var(--neu-accent-mint)] shadow-[var(--neu-shadow-button)] active:shadow-[var(--neu-shadow-inset)]',
-  success: 'bg-emerald-500 text-white shadow-[var(--neu-shadow-button)] hover:bg-emerald-600',
-  danger: 'bg-[var(--neu-bg-base)] text-rose-500 border border-rose-500/30 hover:text-rose-600 shadow-[var(--neu-shadow-button)] active:shadow-[var(--neu-shadow-inset)]',
-  ghost: 'bg-transparent text-[var(--neu-text-sub)] hover:text-[var(--neu-text-title)] hover:bg-slate-200/50 dark:hover:bg-slate-800/50',
-  outline: 'bg-transparent border border-[var(--neu-border)] text-[var(--neu-text-title)] hover:bg-[var(--neu-bg-base)] shadow-sm'
+  primary: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm',
+  secondary: 'bg-card text-foreground border border-slate-400/20 hover:text-primary shadow-sm active:shadow-inner',
+  success: 'bg-emerald-500 text-white shadow-sm hover:bg-emerald-600',
+  danger: 'bg-card text-rose-500 border border-rose-500/30 hover:text-rose-600 shadow-sm active:shadow-inner',
+  ghost: 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-slate-200/50 dark:hover:bg-slate-800/50',
+  outline: 'bg-transparent border border-border/50 text-foreground hover:bg-card shadow-sm'
 };
 
 const sizeStyles = {

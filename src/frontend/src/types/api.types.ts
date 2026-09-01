@@ -151,7 +151,7 @@ export interface ProductVariantDto {
   capacity?: string;
   costPrice: number;
   salePrice: number;
-  price: number;
+
   createdAt: string;
 }
 

@@ -5,7 +5,7 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
   return (
     <div
       className={cn(
-        "animate-pulse rounded-2xl bg-slate-800/50 shadow-[var(--neu-shadow-inset)]",
+        "animate-pulse rounded-2xl bg-slate-800/50 shadow-inner",
         className
       )}
       {...props}
@@ -15,7 +15,7 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 
 export function SkeletonCard() {
   return (
-    <div className="p-6 rounded-3xl bg-[var(--neu-bg-base)] border border-[var(--neu-border)] shadow-[var(--neu-shadow-outer)] flex flex-col gap-4">
+    <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col gap-4">
       <Skeleton className="h-6 w-1/3" />
       <Skeleton className="h-4 w-1/2" />
       <div className="flex flex-col gap-2 mt-4">

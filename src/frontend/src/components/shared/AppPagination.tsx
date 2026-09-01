@@ -21,11 +21,11 @@ export const AppPagination: React.FC<AppPaginationProps> = ({
   if (totalPages <= 1 && totalItems === 0) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between pt-4 pb-2 gap-4 text-xs text-[var(--neu-text-sub)]">
+    <div className="flex flex-col sm:flex-row items-center justify-between pt-4 pb-2 gap-4 text-xs text-muted-foreground">
       <div className="font-medium">
-        Hiển thị từ <span className="font-bold text-[var(--neu-text-title)]">{(currentPage - 1) * pageSize + 1}</span> đến{' '}
-        <span className="font-bold text-[var(--neu-text-title)]">{Math.min(currentPage * pageSize, totalItems)}</span> trong tổng số{' '}
-        <span className="font-bold text-[var(--neu-accent-mint)]">{totalItems}</span> bản ghi
+        Hiển thị từ <span className="font-bold text-foreground">{(currentPage - 1) * pageSize + 1}</span> đến{' '}
+        <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalItems)}</span> trong tổng số{' '}
+        <span className="font-bold text-primary">{totalItems}</span> bản ghi
       </div>
 
       <div className="flex items-center gap-2">

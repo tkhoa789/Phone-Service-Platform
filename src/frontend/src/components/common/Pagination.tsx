@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 interface PaginationProps {
   currentPage: number;
@@ -27,25 +28,29 @@ export const Pagination: React.FC<PaginationProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3.5 py-2 rounded-xl bg-slate-200 text-slate-800 hover:bg-slate-300 font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[3px_3px_7px_#b8c4d4,-3px_-3px_7px_#ffffff] active:shadow-[inset_2px_2px_5px_#b8c4d4] flex items-center gap-1"
+          className="flex items-center gap-1 font-bold shadow-[3px_3px_7px_#b8c4d4,-3px_-3px_7px_#ffffff]"
         >
           <ChevronLeft className="w-4 h-4" /> Trước
-        </button>
+        </Button>
 
         <span className="px-4 py-2 rounded-xl bg-slate-200 border border-emerald-500/40 text-emerald-800 font-extrabold shadow-[inset_2px_2px_5px_#b8c4d4,inset_-2px_-2px_5px_#ffffff]">
           Trang {currentPage} / {totalPages}
         </span>
 
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3.5 py-2 rounded-xl bg-slate-200 text-slate-800 hover:bg-slate-300 font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[3px_3px_7px_#b8c4d4,-3px_-3px_7px_#ffffff] active:shadow-[inset_2px_2px_5px_#b8c4d4] flex items-center gap-1"
+          className="flex items-center gap-1 font-bold shadow-[3px_3px_7px_#b8c4d4,-3px_-3px_7px_#ffffff]"
         >
           Sau <ChevronRight className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );

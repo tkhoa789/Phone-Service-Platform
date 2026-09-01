@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { IntakeState } from '../../pages/RepairIntakePage';
+import type { IntakeState, IntakeCheckpoint } from '../../pages/RepairIntakePage';
 import { useThemeStore } from '@/stores/themeStore';
 import { ShieldCheck, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +27,7 @@ export const ChecklistStep: React.FC<Props> = ({ state, updateState, onNext, onB
   const { language } = useThemeStore();
   
   // Initialize checkpoints if empty
-  const [checkpoints, setCheckpoints] = useState<any[]>(
+  const [checkpoints, setCheckpoints] = useState<IntakeCheckpoint[]>(
     state.checkpoints && state.checkpoints.length > 0
       ? state.checkpoints
       : DEFAULT_CHECKPOINTS.map(name => ({ checkPointName: name, isPassed: true, issueDescription: '' }))

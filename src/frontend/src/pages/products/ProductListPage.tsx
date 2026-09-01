@@ -226,7 +226,7 @@ export const ProductListPage: React.FC = () => {
                                         <span className="font-mono text-xs text-primary font-bold">{v.sku}</span>
                                       </div>
                                       <div className="flex items-center space-x-1">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingVariant(v); setPresetProductId(product.id); setShowVariantModal(true); }}>
+                                        <Button variant="danger" size="icon" className="h-6 w-6" onClick={() => { setEditingVariant(v); setPresetProductId(product.id); setShowVariantModal(true); }}>
                                           <Edit className="w-3.5 h-3.5 text-muted-foreground" />
                                         </Button>
                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDeleteVariantConfirm({ isOpen: true, id: v.id, name: v.sku, productId: product.id })}>

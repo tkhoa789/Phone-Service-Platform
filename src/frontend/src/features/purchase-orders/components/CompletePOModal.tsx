@@ -53,14 +53,14 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
     if (!valid) return;
 
     try {
-      await completeMutation.mutateAsync({ id: poId, data: { ...data, id: poId } as any });
+      await completeMutation.mutateAsync({ id: poId, data: { ...data, id: poId } as import("../types").CompletePurchaseOrderCommand });
       toast.success('Hoàn tất nhập kho thành công!');
       onSuccess();
     } catch (error: any) {
       if (error?.response?.status === 409) {
         toast.error('Lỗi Concurrency: Phiếu nhập đã được người khác xử lý!');
       } else if (error?.response?.data?.message) {
-        toast.error(error.response.data.message);
+        toast.error(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
       } else {
         toast.error('Lỗi hoàn tất phiếu nhập');
       }
@@ -71,16 +71,16 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-[var(--neu-bg-base)] w-full max-w-3xl rounded-3xl shadow-[var(--neu-shadow-outer)] border border-[var(--neu-border)] flex flex-col max-h-[90vh]">
+      <div className="bg-card w-full max-w-3xl rounded-3xl shadow-md border border-border/50 flex flex-col max-h-[90vh]">
         
-        <div className="flex items-center justify-between p-6 border-b border-[var(--neu-border)]">
+        <div className="flex items-center justify-between p-6 border-b border-border/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[var(--neu-text-title)]">Nhận Hàng (Complete PO)</h2>
-              <p className="text-xs text-[var(--neu-text-sub)]">Quét IMEI để nhập kho ({po.code})</p>
+              <h2 className="text-xl font-bold text-foreground">Nhận Hàng (Complete PO)</h2>
+              <p className="text-xs text-muted-foreground">Quét IMEI để nhập kho ({po.code})</p>
             </div>
           </div>
           <Button variant="outline" onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500">
@@ -99,7 +99,7 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
               <div key={item.id} className="border border-slate-200 rounded-2xl p-4 bg-white shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-bold text-slate-800">{item.variantName}</h4>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                  <span className="px-3 py-1 bg-primary/10 text-blue-700 rounded-full text-xs font-bold">
                     Cần nhập: {item.quantity} IMEI
                   </span>
                 </div>
@@ -159,11 +159,11 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
           </form>
         </div>
 
-        <div className="p-6 border-t border-[var(--neu-border)] bg-slate-50/50 flex justify-end gap-3 rounded-b-3xl">
+        <div className="p-6 border-t border-border/50 bg-slate-50/50 flex justify-end gap-3 rounded-b-3xl">
           <Button variant="outline"
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-2xl font-bold text-slate-500 bg-[var(--neu-bg-base)] border border-slate-300 shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all text-xs"
+            className="px-5 py-2.5 rounded-2xl font-bold text-slate-500 bg-card border border-slate-300 shadow-sm hover:scale-[1.02] active:scale-95 transition-all text-xs"
           >
             Đóng
           </Button>
@@ -171,7 +171,7 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
             type="submit"
             form="complete-form"
             disabled={isSubmitting}
-            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-xs shadow-[var(--neu-shadow-button)] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-xs shadow-sm hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
             Xác Nhận & Hoàn Tất
