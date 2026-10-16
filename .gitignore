@@ -28,3 +28,58 @@ $RECYCLE.BIN/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# ==========================================
+# Database backups & local binaries
+# ==========================================
+*.bak
+*.mdf
+*.ldf
+
+# ==========================================
+# Test output, logs & regression artifacts
+# ==========================================
+*.log
+src/backend/*.txt
+src/backend/*.log
+
+# ==========================================
+# Frontend audit & temporary test dumps
+# ==========================================
+*-audit-results.json
+fsd_violations.json
+unused_files_report.json
+ux-audit-results.json
+pc15-audit-raw.json
+pc15a-escalated.json
+pc12c-results.json
+pc11-audit-results.json
+any-inventory.json
+categorized-any.json
+
+# ==========================================
+# Python cache & temporary scratches
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+scratch/
+src/frontend/scratch/
+qa-screenshots-*/
+screenshots/
+
+# ==========================================
+# Local development scratch & AI artifacts
+# ==========================================
+.agents/
+.ai/
+audit/
+scripts/
+docs/Antigravity Memory Log/
+.ignore
+AGENTS.md
+
+
+*.trx
+TestResults/
+
