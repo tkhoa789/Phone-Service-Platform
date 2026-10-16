@@ -26,6 +26,21 @@ public class WarrantyTicketEntity : BaseEntity
     public DateTime? EndDate { get; set; }
     public string? Note { get; set; }
 
+    // Nhánh 1: Từ chối bảo hành (Reject)
+    public RejectReason? RejectReason { get; set; }
+    public string? RejectNotes { get; set; }
+    public string? EvidencePhotoUrls { get; set; }
+    public bool TransferToPaidRepair { get; set; } = false;
+
+    // Nhánh 2: Chuyển sửa chữa nội bộ (In-house Repair)
+    public Guid? RepairTicketId { get; set; }
+
+    // Nhánh 4: Gửi hãng ủy quyền (OEM Vendor RMA)
+    public string? VendorName { get; set; }
+    public string? VendorTicketNumber { get; set; }
+    public string? TrackingNumber { get; set; }
+    public VendorSubStatus? VendorSubStatus { get; set; }
+
     [System.ComponentModel.DataAnnotations.Timestamp]
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
@@ -33,6 +48,7 @@ public class WarrantyTicketEntity : BaseEntity
     public CustomerEntity Customer { get; set; } = null!;
     public SalesOrderEntity? SalesOrder { get; set; }
     public ProductVariantEntity ProductVariant { get; set; } = null!;
+    public PSP.Domain.Modules.Repair.Entities.RepairTicketEntity? RepairTicket { get; set; }
     public ICollection<WarrantyHistoryEntity> Histories { get; set; } = new List<WarrantyHistoryEntity>();
 }
 
@@ -46,6 +62,12 @@ public class WarrantyHistoryEntity : BaseEntity
     public string Status { get; set; } = string.Empty;
     public string? Description { get; set; }
 
+    // Thông tin người thực hiện & ghi chú chi tiết
+    public Guid? ActorId { get; set; }
+    public string? ActorName { get; set; }
+    public string? Notes { get; set; }
+
     // Navigation Properties
     public WarrantyTicketEntity WarrantyTicket { get; set; } = null!;
 }
+

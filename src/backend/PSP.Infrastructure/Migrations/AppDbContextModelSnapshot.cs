@@ -1840,6 +1840,17 @@ namespace PSP.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Action")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1849,12 +1860,16 @@ namespace PSP.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Details")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Note")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<Guid>("RepairTicketId")
                         .HasColumnType("uniqueidentifier");
@@ -1904,15 +1919,80 @@ namespace PSP.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("CustomModelName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomerApprovalMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CustomerApprovalNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("CustomerApprovalStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal?>("CustomerApprovedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("CustomerApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CustomerApprovedById")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeliveredById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DeliveredToCustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DeliveryNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DeliverySignatureUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("DiagnosedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DiagnosedById")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DiagnosisProposedSolution")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DiagnosisRootCause")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal?>("EstimatedCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("EstimatedDays")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExteriorCondition")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Imei")
                         .HasMaxLength(18)
@@ -1920,6 +2000,11 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsTest")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<decimal>("LaborCost")
                         .HasPrecision(18, 2)
@@ -1950,6 +2035,10 @@ namespace PSP.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("TechnicalNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<Guid?>("TechnicianId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1958,6 +2047,9 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("WarrantyTicketId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
@@ -1973,6 +2065,8 @@ namespace PSP.Infrastructure.Migrations
                     b.HasIndex("ReceivedById");
 
                     b.HasIndex("TechnicianId");
+
+                    b.HasIndex("WarrantyTicketId");
 
                     b.ToTable("RepairTickets", (string)null);
                 });
@@ -2482,6 +2576,13 @@ namespace PSP.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -2497,6 +2598,10 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2545,6 +2650,10 @@ namespace PSP.Infrastructure.Migrations
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("EvidencePhotoUrls")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<string>("Imei")
                         .HasMaxLength(18)
                         .HasColumnType("nvarchar(18)");
@@ -2557,6 +2666,17 @@ namespace PSP.Infrastructure.Migrations
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid>("ProductVariantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RejectNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("RepairTicketId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte[]>("RowVersion")
@@ -2576,11 +2696,32 @@ namespace PSP.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("TransferToPaidRepair")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("VendorName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("VendorSubStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("VendorTicketNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -2590,6 +2731,8 @@ namespace PSP.Infrastructure.Migrations
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("ProductVariantId");
+
+                    b.HasIndex("RepairTicketId");
 
                     b.HasIndex("SalesOrderId");
 
@@ -3077,6 +3220,11 @@ namespace PSP.Infrastructure.Migrations
                         .HasForeignKey("TechnicianId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("PSP.Domain.Modules.Warranty.Entities.WarrantyTicketEntity", "WarrantyTicket")
+                        .WithMany()
+                        .HasForeignKey("WarrantyTicketId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Branch");
 
                     b.Navigation("Customer");
@@ -3086,6 +3234,8 @@ namespace PSP.Infrastructure.Migrations
                     b.Navigation("ReceivedBy");
 
                     b.Navigation("Technician");
+
+                    b.Navigation("WarrantyTicket");
                 });
 
             modelBuilder.Entity("PSP.Domain.Modules.Sales.Entities.InvoiceEntity", b =>
@@ -3245,6 +3395,11 @@ namespace PSP.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PSP.Domain.Modules.Repair.Entities.RepairTicketEntity", "RepairTicket")
+                        .WithMany()
+                        .HasForeignKey("RepairTicketId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PSP.Domain.Modules.Sales.Entities.SalesOrderEntity", "SalesOrder")
                         .WithMany()
                         .HasForeignKey("SalesOrderId")
@@ -3253,6 +3408,8 @@ namespace PSP.Infrastructure.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("ProductVariant");
+
+                    b.Navigation("RepairTicket");
 
                     b.Navigation("SalesOrder");
                 });

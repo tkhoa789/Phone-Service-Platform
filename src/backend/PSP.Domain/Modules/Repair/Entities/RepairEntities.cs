@@ -24,14 +24,43 @@ public class RepairTicketEntity : BaseEntity
     public string Code { get; set; } = string.Empty;
     public RepairTicketStatus Status { get; set; } = RepairTicketStatus.Received;
     public string ProblemDescription { get; set; } = string.Empty;
+    public string? ExteriorCondition { get; set; }
+    public string? CustomModelName { get; set; }
     public decimal? EstimatedCost { get; set; }
     public decimal? ActualCost { get; set; }
     public decimal LaborCost { get; set; } = 0;
     public DateTime ReceivedDate { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedDate { get; set; }
+    public bool IsTest { get; set; } = false;
 
     [System.ComponentModel.DataAnnotations.Timestamp]
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+    // Diagnosis Information (Section 5)
+    public string? DiagnosisRootCause { get; set; }
+    public string? DiagnosisProposedSolution { get; set; }
+    public int? EstimatedDays { get; set; }
+    public string? TechnicalNotes { get; set; }
+    public DateTime? DiagnosedAt { get; set; }
+    public Guid? DiagnosedById { get; set; }
+
+    // Customer Approval Information (Section 6)
+    public string? CustomerApprovalStatus { get; set; } // "Pending", "Approved", "Rejected"
+    public DateTime? CustomerApprovedAt { get; set; }
+    public Guid? CustomerApprovedById { get; set; }
+    public string? CustomerApprovalMethod { get; set; } // InPerson, Phone, SMS, Zalo, Web
+    public decimal? CustomerApprovedAmount { get; set; }
+    public string? CustomerApprovalNote { get; set; }
+
+    // Delivery Information (Section 12)
+    public Guid? DeliveredById { get; set; }
+    public DateTime? DeliveredAt { get; set; }
+    public string? DeliveredToCustomerName { get; set; }
+    public string? DeliveryNotes { get; set; }
+    public string? DeliverySignatureUrl { get; set; }
+
+    // Liên kết bảo hành (nếu phiếu sửa chữa được chuyển từ quy trình thẩm định bảo hành)
+    public Guid? WarrantyTicketId { get; set; }
 
     // Navigation Properties
     public CustomerEntity Customer { get; set; } = null!;
@@ -39,6 +68,7 @@ public class RepairTicketEntity : BaseEntity
     public PSP.Domain.Modules.Branch.Entities.BranchEntity? Branch { get; set; }
     public UserEntity ReceivedBy { get; set; } = null!;
     public UserEntity? Technician { get; set; }
+    public PSP.Domain.Modules.Warranty.Entities.WarrantyTicketEntity? WarrantyTicket { get; set; }
     public ICollection<RepairPartEntity> Parts { get; set; } = new List<RepairPartEntity>();
     public ICollection<RepairStatusHistoryEntity> StatusHistories { get; set; } = new List<RepairStatusHistoryEntity>();
     public ICollection<RepairChecklistEntity> Checklists { get; set; } = new List<RepairChecklistEntity>();
@@ -76,6 +106,10 @@ public class RepairStatusHistoryEntity : BaseEntity
     public Guid RepairTicketId { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public string? Action { get; set; }
+    public Guid? ActorId { get; set; }
+    public string? ActorName { get; set; }
+    public string? Details { get; set; }
 
     // Navigation Properties
     public RepairTicketEntity RepairTicket { get; set; } = null!;

@@ -79,6 +79,27 @@ public enum WarrantyTicketStatus
 }
 
 /// <summary>
+/// Lý do từ chối bảo hành.
+/// </summary>
+public enum RejectReason
+{
+    WaterDamage,              // Thấm nước / ẩm quỳ tím
+    Dropped,                  // Rơi vỡ / cấn móp / biến dạng ngoại lực
+    ThirdPartyIntervention,   // Tem rách / can thiệp sửa chữa ngoài trái phép
+    Expired,                  // Hết hạn bảo hành
+    Other                     // Lý do khác
+}
+
+/// <summary>
+/// Trạng thái phụ khi gửi bảo hành tại trung tâm bảo hành hãng (OEM RMA).
+/// </summary>
+public enum VendorSubStatus
+{
+    AtVendor,   // Đang tại trung tâm bảo hành hãng
+    Returned    // Hãng đã xử lý xong và gửi trả về shop
+}
+
+/// <summary>
 /// Trạng thái phiếu sửa chữa.
 /// Tuân thủ BUSINESS_RULE_AI: Chỉ được đi theo chiều tiến,
 /// không cho phép lùi trạng thái.
@@ -86,6 +107,7 @@ public enum WarrantyTicketStatus
 /// </summary>
 public enum RepairTicketStatus
 {
+    PendingAssignment,  // Chờ phân công
     Received,           // Tiếp nhận
     Diagnosing,         // Chẩn đoán (BUS-001)
     WaitingApproval,    // Chờ khách đồng ý (BUS-001)

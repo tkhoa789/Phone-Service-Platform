@@ -44,6 +44,34 @@ public class WarrantyTicketConfiguration : IEntityTypeConfiguration<WarrantyTick
         builder.Property(e => e.Note)
             .HasMaxLength(1000);
 
+        // Workflow fields: Từ chối bảo hành
+        builder.Property(e => e.RejectReason)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(e => e.RejectNotes)
+            .HasMaxLength(1000);
+
+        builder.Property(e => e.EvidencePhotoUrls)
+            .HasMaxLength(2000);
+
+        builder.Property(e => e.TransferToPaidRepair)
+            .HasDefaultValue(false);
+
+        // Workflow fields: Gửi hãng OEM RMA
+        builder.Property(e => e.VendorName)
+            .HasMaxLength(200);
+
+        builder.Property(e => e.VendorTicketNumber)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.TrackingNumber)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.VendorSubStatus)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
         // 7. Cấu hình mối quan hệ khóa ngoại (Foreign Keys)
         
         // Phiếu bảo hành thuộc về một Khách hàng
@@ -62,6 +90,12 @@ public class WarrantyTicketConfiguration : IEntityTypeConfiguration<WarrantyTick
         builder.HasOne(e => e.ProductVariant)
             .WithMany()
             .HasForeignKey(e => e.ProductVariantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Phiếu bảo hành có thể liên kết đến một Phiếu sửa chữa nội bộ (RepairTicket)
+        builder.HasOne(e => e.RepairTicket)
+            .WithMany()
+            .HasForeignKey(e => e.RepairTicketId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Một phiếu bảo hành có nhiều lượt ghi nhận lịch sử xử lý (Histories)

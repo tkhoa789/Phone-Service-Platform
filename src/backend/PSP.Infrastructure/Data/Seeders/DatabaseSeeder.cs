@@ -6,9 +6,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using PSP.Application.Common.Interfaces;
+using PSP.Domain.Common.Constants;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Modules.Auth.Entities;
 using PSP.Domain.Modules.Branch.Entities;
+using PSP.Domain.Modules.Inventory.Entities;
+using PSP.Domain.Modules.Product.Entities;
 using PSP.Domain.Modules.Sales.Entities;
 
 namespace PSP.Infrastructure.Data.Seeders;
@@ -96,6 +99,7 @@ public static class DatabaseSeeder
             await SeedUserRolesAsync(context, logger);
             await SeedRolePermissionsAsync(context, logger);
             await SeedPaymentMethodsAsync(context, logger);
+            await SeedWarehouseInventoryAsync(context, logger);
 
             logger.LogInformation("✅ Database Seeder hoàn thành. Dữ liệu gốc đã sẵn sàng.");
         }
@@ -167,18 +171,27 @@ public static class DatabaseSeeder
 
     private static async Task SeedPermissionsAsync(AppDbContext context, ILogger logger)
     {
-        var permissions = new List<PermissionEntity>
+        for (int i = 0; i < Permissions.All.Count; i++)
         {
-            new() { Id = Guid.Parse("40000000-0000-0000-0000-000000000001"), Code = "BRANCH_VIEW", Name = "Xem chi nhánh", Module = "BRANCH", CreatedBy = "SYSTEM" },
-            new() { Id = Guid.Parse("40000000-0000-0000-0000-000000000002"), Code = "USER_VIEW", Name = "Xem người dùng", Module = "USER", CreatedBy = "SYSTEM" },
-            new() { Id = Guid.Parse("40000000-0000-0000-0000-000000000003"), Code = "AUDIT_VIEW", Name = "Xem nhật ký audit", Module = "AUDIT", CreatedBy = "SYSTEM" },
-        };
+            var code = Permissions.All[i];
+            var deterministicId = Guid.Parse($"40000000-0000-0000-0000-{(i + 1):D12}");
+            var parts = code.Split('.');
+            var module = parts.Length > 0 ? parts[0] : "SYSTEM";
 
-        foreach (var p in permissions)
-        {
-            if (!await context.Permissions.AnyAsync(x => x.Id == p.Id || x.Code == p.Code))
+            var existing = await context.Permissions.FirstOrDefaultAsync(x => x.Code == code);
+            if (existing == null)
             {
-                await context.Permissions.AddAsync(p);
+                var idTaken = await context.Permissions.AnyAsync(x => x.Id == deterministicId);
+                var permId = idTaken ? Guid.NewGuid() : deterministicId;
+
+                await context.Permissions.AddAsync(new PermissionEntity
+                {
+                    Id = permId,
+                    Code = code,
+                    Name = code,
+                    Module = module,
+                    CreatedBy = "SYSTEM"
+                });
             }
         }
         await context.SaveChangesAsync();
@@ -252,18 +265,134 @@ public static class DatabaseSeeder
 
     private static async Task SeedRolePermissionsAsync(AppDbContext context, ILogger logger)
     {
-        var allPermissions = await context.Permissions.ToListAsync();
-        var rolesToGrantAll = new[] { "Owner", "Admin" };
+        var allPermissions = await context.Permissions.Where(p => !p.IsDeleted).ToListAsync();
+        var permByCode = allPermissions.ToDictionary(p => p.Code, p => p.Id, StringComparer.OrdinalIgnoreCase);
 
-        foreach (var roleName in rolesToGrantAll)
+        foreach (var roleName in CanonicalRoles.All)
         {
             var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
-            if (role != null && !await context.RolePermissions.AnyAsync(rp => rp.RoleId == role.Id))
+            if (role == null) continue;
+
+            var allowedCodes = Permissions.GetPermissionsForRole(roleName);
+            var existingPermIds = await context.RolePermissions
+                .Where(rp => rp.RoleId == role.Id)
+                .Select(rp => rp.PermissionId)
+                .ToListAsync();
+
+            var toAdd = new List<RolePermissionEntity>();
+            foreach (var code in allowedCodes)
             {
-                await context.RolePermissions.AddRangeAsync(allPermissions.Select(p => new RolePermissionEntity { RoleId = role.Id, PermissionId = p.Id }));
+                if (permByCode.TryGetValue(code, out var permId) && !existingPermIds.Contains(permId))
+                {
+                    toAdd.Add(new RolePermissionEntity
+                    {
+                        RoleId = role.Id,
+                        PermissionId = permId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            if (toAdd.Count > 0)
+            {
+                await context.RolePermissions.AddRangeAsync(toAdd);
+                logger.LogInformation("Seeded {Count} permissions for role {RoleName}", toAdd.Count, roleName);
             }
         }
 
         await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedWarehouseInventoryAsync(AppDbContext context, ILogger logger)
+    {
+        var warehouses = await context.Warehouses.Where(w => !w.IsDeleted).ToListAsync();
+        var variants = await context.ProductVariants.Where(v => !v.IsDeleted).ToListAsync();
+        if (!warehouses.Any() || !variants.Any()) return;
+
+        var products = await context.Products.Where(p => !p.IsDeleted).ToListAsync();
+        var categories = await context.Categories.Where(c => !c.IsDeleted).ToListAsync();
+
+        var productCategoryMap = products.ToDictionary(p => p.Id, p => p.CategoryId);
+        var categoryMap = categories.ToDictionary(c => c.Id, c => c);
+        var existingImeiSet = await context.Imeis.Select(x => x.Imei).ToHashSetAsync();
+
+        foreach (var wh in warehouses)
+        {
+            var existingVariantIds = await context.Inventories
+                .Where(i => i.WarehouseId == wh.Id && !i.IsDeleted)
+                .Select(i => i.ProductVariantId)
+                .ToListAsync();
+
+            var missingVariants = variants.Where(v => !existingVariantIds.Contains(v.Id)).ToList();
+            if (missingVariants.Count > 0)
+            {
+                var newInventories = missingVariants.Select(v => new InventoryEntity
+                {
+                    Id = Guid.NewGuid(),
+                    WarehouseId = wh.Id,
+                    ProductVariantId = v.Id,
+                    Quantity = 50,
+                    MinimumStock = 5,
+                    CreatedAt = DateTime.UtcNow
+                }).ToList();
+
+                await context.Inventories.AddRangeAsync(newInventories);
+                logger.LogInformation("Seeded {Count} inventory rows for warehouse {WarehouseName} ({WarehouseId})", newInventories.Count, wh.Name, wh.Id);
+            }
+
+            // Also seed sample in-stock IMEIs for mobile phone variants if warehouse lacks IMEIs
+            var existingImeisCount = await context.Imeis
+                .Where(im => im.WarehouseId == wh.Id && !im.IsDeleted)
+                .CountAsync();
+
+            if (existingImeisCount == 0)
+            {
+                var newImeis = new List<ImeiEntity>();
+                var whSuffix = wh.Id.ToString("N")[..6].ToUpper();
+
+                foreach (var v in variants)
+                {
+                    if (productCategoryMap.TryGetValue(v.ProductId, out var catId) && categoryMap.TryGetValue(catId, out var cat))
+                    {
+                        var isMobile = cat.Code.StartsWith("MOBILE", StringComparison.OrdinalIgnoreCase) ||
+                                       cat.Name.Contains("Điện thoại", StringComparison.OrdinalIgnoreCase);
+                        if (isMobile)
+                        {
+                            var cleanSku = string.Concat((v.Sku ?? "SKU").Where(char.IsLetterOrDigit));
+                            if (cleanSku.Length > 10) cleanSku = cleanSku[..10];
+
+                            for (int i = 1; i <= 5; i++)
+                            {
+                                var candidateImei = $"{cleanSku}-{whSuffix}-{i:D3}";
+                                if (existingImeiSet.Contains(candidateImei))
+                                {
+                                    candidateImei = $"{cleanSku}-{whSuffix}-{Guid.NewGuid().ToString("N")[..4].ToUpper()}";
+                                }
+                                existingImeiSet.Add(candidateImei);
+
+                                newImeis.Add(new ImeiEntity
+                                {
+                                    Id = Guid.NewGuid(),
+                                    Imei = candidateImei,
+                                    ProductVariantId = v.Id,
+                                    WarehouseId = wh.Id,
+                                    Status = ImeiStatus.InStock,
+                                    CreatedAt = DateTime.UtcNow
+                                });
+                            }
+                        }
+                    }
+                }
+
+                if (newImeis.Count > 0)
+                {
+                    await context.Imeis.AddRangeAsync(newImeis);
+                    logger.LogInformation("Seeded {Count} sample IMEIs for warehouse {WarehouseName}", newImeis.Count, wh.Name);
+                }
+            }
+
+            // Persist per warehouse to isolate batches
+            await context.SaveChangesAsync();
+        }
     }
 }

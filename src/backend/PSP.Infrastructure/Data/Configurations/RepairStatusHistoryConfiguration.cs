@@ -28,7 +28,17 @@ public class RepairStatusHistoryConfiguration : IEntityTypeConfiguration<RepairS
 
         // 4. Ghi chú lý do chuyển trạng thái hoặc kết quả kiểm tra
         builder.Property(e => e.Note)
-            .HasMaxLength(255);
+            .HasMaxLength(500);
+
+        // Section 15: Audit fields
+        builder.Property(e => e.Action)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.ActorName)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.Details)
+            .HasMaxLength(1000);
 
         // 5. Thời điểm ghi nhận lịch sử
         builder.Property(e => e.CreatedAt)

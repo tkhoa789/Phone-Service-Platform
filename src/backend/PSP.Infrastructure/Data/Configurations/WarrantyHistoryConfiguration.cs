@@ -34,6 +34,12 @@ public class WarrantyHistoryConfiguration : IEntityTypeConfiguration<WarrantyHis
         builder.Property(e => e.Description)
             .HasMaxLength(500);
 
+        builder.Property(e => e.ActorName)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.Notes)
+            .HasMaxLength(1000);
+
         // 6. Cấu hình mối quan hệ khóa ngoại (Foreign Keys)
         
         // Bản ghi lịch sử thuộc về một Phiếu bảo hành cha

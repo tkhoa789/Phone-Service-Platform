@@ -41,6 +41,12 @@ public class RepairTicketConfiguration : IEntityTypeConfiguration<RepairTicketEn
             .IsRequired()
             .HasMaxLength(1000);
 
+        builder.Property(e => e.ExteriorCondition)
+            .HasMaxLength(500);
+
+        builder.Property(e => e.CustomModelName)
+            .HasMaxLength(200);
+
         // 6. Số IMEI của thiết bị sửa chữa (Imei) - Có thể null (nếu máy không có imei hoặc khách không nhớ)
         builder.Property(e => e.Imei)
             .HasMaxLength(18);
@@ -58,6 +64,26 @@ public class RepairTicketConfiguration : IEntityTypeConfiguration<RepairTicketEn
 
         builder.Property(e => e.RowVersion)
             .IsRowVersion();
+
+        builder.Property(e => e.IsTest)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        // Diagnosis Fields (Section 5)
+        builder.Property(e => e.DiagnosisRootCause).HasMaxLength(500);
+        builder.Property(e => e.DiagnosisProposedSolution).HasMaxLength(500);
+        builder.Property(e => e.TechnicalNotes).HasMaxLength(1000);
+
+        // Customer Approval Fields (Section 6)
+        builder.Property(e => e.CustomerApprovalStatus).HasMaxLength(50);
+        builder.Property(e => e.CustomerApprovalMethod).HasMaxLength(50);
+        builder.Property(e => e.CustomerApprovedAmount).HasPrecision(18, 2);
+        builder.Property(e => e.CustomerApprovalNote).HasMaxLength(500);
+
+        // Delivery Fields (Section 12)
+        builder.Property(e => e.DeliveredToCustomerName).HasMaxLength(200);
+        builder.Property(e => e.DeliveryNotes).HasMaxLength(500);
+        builder.Property(e => e.DeliverySignatureUrl).HasMaxLength(500);
 
         // 8. Cấu hình mối quan hệ khóa ngoại (Foreign Keys)
         // Chặn Cascade Delete (sử dụng Restrict) để khi xóa khách hàng hay sản phẩm không bị xóa nhầm lịch sử sửa chữa.
@@ -92,7 +118,13 @@ public class RepairTicketConfiguration : IEntityTypeConfiguration<RepairTicketEn
             .HasForeignKey(e => e.TechnicianId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Một phiếu sửa chữa có thể có nhiều linh kiện thay thế (Parts)
+        // Phiếu sửa chữa có thể liên kết tới Phiếu bảo hành (nếu được chuyển từ bảo hành)
+        builder.HasOne(e => e.WarrantyTicket)
+            .WithMany()
+            .HasForeignKey(e => e.WarrantyTicketId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Một phiếu sửa chữa có nhiều linh kiện thay thế (Parts)
         builder.HasMany(e => e.Parts)
             .WithOne(e => e.RepairTicket)
             .HasForeignKey(e => e.RepairTicketId)
