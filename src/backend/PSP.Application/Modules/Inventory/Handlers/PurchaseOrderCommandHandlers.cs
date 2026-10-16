@@ -1,6 +1,7 @@
 using Mapster;
 using MediatR;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
@@ -26,11 +27,13 @@ public class PurchaseOrderCommandHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly IScopeContextService _scopeContext;
 
-    public PurchaseOrderCommandHandlers(IUnitOfWork unitOfWork, IIdempotencyService idempotencyService)
+    public PurchaseOrderCommandHandlers(IUnitOfWork unitOfWork, IIdempotencyService idempotencyService, IScopeContextService? scopeContext = null)
     {
         _unitOfWork = unitOfWork;
         _idempotencyService = idempotencyService;
+        _scopeContext = scopeContext ?? new ScopeContextService();
     }
 
     /// <summary>
@@ -51,6 +54,7 @@ public class PurchaseOrderCommandHandlers :
         {
             throw new NotFoundException("Kho hàng", request.WarehouseId);
         }
+        _scopeContext.ValidateBranchAccess(warehouse.BranchId, "kho hàng nhận");
 
         // 3. Kiểm tra tính duy nhất của Mã phiếu nhập kho (Code)
         var existing = await _unitOfWork.Repository<PurchaseOrderEntity>().FindAsync(po => po.Code == request.Code, cancellationToken);
@@ -113,7 +117,9 @@ public class PurchaseOrderCommandHandlers :
             throw new NotFoundException("Phiếu nhập kho", request.Id);
         }
 
-        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        await ValidatePurchaseOrderAccessAsync(po, cancellationToken);
+
+        if (request.RowVersion == null || !po.RowVersion.SequenceEqual(request.RowVersion))
         {
             throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
@@ -136,6 +142,7 @@ public class PurchaseOrderCommandHandlers :
         {
             throw new NotFoundException("Kho hàng", request.WarehouseId);
         }
+        _scopeContext.ValidateBranchAccess(warehouse.BranchId, "kho hàng nhận");
 
         // 4. Xóa sạch các chi tiết mặt hàng cũ (thực hiện xóa mềm)
         var oldItems = await itemRepo.FindAsync(i => i.PurchaseOrderId == po.Id, cancellationToken);
@@ -204,7 +211,9 @@ public class PurchaseOrderCommandHandlers :
             throw new NotFoundException("Phiếu nhập kho", request.Id);
         }
 
-        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        await ValidatePurchaseOrderAccessAsync(po, cancellationToken);
+
+        if (request.RowVersion == null || !po.RowVersion.SequenceEqual(request.RowVersion))
         {
             throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
@@ -213,6 +222,13 @@ public class PurchaseOrderCommandHandlers :
         if (po.Status != PurchaseOrderStatus.Draft && po.Status != PurchaseOrderStatus.Confirmed)
         {
             throw new ConflictException("Phiếu nhập đã nhận hàng hoặc đã hủy, không thể thay đổi trạng thái nữa.");
+        }
+
+        // Kiểm tra tính duy nhất của tất cả các mã IMEI truyền lên trong toàn bộ phiếu
+        var allSuppliedImeis = request.VariantImeis.SelectMany(x => x.Imeis).Select(i => i.Trim()).ToList();
+        if (allSuppliedImeis.Count != allSuppliedImeis.Distinct(StringComparer.OrdinalIgnoreCase).Count())
+        {
+            throw new BadRequestException("Danh sách mã IMEI nhập vào trong phiếu bị trùng lặp.");
         }
 
         // 3. Lấy tất cả các chi tiết mặt hàng cần nhập
@@ -357,7 +373,9 @@ public class PurchaseOrderCommandHandlers :
             throw new NotFoundException("Phiếu nhập kho", request.Id);
         }
 
-        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        await ValidatePurchaseOrderAccessAsync(po, cancellationToken);
+
+        if (request.RowVersion == null || !po.RowVersion.SequenceEqual(request.RowVersion))
         {
             throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
@@ -395,7 +413,9 @@ public class PurchaseOrderCommandHandlers :
             throw new NotFoundException("Phiếu nhập kho", request.Id);
         }
 
-        if (!po.RowVersion.SequenceEqual(request.RowVersion))
+        await ValidatePurchaseOrderAccessAsync(po, cancellationToken);
+
+        if (request.RowVersion == null || !po.RowVersion.SequenceEqual(request.RowVersion))
         {
             throw new ConflictException("Thông tin phiếu nhập kho đã bị thay đổi bởi người khác. Vui lòng tải lại trang.");
         }
@@ -418,6 +438,11 @@ public class PurchaseOrderCommandHandlers :
         }
 
         return true;
+    }
+
+    private async Task ValidatePurchaseOrderAccessAsync(PurchaseOrderEntity po, CancellationToken cancellationToken)
+    {
+        await _scopeContext.ValidateWarehouseAccessAsync(_unitOfWork, po.WarehouseId, "phiếu nhập kho", cancellationToken);
     }
 
     /// <summary>

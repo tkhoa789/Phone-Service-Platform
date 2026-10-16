@@ -1,5 +1,6 @@
 using MediatR;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
@@ -27,15 +28,18 @@ public class WarehouseTransferCommandHandlers :
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly IScopeContextService _scopeContext;
 
     public WarehouseTransferCommandHandlers(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        IIdempotencyService idempotencyService)
+        IIdempotencyService idempotencyService,
+        IScopeContextService? scopeContext = null)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _idempotencyService = idempotencyService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
     }
 
     /// <summary>
@@ -54,6 +58,8 @@ public class WarehouseTransferCommandHandlers :
         {
             throw new NotFoundException("Kho xuất hàng", request.FromWarehouseId);
         }
+
+        _scopeContext.ValidateBranchAccess(fromWh.BranchId, "kho xuất hàng");
 
         var toWh = await _unitOfWork.Repository<WarehouseEntity>().GetByIdAsync(request.ToWarehouseId, cancellationToken);
         if (toWh == null)
@@ -132,6 +138,8 @@ public class WarehouseTransferCommandHandlers :
             throw new NotFoundException("Phiếu điều chuyển", request.Id);
         }
 
+        await ValidateSourceWarehouseAccessAsync(transfer.FromWarehouseId, cancellationToken);
+
         // 2. Ràng buộc: Chỉ sửa khi ở trạng thái Pending
         if (transfer.Status != WarehouseTransferStatus.Pending)
         {
@@ -149,6 +157,8 @@ public class WarehouseTransferCommandHandlers :
         {
             throw new NotFoundException("Kho xuất hàng", request.FromWarehouseId);
         }
+
+        _scopeContext.ValidateBranchAccess(fromWh.BranchId, "kho xuất hàng");
 
         var toWh = await _unitOfWork.Repository<WarehouseEntity>().GetByIdAsync(request.ToWarehouseId, cancellationToken);
         if (toWh == null)
@@ -220,6 +230,8 @@ public class WarehouseTransferCommandHandlers :
         {
             throw new NotFoundException("Phiếu điều chuyển", request.Id);
         }
+
+        await ValidateSourceWarehouseAccessAsync(transfer.FromWarehouseId, cancellationToken);
 
         if (transfer.Status != WarehouseTransferStatus.Pending)
         {
@@ -350,6 +362,8 @@ public class WarehouseTransferCommandHandlers :
         {
             throw new NotFoundException("Phiếu điều chuyển", request.Id);
         }
+
+        await ValidateDestinationWarehouseAccessAsync(transfer.ToWarehouseId, cancellationToken);
 
         if (transfer.Status != WarehouseTransferStatus.InTransit)
         {
@@ -511,6 +525,8 @@ public class WarehouseTransferCommandHandlers :
             throw new NotFoundException("Phiếu điều chuyển", request.Id);
         }
 
+        await ValidateSourceWarehouseAccessAsync(transfer.FromWarehouseId, cancellationToken);
+
         if (transfer.Status != WarehouseTransferStatus.Pending && transfer.Status != WarehouseTransferStatus.InTransit)
         {
             throw new ConflictException("Phiếu điều chuyển đã nhận hàng hoặc đã hủy trước đó.");
@@ -617,6 +633,8 @@ public class WarehouseTransferCommandHandlers :
             throw new NotFoundException("Phiếu điều chuyển", request.Id);
         }
 
+        await ValidateSourceWarehouseAccessAsync(transfer.FromWarehouseId, cancellationToken);
+
         if (transfer.Status != WarehouseTransferStatus.Pending)
         {
             throw new ConflictException("Chỉ được phép xóa phiếu điều chuyển ở trạng thái Chờ xử lý (Pending).");
@@ -626,6 +644,22 @@ public class WarehouseTransferCommandHandlers :
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;
+    }
+
+    private async Task ValidateSourceWarehouseAccessAsync(Guid warehouseId, CancellationToken cancellationToken)
+    {
+        if (_scopeContext.IsEnterpriseScope) return;
+        var wh = await _unitOfWork.Repository<WarehouseEntity>().GetByIdAsync(warehouseId, cancellationToken);
+        if (wh == null) throw new NotFoundException("Kho xuất hàng", warehouseId);
+        _scopeContext.ValidateBranchAccess(wh.BranchId, "kho xuất hàng");
+    }
+
+    private async Task ValidateDestinationWarehouseAccessAsync(Guid warehouseId, CancellationToken cancellationToken)
+    {
+        if (_scopeContext.IsEnterpriseScope) return;
+        var wh = await _unitOfWork.Repository<WarehouseEntity>().GetByIdAsync(warehouseId, cancellationToken);
+        if (wh == null) throw new NotFoundException("Kho nhận hàng", warehouseId);
+        _scopeContext.ValidateBranchAccess(wh.BranchId, "kho nhận hàng");
     }
 
     /// <summary>

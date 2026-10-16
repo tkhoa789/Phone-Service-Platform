@@ -20,11 +20,13 @@ public class InventoryCommandHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IScopeContextService _scopeContext;
 
-    public InventoryCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public InventoryCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -40,15 +42,12 @@ public class InventoryCommandHandlers :
             throw new NotFoundException("Tồn kho", request.Id);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        // Fail-Closed Branch Isolation Check
+        var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
+        var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(inventory.WarehouseId, cancellationToken);
+        if (warehouse != null)
         {
-            var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
-            var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(inventory.WarehouseId, cancellationToken);
-            if (warehouse != null && warehouse.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền thao tác trên tồn kho của chi nhánh khác.");
-            }
+            _scopeContext.ValidateBranchAccess(warehouse.BranchId, "tồn kho");
         }
 
         inventory.MinimumStock = request.MinimumStock;
@@ -75,17 +74,14 @@ public class InventoryCommandHandlers :
             throw new NotFoundException("Mã IMEI", request.Imei);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        // Fail-Closed Branch Isolation Check
+        if (imei.WarehouseId.HasValue)
         {
-            if (imei.WarehouseId.HasValue)
+            var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
+            var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(imei.WarehouseId.Value, cancellationToken);
+            if (warehouse != null)
             {
-                var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
-                var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(imei.WarehouseId.Value, cancellationToken);
-                if (warehouse != null && warehouse.BranchId != userBranchId)
-                {
-                    throw new ForbiddenException("Bạn không có quyền thao tác trên IMEI của chi nhánh khác.");
-                }
+                _scopeContext.ValidateBranchAccess(warehouse.BranchId, "IMEI");
             }
         }
 

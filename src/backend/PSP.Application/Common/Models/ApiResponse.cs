@@ -6,6 +6,7 @@ public class ApiResponse<T>
     public string Message { get; set; } = "Thành công";
     public T? Data { get; set; }
     public string? TraceId { get; set; }
+    public bool IsSuccess => Code == "SUCCESS";
 
     public static ApiResponse<T> Success(T data, string message = "Thành công") => 
         new() { Data = data, Message = message };

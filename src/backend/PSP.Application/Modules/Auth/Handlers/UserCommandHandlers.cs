@@ -18,11 +18,16 @@ public class UserCommandHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IScopeContextService _scopeContext;
 
-    public UserCommandHandlers(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher)
+    public UserCommandHandlers(
+        IUnitOfWork unitOfWork, 
+        IPasswordHasher passwordHasher,
+        IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -30,6 +35,9 @@ public class UserCommandHandlers :
     /// </summary>
     public async Task<Guid> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(request.BranchId, "người dùng");
+
         // 1. Lấy ống dẫn (Repository) kết nối tới 2 bảng: User và Branch (Chi nhánh).
         var userRepo = _unitOfWork.Repository<UserEntity>();
         var branchRepo = _unitOfWork.Repository<BranchEntity>();
@@ -81,6 +89,10 @@ public class UserCommandHandlers :
             throw new NotFoundException("Người dùng", request.Id);
         }
 
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(user.BranchId, "người dùng");
+        _scopeContext.ValidateBranchAccess(request.BranchId, "người dùng");
+
         // Nếu họ muốn đổi chỗ làm sang chi nhánh khác, phải kiểm tra xem chi nhánh mới có tồn tại không.
         if (user.BranchId != request.BranchId)
         {
@@ -112,6 +124,9 @@ public class UserCommandHandlers :
         {
             throw new NotFoundException("Người dùng", request.Id);
         }
+
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(user.BranchId, "người dùng");
 
         // Kỹ thuật Xóa mềm (Soft Delete).
         // Thay vì cầm cục tẩy xóa sạch, ta chỉ lấy bút đỏ gạch chéo đánh dấu là "đã đuổi việc".

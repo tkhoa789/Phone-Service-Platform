@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Sales.DTOs;
 using PSP.Application.Modules.Sales.Queries;
 using PSP.Domain.Common.Exceptions;
@@ -25,11 +26,16 @@ public class InvoiceQueryHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IScopeContextService _scopeContext;
 
-    public InvoiceQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public InvoiceQueryHandlers(
+        IUnitOfWork unitOfWork, 
+        ICurrentUserService currentUserService,
+        IScopeContextService? scopeContext = null)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
     }
 
     /// <summary>
@@ -58,17 +64,8 @@ public class InvoiceQueryHandlers :
             order = await salesOrderRepo.GetByIdAsNoTrackingAsync(invoice.SalesOrderId.Value, cancellationToken);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
-            {
-                if (invoice.BranchId != userBranchId)
-                {
-                    throw new ForbiddenException("Bạn không có quyền truy cập hóa đơn của chi nhánh khác.");
-                }
-            }
-        }
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(invoice.BranchId, "hóa đơn");
 
         // 3. Lấy danh sách mặt hàng của hóa đơn
         var items = await invoiceItemRepo.FindAsNoTrackingAsync(i => i.InvoiceId == invoice.Id, cancellationToken);
@@ -144,9 +141,10 @@ public class InvoiceQueryHandlers :
         var invoiceRepo = _unitOfWork.Repository<InvoiceEntity>();
         var query = invoiceRepo.GetQueryableAsNoTracking();
 
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        var branchFilter = _scopeContext.GetEffectiveBranchFilter();
+        if (branchFilter.HasValue)
         {
-            query = query.Where(inv => inv.BranchId == userBranchId);
+            query = query.Where(inv => inv.BranchId == branchFilter.Value);
         }
 
         var invoices = query.ToList();

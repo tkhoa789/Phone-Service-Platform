@@ -49,7 +49,7 @@ public class SupplierDto
     /// <summary>
     /// Số tiền nợ phải trả hiện tại cho Nhà cung cấp.
     /// </summary>
-    public decimal DebtAmount { get; set; }
+    public decimal? DebtAmount { get; set; }
 
     /// <summary>
     /// Hạn mức nợ tối đa (Credit Limit) cho phép nợ.

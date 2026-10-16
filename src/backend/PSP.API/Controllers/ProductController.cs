@@ -4,14 +4,14 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Product.Commands;
 using PSP.Application.Modules.Product.DTOs;
 using PSP.Application.Modules.Product.Queries;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
 /// <summary>
-/// CONTROLLER (Lớp tiếp tiếp nhận và xử lý HTTP Request từ Client).
-/// Quản lý toàn bộ các API liên quan đến Dòng sản phẩm (Products) và Biến thể sản phẩm (Product Variants).
+/// CONTROLLER quản lý toàn bộ các API liên quan đến Dòng sản phẩm (Products) và Biến thể sản phẩm (Product Variants).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Product.View)]
 [Route("api/[controller]")]
 [Tags("Products")]
 public class ProductController : BaseApiController
@@ -21,10 +21,10 @@ public class ProductController : BaseApiController
     // =========================================================================
 
     /// <summary>
-    /// API Tạo mới một Dòng sản phẩm (Ví dụ: iPhone 16).
+    /// API Tạo mới một Dòng sản phẩm (Product.CREATE).
     /// POST: /api/Product
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProductCommand command, CancellationToken cancellationToken)
     {
@@ -33,10 +33,10 @@ public class ProductController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật thông tin dòng sản phẩm.
+    /// API Cập nhật thông tin dòng sản phẩm (Product.UPDATE).
     /// PUT: /api/Product/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductCommand command, CancellationToken cancellationToken)
     {
@@ -50,10 +50,10 @@ public class ProductController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa dòng sản phẩm (Xóa mềm).
+    /// API Xóa dòng sản phẩm (Product.DELETE).
     /// DELETE: /api/Product/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Delete)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -90,10 +90,10 @@ public class ProductController : BaseApiController
     // =========================================================================
 
     /// <summary>
-    /// API Tạo mới một Biến thể sản phẩm thuộc về một dòng sản phẩm cha.
+    /// API Tạo mới một Biến thể sản phẩm (Product.CREATE).
     /// POST: /api/Product/Variant
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Create)]
     [HttpPost("Variant")]
     public async Task<IActionResult> CreateVariant([FromBody] CreateProductVariantCommand command, CancellationToken cancellationToken)
     {
@@ -102,10 +102,10 @@ public class ProductController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật thông tin cấu hình, giá của biến thể sản phẩm.
+    /// API Cập nhật thông tin cấu hình, giá của biến thể sản phẩm (Product.UPDATE).
     /// PUT: /api/Product/Variant/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Update)]
     [HttpPut("Variant/{id:guid}")]
     public async Task<IActionResult> UpdateVariant(Guid id, [FromBody] UpdateProductVariantCommand command, CancellationToken cancellationToken)
     {
@@ -119,10 +119,10 @@ public class ProductController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa biến thể sản phẩm (Xóa mềm).
+    /// API Xóa biến thể sản phẩm (Product.DELETE).
     /// DELETE: /api/Product/Variant/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Delete)]
     [HttpDelete("Variant/{id:guid}")]
     public async Task<IActionResult> DeleteVariant(Guid id, CancellationToken cancellationToken)
     {

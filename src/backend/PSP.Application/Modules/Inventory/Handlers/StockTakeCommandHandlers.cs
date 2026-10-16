@@ -1,8 +1,12 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Inventory.Commands;
+using PSP.Domain.Common.Constants;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
+using PSP.Domain.Modules.Auth.Entities;
 using PSP.Domain.Modules.Inventory.Entities;
 using PSP.Domain.Modules.Product.Entities;
 using System;
@@ -25,10 +29,20 @@ public class StockTakeCommandHandlers :
     IRequestHandler<DeleteStockTakeCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService? _currentUserService;
+    private readonly IScopeContextService _scopeContext;
+    private readonly INotificationService? _notificationService;
 
-    public StockTakeCommandHandlers(IUnitOfWork unitOfWork)
+    public StockTakeCommandHandlers(
+        IUnitOfWork unitOfWork, 
+        ICurrentUserService? currentUserService = null,
+        IScopeContextService? scopeContext = null,
+        INotificationService? notificationService = null)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -41,17 +55,22 @@ public class StockTakeCommandHandlers :
         {
             throw new NotFoundException("Kho hàng", request.WarehouseId);
         }
+        _scopeContext.ValidateBranchAccess(warehouse.BranchId, "kho hàng");
 
-        var existing = await _unitOfWork.Repository<StockTakeEntity>().FindAsync(s => s.Code == request.Code, cancellationToken);
+        var code = string.IsNullOrWhiteSpace(request.Code)
+            ? "STK-" + DateTime.UtcNow.ToString("yyyyMMdd") + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper()
+            : request.Code.Trim();
+
+        var existing = await _unitOfWork.Repository<StockTakeEntity>().FindAsync(s => s.Code == code, cancellationToken);
         if (existing.Any())
         {
-            throw new ConflictException($"Mã phiếu kiểm kê '{request.Code}' đã tồn tại trong hệ thống.");
+            throw new ConflictException($"Mã phiếu kiểm kê '{code}' đã tồn tại trong hệ thống.");
         }
 
         var stockTake = new StockTakeEntity
         {
             WarehouseId = request.WarehouseId,
-            Code = request.Code,
+            Code = code,
             Status = StockTakeStatus.Draft
         };
 
@@ -104,6 +123,8 @@ public class StockTakeCommandHandlers :
         {
             throw new NotFoundException("Phiếu kiểm kê", request.Id);
         }
+
+        await ValidateStockTakeAccessAsync(stockTake, cancellationToken);
 
         if (stockTake.Status != StockTakeStatus.Draft && stockTake.Status != StockTakeStatus.InProgress)
         {
@@ -159,6 +180,8 @@ public class StockTakeCommandHandlers :
             throw new NotFoundException("Phiếu kiểm kê", request.Id);
         }
 
+        await ValidateStockTakeAccessAsync(stockTake, cancellationToken);
+
         if (stockTake.Status != StockTakeStatus.Draft)
         {
             throw new ConflictException("Chỉ được bắt đầu kiểm kê khi phiếu ở trạng thái Nháp (Draft).");
@@ -189,14 +212,31 @@ public class StockTakeCommandHandlers :
             throw new NotFoundException("Phiếu kiểm kê", request.Id);
         }
 
+        await ValidateStockTakeAccessAsync(stockTake, cancellationToken);
+
         // 2. Kiểm tra trạng thái
-        if (stockTake.Status != StockTakeStatus.InProgress)
+        if (stockTake.Status != StockTakeStatus.InProgress && stockTake.Status != StockTakeStatus.Draft)
         {
-            throw new ConflictException("Chỉ có thể hoàn tất khi phiếu đang ở trạng thái Đang kiểm kê (InProgress).");
+            throw new ConflictException("Phiếu kiểm kê đã hoàn tất hoặc đã bị hủy, không thể thay đổi trạng thái nữa.");
+        }
+
+        // Kiểm tra trùng lặp IMEI trong toàn bộ payload
+        var allImeis = request.VariantImeis?.SelectMany(x => x.Imeis).ToList() ?? new List<string>();
+        if (allImeis.Distinct().Count() != allImeis.Count)
+        {
+            throw new BadRequestException("Danh sách mã IMEI trong yêu cầu kiểm kê bị trùng lặp.");
+        }
+
+        foreach (var vImei in request.VariantImeis ?? Enumerable.Empty<ProductVariantImeisDto>())
+        {
+            if (vImei.Imeis.Distinct().Count() != vImei.Imeis.Count)
+            {
+                throw new BadRequestException($"Danh sách mã IMEI cho biến thể '{vImei.ProductVariantId}' chứa mã trùng lặp.");
+            }
         }
 
         var items = await itemRepo.FindAsync(i => i.StockTakeId == stockTake.Id, cancellationToken);
-        var actorId = Guid.Empty; // Placeholder cho ActorId (người thực hiện kiểm kê)
+        var actorId = _currentUserService != null && Guid.TryParse(_currentUserService.UserId, out var uid) ? uid : Guid.Empty;
 
         // 3. Đối soát tồn kho và IMEI cho từng sản phẩm
         foreach (var item in items)
@@ -209,8 +249,22 @@ public class StockTakeCommandHandlers :
             if (isImeiRequired)
             {
                 // Lấy danh sách IMEI thực tế kiểm đếm được truyền lên
-                var supplied = request.VariantImeis.FirstOrDefault(x => x.ProductVariantId == item.ProductVariantId);
-                var actualImeisList = supplied?.Imeis ?? new List<string>();
+                var supplied = request.VariantImeis?.FirstOrDefault(x => x.ProductVariantId == item.ProductVariantId);
+                var actualImeisList = supplied?.Imeis?.ToList() ?? new List<string>();
+
+                // Nếu không gửi danh sách IMEI chi tiết (ví dụ hoàn tất kiểm kê khi số lượng thực tế bằng số lượng hệ thống)
+                if (actualImeisList.Count == 0)
+                {
+                    var existingInStock = (await imeiRepo.FindAsync(
+                        i => i.ProductVariantId == item.ProductVariantId && i.WarehouseId == stockTake.WarehouseId && i.Status == ImeiStatus.InStock,
+                        cancellationToken
+                    )).Select(x => x.Imei).ToList();
+
+                    if (item.ActualQuantity == existingInStock.Count || item.ActualQuantity == item.SystemQuantity)
+                    {
+                        actualImeisList = existingInStock;
+                    }
+                }
 
                 // Ràng buộc: Số lượng IMEI thực tế kiểm được phải khớp với số lượng thực tế khai báo
                 if (actualImeisList.Count != item.ActualQuantity)
@@ -327,6 +381,39 @@ public class StockTakeCommandHandlers :
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var hasDiscrepancy = items.Any(i => i.ActualQuantity != i.SystemQuantity);
+        if (hasDiscrepancy && _notificationService != null)
+        {
+            try
+            {
+                var warehouse = await _unitOfWork.Repository<WarehouseEntity>().GetByIdAsync(stockTake.WarehouseId, cancellationToken);
+                var branchId = warehouse?.BranchId;
+                var userRepo = _unitOfWork.Repository<UserEntity>();
+                var targetBranch = branchId ?? Guid.Empty;
+                var managerUserIds = await userRepo.GetQueryableAsNoTracking()
+                    .Where(u => u.Status == UserStatus.Active &&
+                                (targetBranch == Guid.Empty || u.BranchId == targetBranch || u.BranchId == Guid.Empty) &&
+                                u.UserRoles.Any(ur => ur.Role.Name == CanonicalRoles.Manager || ur.Role.Name == CanonicalRoles.Admin || ur.Role.Name == CanonicalRoles.Owner))
+                    .Select(u => u.Id)
+                    .ToListAsync(cancellationToken);
+
+                var diffCount = items.Count(i => i.ActualQuantity != i.SystemQuantity);
+                foreach (var managerId in managerUserIds)
+                {
+                    await _notificationService.SendToUserAsync(
+                        managerId,
+                        $"[Lệch kiểm kê kho] Phiếu kiểm kê {stockTake.Code} có chênh lệch",
+                        $"Phát hiện {diffCount} mặt hàng bị chênh lệch số lượng thực tế so với sổ sách tại kho {warehouse?.Name ?? "chi nhánh"}. Cần quản lý đối soát giải trình.",
+                        cancellationToken
+                    );
+                }
+            }
+            catch
+            {
+                // Tránh ngắt quãng giao dịch kiểm kê
+            }
+        }
+
         return true;
     }
 
@@ -341,6 +428,8 @@ public class StockTakeCommandHandlers :
         {
             throw new NotFoundException("Phiếu kiểm kê", request.Id);
         }
+
+        await ValidateStockTakeAccessAsync(stockTake, cancellationToken);
 
         if (stockTake.Status != StockTakeStatus.Draft && stockTake.Status != StockTakeStatus.InProgress)
         {
@@ -366,6 +455,8 @@ public class StockTakeCommandHandlers :
             throw new NotFoundException("Phiếu kiểm kê", request.Id);
         }
 
+        await ValidateStockTakeAccessAsync(stockTake, cancellationToken);
+
         if (stockTake.Status != StockTakeStatus.Draft)
         {
             throw new ConflictException("Chỉ được phép xóa phiếu kiểm kê ở trạng thái Nháp (Draft).");
@@ -375,6 +466,12 @@ public class StockTakeCommandHandlers :
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;
+    }
+
+    private async Task ValidateStockTakeAccessAsync(StockTakeEntity stockTake, CancellationToken cancellationToken)
+    {
+        var warehouse = await _unitOfWork.Repository<WarehouseEntity>().GetByIdAsNoTrackingAsync(stockTake.WarehouseId, cancellationToken);
+        _scopeContext.ValidateBranchAccess(warehouse?.BranchId, "phiếu kiểm kê kho");
     }
 
     /// <summary>

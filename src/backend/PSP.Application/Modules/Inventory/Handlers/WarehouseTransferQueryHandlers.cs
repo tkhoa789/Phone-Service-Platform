@@ -22,10 +22,12 @@ public class WarehouseTransferQueryHandlers :
     IRequestHandler<GetWarehouseTransfersQuery, IEnumerable<WarehouseTransferDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IScopeContextService _scopeContext;
 
-    public WarehouseTransferQueryHandlers(IUnitOfWork unitOfWork)
+    public WarehouseTransferQueryHandlers(IUnitOfWork unitOfWork, IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -48,6 +50,15 @@ public class WarehouseTransferQueryHandlers :
         // 2. Tải Kho xuất & Kho nhận
         var fromWh = await warehouseRepo.GetByIdAsNoTrackingAsync(transfer.FromWarehouseId, cancellationToken);
         var toWh = await warehouseRepo.GetByIdAsNoTrackingAsync(transfer.ToWarehouseId, cancellationToken);
+
+        if (!_scopeContext.IsEnterpriseScope)
+        {
+            var userBranchId = _scopeContext.GetRequiredBranchId();
+            if ((fromWh == null || fromWh.BranchId != userBranchId) && (toWh == null || toWh.BranchId != userBranchId))
+            {
+                throw new ForbiddenException("Bạn không có quyền truy cập phiếu điều chuyển kho này.");
+            }
+        }
 
         // 3. Tải tất cả chi tiết mặt hàng của phiếu chuyển
         var items = await itemRepo.FindAsNoTrackingAsync(i => i.TransferId == transfer.Id, cancellationToken);
@@ -85,7 +96,27 @@ public class WarehouseTransferQueryHandlers :
         // 1. Tải toàn bộ Phiếu điều chuyển không theo dõi lên RAM
         var transfers = await transferRepo.GetAllAsNoTrackingAsync(cancellationToken);
 
-        // 2. Áp dụng các điều kiện lọc (nếu có) trên RAM
+        // 2. Scope isolation & Áp dụng các điều kiện lọc (nếu có) trên RAM
+        if (!_scopeContext.IsEnterpriseScope)
+        {
+            var accessibleWarehouseIds = await _scopeContext.GetAccessibleWarehouseIdsAsync(_unitOfWork, cancellationToken);
+            if (accessibleWarehouseIds != null)
+            {
+                if (request.FromWarehouseId.HasValue && !accessibleWarehouseIds.Contains(request.FromWarehouseId.Value) &&
+                    (!request.ToWarehouseId.HasValue || !accessibleWarehouseIds.Contains(request.ToWarehouseId.Value)))
+                {
+                    throw new ForbiddenException("Bạn không có quyền truy cập dữ liệu kho hàng này.");
+                }
+                if (request.ToWarehouseId.HasValue && !accessibleWarehouseIds.Contains(request.ToWarehouseId.Value) &&
+                    (!request.FromWarehouseId.HasValue || !accessibleWarehouseIds.Contains(request.FromWarehouseId.Value)))
+                {
+                    throw new ForbiddenException("Bạn không có quyền truy cập dữ liệu kho hàng này.");
+                }
+
+                transfers = transfers.Where(x => accessibleWarehouseIds.Contains(x.FromWarehouseId) || accessibleWarehouseIds.Contains(x.ToWarehouseId));
+            }
+        }
+
         if (request.FromWarehouseId.HasValue)
         {
             transfers = transfers.Where(x => x.FromWarehouseId == request.FromWarehouseId.Value);

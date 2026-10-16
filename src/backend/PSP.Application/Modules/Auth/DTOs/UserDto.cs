@@ -6,10 +6,14 @@ public record UserDto
 {
     public Guid Id { get; init; }
     public Guid BranchId { get; init; }
+    public string BranchName { get; init; } = string.Empty;
+    public string BranchAddress { get; init; } = string.Empty;
+    public string BranchPhone { get; init; } = string.Empty;
     public string Username { get; init; } = string.Empty;
     public string FullName { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public string Phone { get; init; } = string.Empty;
     public UserStatus Status { get; init; }
     public DateTime CreatedAt { get; init; }
+    public List<string> Roles { get; init; } = new();
 }

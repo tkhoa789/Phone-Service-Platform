@@ -11,7 +11,7 @@ public record CreateStockTakeCommand : IRequest<Guid>
 {
     public Guid WarehouseId { get; init; }
     
-    public string Code { get; init; } = string.Empty;
+    public string? Code { get; init; } = null;
     
     /// <summary>
     /// Danh sách các sản phẩm kiểm kê đi kèm (Số lượng thực tế ban đầu có thể nhập trước hoặc điền sau)

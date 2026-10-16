@@ -16,5 +16,6 @@ public interface IRepository<T> where T : BaseEntity
     Task AddAsync(T entity, CancellationToken cancellationToken = default);
     void Update(T entity);
     void Remove(T entity); // Thực tế sẽ set IsDeleted = true
+    void HardRemove(T entity);
     Task<T?> FindFirstIgnoreQueryFiltersAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
 }

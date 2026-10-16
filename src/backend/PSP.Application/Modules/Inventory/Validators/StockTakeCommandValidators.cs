@@ -14,11 +14,12 @@ public class CreateStockTakeCommandValidator : AbstractValidator<CreateStockTake
             .NotEmpty().WithMessage("ID Kho hàng không được để trống.");
 
         RuleFor(x => x.Code)
-            .NotEmpty().WithMessage("Mã phiếu kiểm kê không được để trống.")
             .MaximumLength(50).WithMessage("Mã phiếu kiểm kê không vượt quá 50 ký tự.");
 
         RuleFor(x => x.Items)
-            .NotEmpty().WithMessage("Danh sách sản phẩm kiểm kê không được để trống.");
+            .NotEmpty().WithMessage("Danh sách sản phẩm kiểm kê không được để trống.")
+            .Must(items => items == null || items.Select(i => i.ProductVariantId).Distinct().Count() == items.Count)
+            .WithMessage("Danh sách sản phẩm kiểm kê chứa biến thể bị trùng lặp.");
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {
@@ -42,7 +43,9 @@ public class UpdateStockTakeCommandValidator : AbstractValidator<UpdateStockTake
             .NotEmpty().WithMessage("ID Phiếu kiểm kê không được để trống.");
 
         RuleFor(x => x.Items)
-            .NotEmpty().WithMessage("Danh sách sản phẩm kiểm kê không được để trống.");
+            .NotEmpty().WithMessage("Danh sách sản phẩm kiểm kê không được để trống.")
+            .Must(items => items == null || items.Select(i => i.ProductVariantId).Distinct().Count() == items.Count)
+            .WithMessage("Danh sách sản phẩm kiểm kê chứa biến thể bị trùng lặp.");
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {

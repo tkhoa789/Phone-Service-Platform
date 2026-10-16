@@ -4,26 +4,23 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Sales.Commands;
 using PSP.Application.Modules.Sales.DTOs;
 using PSP.Application.Modules.Sales.Queries;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
 /// <summary>
 /// API Controller quản lý các mã giảm giá cá nhân (Vouchers).
-/// 
-/// Dành cho người mới học và trình độ dưới junior:
-/// - Cung cấp các thao tác CRUD cho Voucher.
-/// - Cung cấp API kiểm tra Voucher hợp lệ theo code và giá trị đơn hàng cụ thể.
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Voucher.View)]
 [Route("api/[controller]")]
 [Tags("Vouchers")]
 public class VoucherController : BaseApiController
 {
     /// <summary>
-    /// API Tạo mới mã Voucher giảm giá.
+    /// API Tạo mới mã Voucher giảm giá (Voucher.CREATE).
     /// POST: /api/Voucher
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Voucher.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateVoucherCommand command, CancellationToken cancellationToken)
     {
@@ -32,10 +29,10 @@ public class VoucherController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật thông tin mã Voucher.
+    /// API Cập nhật thông tin mã Voucher (Voucher.UPDATE).
     /// PUT: /api/Voucher/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Voucher.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateVoucherCommand command, CancellationToken cancellationToken)
     {
@@ -49,10 +46,10 @@ public class VoucherController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa mềm Voucher.
+    /// API Xóa mềm Voucher (Voucher.DELETE).
     /// DELETE: /api/Voucher/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Voucher.Delete)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -98,13 +95,10 @@ public class VoucherController : BaseApiController
     }
 
     /// <summary>
-    /// API KIỂM TRA HỢP LỆ VOUCHER (Được gọi trước khi thanh toán đơn hàng).
+    /// API KIỂM TRA HỢP LỆ VOUCHER (Voucher.APPLY).
     /// GET: /api/Voucher/validate?code=VIP100K&orderValue=1500000
     /// </summary>
-    /// <param name="code">Chữ mã voucher khách hàng nhập vào</param>
-    /// <param name="orderValue">Tổng giá trị tiền đơn hàng hiện tại của khách</param>
-    /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
-    /// <returns>Thông tin VoucherDto nếu hợp lệ, nếu không hợp lệ sẽ ném lỗi nghiệp vụ</returns>
+    [Authorize(Policy = Permissions.Voucher.Apply)]
     [HttpGet("validate")]
     public async Task<IActionResult> Validate([FromQuery] string code, [FromQuery] decimal orderValue, CancellationToken cancellationToken)
     {

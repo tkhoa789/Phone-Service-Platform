@@ -30,10 +30,17 @@ public class WarrantyQueryHandlers :
     IRequestHandler<CheckWarrantyStatusQuery, WarrantyCheckResultDto>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService? _currentUserService;
+    private readonly IScopeContextService _scopeContext;
 
-    public WarrantyQueryHandlers(IUnitOfWork unitOfWork)
+    public WarrantyQueryHandlers(
+        IUnitOfWork unitOfWork,
+        ICurrentUserService? currentUserService,
+        IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -59,7 +66,13 @@ public class WarrantyQueryHandlers :
         var salesOrder = ticket.SalesOrderId.HasValue
             ? await salesOrderRepo.GetByIdAsNoTrackingAsync(ticket.SalesOrderId.Value, cancellationToken)
             : null;
+
         var variant = await variantRepo.GetByIdAsNoTrackingAsync(ticket.ProductVariantId, cancellationToken);
+
+        var repairTicketRepo = _unitOfWork.Repository<PSP.Domain.Modules.Repair.Entities.RepairTicketEntity>();
+        var repairTicket = ticket.RepairTicketId.HasValue
+            ? await repairTicketRepo.GetByIdAsNoTrackingAsync(ticket.RepairTicketId.Value, cancellationToken)
+            : null;
 
         // 1.3 Nạp lịch sử xử lý bảo hành
         var histories = await historyRepo.FindAsNoTrackingAsync(h => h.WarrantyTicketId == ticket.Id && !h.IsDeleted, cancellationToken);
@@ -72,6 +85,9 @@ public class WarrantyQueryHandlers :
                 Action = h.Action,
                 Status = h.Status,
                 Description = h.Description,
+                ActorId = h.ActorId,
+                ActorName = h.ActorName,
+                Notes = h.Notes,
                 CreatedAt = h.CreatedAt,
                 CreatedBy = h.CreatedBy
             })
@@ -95,6 +111,16 @@ public class WarrantyQueryHandlers :
             StartDate = ticket.StartDate,
             EndDate = ticket.EndDate,
             Note = ticket.Note,
+            RejectReason = ticket.RejectReason?.ToString(),
+            RejectNotes = ticket.RejectNotes,
+            EvidencePhotoUrls = ticket.EvidencePhotoUrls,
+            TransferToPaidRepair = ticket.TransferToPaidRepair,
+            RepairTicketId = ticket.RepairTicketId,
+            RepairTicketCode = repairTicket?.Code,
+            VendorName = ticket.VendorName,
+            VendorTicketNumber = ticket.VendorTicketNumber,
+            TrackingNumber = ticket.TrackingNumber,
+            VendorSubStatus = ticket.VendorSubStatus?.ToString(),
             CreatedAt = ticket.CreatedAt,
             CreatedBy = ticket.CreatedBy,
             Histories = historyDtos,
@@ -115,6 +141,7 @@ public class WarrantyQueryHandlers :
         var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
 
         // 2.1 Sử dụng IQueryable để xây dựng truy vấn động
+        // Chính sách bảo hành áp dụng toàn hệ thống chuỗi cửa hàng PSP (hỗ trợ bảo hành liên chi nhánh)
         var query = ticketRepo.GetQueryableAsNoTracking();
 
         // 2.2 Áp dụng các bộ lọc đầu vào
@@ -153,6 +180,7 @@ public class WarrantyQueryHandlers :
             .Take(request.PageSize)
             .ToList();
 
+        var repairTicketRepo = _unitOfWork.Repository<PSP.Domain.Modules.Repair.Entities.RepairTicketEntity>();
         var dtoList = new List<WarrantyTicketDto>();
 
         foreach (var ticket in tickets)
@@ -162,6 +190,9 @@ public class WarrantyQueryHandlers :
                 ? await salesOrderRepo.GetByIdAsNoTrackingAsync(ticket.SalesOrderId.Value, cancellationToken)
                 : null;
             var variant = await variantRepo.GetByIdAsNoTrackingAsync(ticket.ProductVariantId, cancellationToken);
+            var repairTicket = ticket.RepairTicketId.HasValue
+                ? await repairTicketRepo.GetByIdAsNoTrackingAsync(ticket.RepairTicketId.Value, cancellationToken)
+                : null;
 
             dtoList.Add(new WarrantyTicketDto
             {
@@ -180,6 +211,16 @@ public class WarrantyQueryHandlers :
                 StartDate = ticket.StartDate,
                 EndDate = ticket.EndDate,
                 Note = ticket.Note,
+                RejectReason = ticket.RejectReason?.ToString(),
+                RejectNotes = ticket.RejectNotes,
+                EvidencePhotoUrls = ticket.EvidencePhotoUrls,
+                TransferToPaidRepair = ticket.TransferToPaidRepair,
+                RepairTicketId = ticket.RepairTicketId,
+                RepairTicketCode = repairTicket?.Code,
+                VendorName = ticket.VendorName,
+                VendorTicketNumber = ticket.VendorTicketNumber,
+                TrackingNumber = ticket.TrackingNumber,
+                VendorSubStatus = ticket.VendorSubStatus?.ToString(),
                 CreatedAt = ticket.CreatedAt,
                 CreatedBy = ticket.CreatedBy,
                 RowVersion = ticket.RowVersion
@@ -200,7 +241,8 @@ public class WarrantyQueryHandlers :
         var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
         var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
 
-        var cleanImei = request.Imei.Trim();
+        var cleanImei = request.Imei.Trim().Replace("-", "").Replace(" ", "");
+        bool isAuthenticated = !string.IsNullOrEmpty(_currentUserService?.UserId);
 
         // 3.1 Kiểm tra trạng thái hiện tại của IMEI trong DB
         var imeis = await imeiRepo.FindAsNoTrackingAsync(x => x.Imei == cleanImei, cancellationToken);
@@ -217,10 +259,13 @@ public class WarrantyQueryHandlers :
             // Thiết bị chưa bao giờ được bán ra từ hệ thống
             return new WarrantyCheckResultDto
             {
+                Imei = cleanImei,
                 IsUnderWarranty = false,
-                CurrentImeiStatus = currentImeiStatus,
-                ProductName = "Không xác định",
-                CustomerName = "Không xác định"
+                WarrantyStatus = "NotFound",
+                RemainingDays = 0,
+                CurrentImeiStatus = isAuthenticated ? currentImeiStatus : string.Empty,
+                ProductName = "Không tìm thấy thông tin",
+                CustomerName = string.Empty
             };
         }
 
@@ -244,20 +289,63 @@ public class WarrantyQueryHandlers :
             isUnderWarranty = DateTime.UtcNow <= expirationDate.Value;
         }
 
+        int remainingDays = 0;
+        if (isUnderWarranty && expirationDate.HasValue)
+        {
+            var diff = expirationDate.Value - DateTime.UtcNow;
+            remainingDays = (int)Math.Max(0, Math.Ceiling(diff.TotalDays));
+        }
+
+        string warrantyStatus = isUnderWarranty ? "Active" : "Expired";
+
+        // Customer privacy protection for public/anonymous lookup
+        string customerName = customer?.FullName ?? "Khách hàng vãng lai";
+        string? customerPhone = customer?.Phone;
+
+        if (!isAuthenticated)
+        {
+            customerName = MaskCustomerName(customerName);
+            customerPhone = null; // Do not leak customer phone to anonymous callers
+        }
+
         return new WarrantyCheckResultDto
         {
+            Imei = cleanImei,
             IsUnderWarranty = isUnderWarranty,
+            WarrantyStatus = warrantyStatus,
+            RemainingDays = remainingDays,
             PurchaseDate = purchaseDate,
             WarrantyExpirationDate = expirationDate,
-            ProductVariantId = soldItem.ProductVariantId,
+            ProductVariantId = isAuthenticated ? soldItem.ProductVariantId : null,
             ProductName = variant?.Name ?? "Thiết bị không xác định",
             ProductSku = variant?.Sku ?? string.Empty,
-            CustomerId = salesOrder?.CustomerId,
-            CustomerName = customer?.FullName ?? "Khách hàng vãng lai",
-            CustomerPhone = customer?.Phone ?? string.Empty,
-            SalesOrderId = salesOrder?.Id,
+            CustomerId = isAuthenticated ? salesOrder?.CustomerId : null,
+            CustomerName = customerName,
+            CustomerPhone = customerPhone,
+            SalesOrderId = isAuthenticated ? salesOrder?.Id : null,
             SalesOrderCode = salesOrder?.Code,
-            CurrentImeiStatus = currentImeiStatus
+            CurrentImeiStatus = isAuthenticated ? currentImeiStatus : string.Empty
         };
+    }
+
+    /// <summary>
+    /// Che giấu tên khách hàng cho cổng tra cứu công khai (VD: 'Nguyễn Văn A' -> 'Nguyễn *** A').
+    /// </summary>
+    private static string MaskCustomerName(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return string.Empty;
+
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+        {
+            return parts[0].Length <= 2 ? parts[0] : parts[0][0] + "***";
+        }
+        if (parts.Length == 2)
+        {
+            return parts[0] + " " + (parts[1].Length <= 2 ? parts[1] : parts[1][0] + "***");
+        }
+
+        return parts[0] + " *** " + parts[^1];
     }
 }

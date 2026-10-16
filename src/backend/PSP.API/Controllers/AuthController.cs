@@ -106,4 +106,16 @@ public class AuthController : BaseApiController
         var result = await Mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Đăng xuất thành công"));
     }
+
+    /// <summary>
+    /// Test endpoint to verify that arbitrary or unknown permissions are strictly rejected
+    /// even when requested by an authenticated Owner.
+    /// GET: /api/Auth/test-unknown-policy
+    /// </summary>
+    [HttpGet("test-unknown-policy")]
+    [Authorize(Policy = "NonExistent.UNKNOWN_ACTION")]
+    public IActionResult TestUnknownPolicy()
+    {
+        return Ok(ApiResponse<string>.Success("If you see this, authorization failed to protect against unknown policies!"));
+    }
 }

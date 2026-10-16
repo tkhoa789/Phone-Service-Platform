@@ -29,8 +29,12 @@ public class RepairTicketDto
     public string? TechnicianName { get; set; }
 
     public string Code { get; set; } = string.Empty;
+    public string TicketCode => Code;
+    public string DeviceModel => CustomModelName ?? ProductName;
     public string Status { get; set; } = string.Empty;
     public string ProblemDescription { get; set; } = string.Empty;
+    public string? ExteriorCondition { get; set; }
+    public string? CustomModelName { get; set; }
     public decimal? EstimatedCost { get; set; }
     public decimal? ActualCost { get; set; }
     
@@ -42,8 +46,35 @@ public class RepairTicketDto
     public DateTime ReceivedDate { get; set; }
     public DateTime? CompletedDate { get; set; }
     
+    // Diagnosis Fields (Section 5)
+    public string? DiagnosisRootCause { get; set; }
+    public string? DiagnosisProposedSolution { get; set; }
+    public int? EstimatedDays { get; set; }
+    public string? TechnicalNotes { get; set; }
+    public DateTime? DiagnosedAt { get; set; }
+    public Guid? DiagnosedById { get; set; }
+    public string? DiagnosedByName { get; set; }
+
+    // Customer Approval Fields (Section 6)
+    public string? CustomerApprovalStatus { get; set; }
+    public DateTime? CustomerApprovedAt { get; set; }
+    public Guid? CustomerApprovedById { get; set; }
+    public string? CustomerApprovedByName { get; set; }
+    public string? CustomerApprovalMethod { get; set; }
+    public decimal? CustomerApprovedAmount { get; set; }
+    public string? CustomerApprovalNote { get; set; }
+
+    // Delivery Fields (Section 12)
+    public Guid? DeliveredById { get; set; }
+    public string? DeliveredByName { get; set; }
+    public DateTime? DeliveredAt { get; set; }
+    public string? DeliveredToCustomerName { get; set; }
+    public string? DeliveryNotes { get; set; }
+    public string? DeliverySignatureUrl { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
+    public bool IsTest { get; set; } = false;
     
     public List<RepairPartDto> Parts { get; set; } = new();
     public List<RepairStatusHistoryDto> StatusHistories { get; set; } = new();
@@ -64,10 +95,14 @@ public class RepairPartDto
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal TotalPrice => Quantity * UnitPrice;
+    public string Status { get; set; } = string.Empty;
+    public string? AddedBy { get; set; }
+    public DateTime AddedAt { get; set; }
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }
 
 /// <summary>
-/// DTO đại diện cho Lịch sử chuyển trạng thái sửa chữa.
+/// DTO đại diện cho Lịch sử chuyển trạng thái sửa chữa & Audit Event.
 /// </summary>
 public class RepairStatusHistoryDto
 {
@@ -75,6 +110,10 @@ public class RepairStatusHistoryDto
     public Guid RepairTicketId { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? Note { get; set; }
+    public string? Action { get; set; }
+    public Guid? ActorId { get; set; }
+    public string? ActorName { get; set; }
+    public string? Details { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
 }
@@ -117,4 +156,24 @@ public class RepairDepositDto
     
     // Idempotency support
     public string IdempotencyKey { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// DTO chứa các số liệu thống kê hàng chờ sửa chữa chính xác từ Database.
+/// </summary>
+public class RepairQueueStatsDto
+{
+    public int UnassignedCount { get; set; }
+    public int MyTasksCount { get; set; }
+    public int InProgressCount { get; set; }
+    public int CompletedCount { get; set; }
+    public int DeliveredCount { get; set; }
+    public int TotalCount { get; set; }
+
+    // Chi tiết các trạng thái kỹ thuật phục vụ Dashboard & Exception Panels (100% Database)
+    public int WaitingForPartsCount { get; set; }
+    public int WaitingApprovalCount { get; set; }
+    public int DiagnosingCount { get; set; }
+    public int RepairingCount { get; set; }
+    public int WaitingQcCount { get; set; }
 }

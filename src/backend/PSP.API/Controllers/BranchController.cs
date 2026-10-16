@@ -5,40 +5,33 @@ using PSP.Application.Modules.Branch.DTOs;
 using PSP.Application.Modules.Branch.Queries;
 
 using Microsoft.AspNetCore.Authorization;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
 /// <summary>
-/// Controller đóng vai trò như một "Lễ tân" của nhà hàng.
-/// Khi có người dùng (hoặc giao diện web/app) gọi tới, "Lễ tân" sẽ tiếp nhận yêu cầu.
-/// Lễ tân không tự nấu ăn (không tự xử lý logic), mà ghi lại order (Command/Query) 
-/// rồi chuyển cho "Nhà bếp" (Mediator) xử lý. Sau đó lấy món ăn trả lại cho khách.
+/// "Lễ tân" quản lý thông tin các Chi nhánh trong chuỗi cửa hàng PSP.
 /// </summary>
-[Authorize(Roles = "Owner,Admin,Manager")]
-[Route("api/[controller]")] // Khai báo đường dẫn API, ví dụ: http://localhost:5000/api/Branch
+[Authorize(Policy = Permissions.Branch.View)]
+[Route("api/[controller]")]
 [Tags("Branches")]
 public class BranchController : BaseApiController
 {
     /// <summary>
-    /// API để tạo mới một chi nhánh (Dành riêng cho Owner & Admin).
+    /// API để tạo mới một chi nhánh (Branch.CREATE - Owner).
     /// </summary>
-    [Authorize(Roles = "Owner,Admin")]
+    [Authorize(Policy = Permissions.Branch.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateBranchCommand command, CancellationToken cancellationToken)
     {
-        // 1. Chuyển yêu cầu tạo chi nhánh cho hệ thống Mediator (Đưa order xuống nhà bếp)
-        // Kết quả trả về (result) sẽ là ID (chuỗi GUID) của chi nhánh vừa được tạo trong Database.
         var result = await Mediator.Send(command, cancellationToken);
-        
-        // 2. Trả kết quả về cho người dùng, bọc trong chiếc hộp chuẩn là ApiResponse.
-        // Chữ "Ok" tương đương với mã HTTP 200 (Nghĩa là Thành công).
         return Ok(ApiResponse<Guid>.Success(result, "Tạo chi nhánh thành công"));
     }
 
     /// <summary>
-    /// API để cập nhật (chỉnh sửa) thông tin chi nhánh (Dành riêng cho Owner & Admin).
+    /// API để cập nhật thông tin chi nhánh (Branch.UPDATE - Owner, Admin).
     /// </summary>
-    [Authorize(Roles = "Owner,Admin")]
+    [Authorize(Policy = Permissions.Branch.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBranchCommand command, CancellationToken cancellationToken)
     {
@@ -52,9 +45,9 @@ public class BranchController : BaseApiController
     }
 
     /// <summary>
-    /// API để xóa một chi nhánh (Dành riêng cho Owner & Admin).
+    /// API để xóa một chi nhánh (Branch.DELETE - Owner).
     /// </summary>
-    [Authorize(Roles = "Owner,Admin")]
+    [Authorize(Policy = Permissions.Branch.Delete)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

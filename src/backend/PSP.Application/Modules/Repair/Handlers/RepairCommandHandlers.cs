@@ -4,8 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Repair.Commands;
+using PSP.Domain.Common.Constants;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
 using PSP.Domain.Modules.Auth.Entities;
@@ -35,21 +38,38 @@ public class RepairCommandHandlers :
     IRequestHandler<UpdateRepairPartStatusCommand, bool>,
     IRequestHandler<ReturnRepairPartCommand, bool>,
     IRequestHandler<WriteOffRepairPartCommand, bool>,
-    IRequestHandler<CancelRepairTicketCommand, bool>
+    IRequestHandler<CancelRepairTicketCommand, bool>,
+    IRequestHandler<AssignTechnicianCommand, bool>,
+    IRequestHandler<StartDiagnosisCommand, bool>,
+    IRequestHandler<SubmitDiagnosisCommand, bool>,
+    IRequestHandler<ApproveRepairCommand, bool>,
+    IRequestHandler<RejectRepairCommand, bool>,
+    IRequestHandler<UseRepairPartCommand, bool>,
+    IRequestHandler<CompleteRepairCommand, bool>,
+    IRequestHandler<DeliverRepairCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly IScopeContextService _scopeContext;
+    private readonly INotificationService? _notificationService;
 
-    public RepairCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IIdempotencyService idempotencyService)
+    public RepairCommandHandlers(
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUserService,
+        IIdempotencyService idempotencyService,
+        IScopeContextService? scopeContext = null,
+        INotificationService? notificationService = null)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _idempotencyService = idempotencyService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
+        _notificationService = notificationService;
     }
 
     /// <summary>
-    /// 1. XÃ¡Â»Â­ lÃƒÂ½ tÃ¡ÂºÂ¡o mÃ¡Â»â€ºi PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a (TiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n thiÃ¡ÂºÂ¿t bÃ¡Â»â€¹ lÃ¡Â»â€”i).
+    /// 1. Xử lý tạo mới Phiếu sửa chữa (Tiếp nhận thiết bị lỗi).
     /// </summary>
     public async Task<Guid> Handle(CreateRepairTicketCommand request, CancellationToken cancellationToken)
     {
@@ -59,31 +79,36 @@ public class RepairCommandHandlers :
         var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
         var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
 
-        // 1.1 KiÃ¡Â»Æ’m tra KhÃƒÂ¡ch hÃƒÂ ng cÃƒÂ³ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i khÃƒÂ´ng
+        // Fail-Closed Branch Isolation: Admin/Owner có thể chọn chi nhánh (request.BranchId), nhân viên thường bắt buộc theo chi nhánh của mình
+        var branchId = _scopeContext.IsEnterpriseScope && request.BranchId.HasValue && request.BranchId.Value != Guid.Empty
+            ? request.BranchId.Value
+            : _scopeContext.GetRequiredBranchId();
+
+        // 1.1 Kiểm tra Khách hàng có tồn tại không
         var customer = await customerRepo.GetByIdAsync(request.CustomerId, cancellationToken);
         if (customer == null)
         {
-            throw new NotFoundException("KhÃƒÂ¡ch hÃƒÂ ng", request.CustomerId);
+            throw new NotFoundException("Khách hàng", request.CustomerId);
         }
 
-        // 1.2 KiÃ¡Â»Æ’m tra ThiÃ¡ÂºÂ¿t bÃ¡Â»â€¹ (BiÃ¡ÂºÂ¿n thÃ¡Â»Æ’ sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m) cÃƒÂ³ tÃ¡Â»â€œn tÃ¡ÂºÂ¡i trong danh mÃ¡Â»Â¥c khÃƒÂ´ng
+        // 1.2 Kiểm tra Thiết bị (Biến thể sản phẩm) có tồn tại trong danh mục không
         var variant = await variantRepo.GetByIdAsync(request.ProductVariantId, cancellationToken);
         if (variant == null)
         {
-            throw new NotFoundException("BiÃ¡ÂºÂ¿n thÃ¡Â»Æ’ thiÃ¡ÂºÂ¿t bÃ¡Â»â€¹ sÃ¡Â»Â­a", request.ProductVariantId);
+            throw new NotFoundException("Biến thể thiết bị sửa", request.ProductVariantId);
         }
 
-        // 1.3 KiÃ¡Â»Æ’m tra KÃ¡Â»Â¹ thuÃ¡ÂºÂ­t viÃƒÂªn phÃ¡Â»Â¥ trÃƒÂ¡ch (nÃ¡ÂºÂ¿u cÃƒÂ³ truyÃ¡Â»Ân lÃƒÂªn)
+        // 1.3 Kiểm tra Kỹ thuật viên phụ trách (nếu có truyền lên)
         if (request.TechnicianId.HasValue)
         {
             var tech = await userRepo.GetByIdAsync(request.TechnicianId.Value, cancellationToken);
             if (tech == null)
             {
-                throw new NotFoundException("KÃ¡Â»Â¹ thuÃ¡ÂºÂ­t viÃƒÂªn", request.TechnicianId.Value);
+                throw new NotFoundException("Kỹ thuật viên", request.TechnicianId.Value);
             }
         }
 
-        // 1.4 LÃ¡ÂºÂ¥y thÃƒÂ´ng tin ngÃ†Â°Ã¡Â»Âi tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n tÃ¡Â»Â« tÃƒÂ i khoÃ¡ÂºÂ£n Ã„â€˜ang Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p
+        // 1.4 Lấy thông tin người tiếp nhận từ tài khoản đang đăng nhập
         Guid employeeId = Guid.Empty;
         if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
         {
@@ -91,43 +116,61 @@ public class RepairCommandHandlers :
         }
         else
         {
-            throw new BadRequestException("KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ¡c Ã„â€˜Ã¡Â»â€¹nh thÃƒÂ´ng tin nhÃƒÂ¢n viÃƒÂªn tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n phiÃ¡ÂºÂ¿u.");
+            throw new BadRequestException("Không thể xác định thông tin nhân viên tiếp nhận phiếu.");
         }
 
-        // 1.5 TÃ¡ÂºÂ¡o mÃƒÂ£ phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a ngÃ¡ÂºÂ«u nhiÃƒÂªn nhÃ†Â°ng theo chuÃ¡ÂºÂ©n: REP-yyyyMMdd-XXXXXX
+        // 1.5 Tạo mã phiếu sửa chữa ngẫu nhiên nhưng theo chuẩn: REP-yyyyMMdd-XXXXXX
         var ticketCode = "REP-" + DateTime.UtcNow.ToString("yyyyMMdd") + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
 
-        // 1.6 KhÃ¡Â»Å¸i tÃ¡ÂºÂ¡o phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a vÃ¡Â»â€ºi trÃ¡ÂºÂ¡ng thÃƒÂ¡i mÃ¡ÂºÂ·c Ã„â€˜Ã¡Â»â€¹nh ban Ã„â€˜Ã¡ÂºÂ§u lÃƒÂ  Received (TiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n)
+        // 1.6 Khởi tạo phiếu sửa chữa: Nếu chưa chọn KTV thì trạng thái ban đầu là PendingAssignment, nếu đã có KTV là Received
+        var hasTech = request.TechnicianId.HasValue && request.TechnicianId.Value != Guid.Empty;
+        var initialStatus = hasTech ? RepairTicketStatus.Received : RepairTicketStatus.PendingAssignment;
+
         var ticket = new RepairTicketEntity
         {
+            BranchId = branchId,
             CustomerId = request.CustomerId,
             ProductVariantId = request.ProductVariantId,
-            Imei = request.Imei?.Trim(),
+            Imei = string.IsNullOrWhiteSpace(request.Imei) ? null : request.Imei.Trim(),
             ReceivedById = employeeId,
-            TechnicianId = request.TechnicianId,
+            TechnicianId = hasTech ? request.TechnicianId : null,
             Code = ticketCode,
-            Status = RepairTicketStatus.Received,
+            Status = initialStatus,
             ProblemDescription = request.ProblemDescription.Trim(),
+            ExteriorCondition = string.IsNullOrWhiteSpace(request.ExteriorCondition) ? null : request.ExteriorCondition.Trim(),
+            CustomModelName = string.IsNullOrWhiteSpace(request.CustomModelName) ? null : request.CustomModelName.Trim(),
             EstimatedCost = request.EstimatedCost ?? 0,
             ActualCost = 0,
             LaborCost = 0,
-            ReceivedDate = DateTime.UtcNow
+            ReceivedDate = DateTime.UtcNow,
+            IsTest = request.IsTest
         };
 
         await ticketRepo.AddAsync(ticket, cancellationToken);
 
-        // 1.7 Ghi nhÃ¡ÂºÂ­n lÃ¡Â»â€¹ch sÃ¡Â»Â­ trÃ¡ÂºÂ¡ng thÃƒÂ¡i Ã„â€˜Ã¡ÂºÂ§u tiÃƒÂªn
+        // 1.7 Ghi nhận lịch sử trạng thái đầu tiên
         var history = new RepairStatusHistoryEntity
         {
             RepairTicketId = ticket.Id,
-            Status = RepairTicketStatus.Received.ToString(),
-            Note = "TiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n thiÃ¡ÂºÂ¿t bÃ¡Â»â€¹ lÃ¡Â»â€”i tÃ¡Â»Â« khÃƒÂ¡ch hÃƒÂ ng."
+            Status = initialStatus.ToString(),
+            Note = hasTech
+                ? "Tiếp nhận thiết bị lỗi từ khách hàng và phân công kỹ thuật viên."
+                : "Tiếp nhận thiết bị lỗi từ khách hàng (Chờ quản lý phân công kỹ thuật viên)."
         };
         await historyRepo.AddAsync(history, cancellationToken);
 
-        // 1.8 LÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i vÃƒÂ o CSDL
+        // 1.8 Lưu thay đổi vào CSDL
         _idempotencyService.AttachRecord(ticket.Id);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Gửi thông báo cho Quản lý chi nhánh nếu phiếu chưa phân công kỹ thuật viên
+        if (initialStatus == RepairTicketStatus.PendingAssignment && _notificationService != null)
+        {
+            var devName = ticket.CustomModelName ?? variant.Name;
+            var title = $"[Điều phối sửa chữa] Phiếu mới {ticketCode} cần phân công";
+            var content = $"Thiết bị {devName} (IMEI: {ticket.Imei ?? "Chưa có"}) vừa được tiếp nhận. Đang chờ quản lý phân công kỹ thuật viên.";
+            await NotifyManagersAsync(branchId, title, content, cancellationToken);
+        }
 
         return ticket.Id;
     }
@@ -144,45 +187,47 @@ public class RepairCommandHandlers :
         var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
         var partRepo = _unitOfWork.Repository<RepairPartEntity>();
 
-        // 2.1 TÃƒÂ¬m phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a chÃƒÂ­nh
+        // 2.1 Tìm phiếu sửa chữa chính
         var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
         if (ticket == null)
         {
-            throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.RepairTicketId);
+            throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
         }
 
-        // ChÃ¡ÂºÂ·n xuÃ¡ÂºÂ¥t linh kiÃ¡Â»â€¡n nÃ¡ÂºÂ¿u phiÃ¡ÂºÂ¿u Ã„â€˜ÃƒÂ£ hoÃƒÂ n thÃƒÂ nh hoÃ¡ÂºÂ·c Ã„â€˜ÃƒÂ£ bÃ¡Â»â€¹ hÃ¡Â»Â§y
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
+
+        // Chặn xuất linh kiện nếu phiếu đã hoàn thành hoặc đã bị hủy
         if (ticket.Status == RepairTicketStatus.Completed || ticket.Status == RepairTicketStatus.Cancelled)
         {
-            throw new BadRequestException("KhÃƒÂ´ng thÃ¡Â»Æ’ xuÃ¡ÂºÂ¥t thÃƒÂªm linh kiÃ¡Â»â€¡n cho phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a Ã„â€˜ÃƒÂ£ hoÃƒÂ n thÃƒÂ nh hoÃ¡ÂºÂ·c Ã„â€˜ÃƒÂ£ hÃ¡Â»Â§y.");
+            throw new BadRequestException("Không thể xuất thêm linh kiện cho phiếu sửa chữa đã hoàn thành hoặc đã hủy.");
         }
 
-        // 2.2 TÃƒÂ¬m biÃ¡ÂºÂ¿n thÃ¡Â»Æ’ sÃ¡ÂºÂ£n phÃ¡ÂºÂ©m lÃƒÂ m linh kiÃ¡Â»â€¡n thay thÃ¡ÂºÂ¿
+        // 2.2 Tìm biến thể sản phẩm làm linh kiện thay thế
         var variant = await variantRepo.GetByIdAsync(request.ProductVariantId, cancellationToken);
         if (variant == null)
         {
-            throw new NotFoundException("Linh kiÃ¡Â»â€¡n thay thÃ¡ÂºÂ¿", request.ProductVariantId);
+            throw new NotFoundException("Linh kiện thay thế", request.ProductVariantId);
         }
 
-        // 2.3 TÃƒÂ¬m chi nhÃƒÂ¡nh cÃ¡Â»Â§a nhÃƒÂ¢n viÃƒÂªn tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n phiÃ¡ÂºÂ¿u Ã„â€˜Ã¡Â»Æ’ xÃƒÂ¡c Ã„â€˜Ã¡Â»â€¹nh kho hÃƒÂ ng chi nhÃƒÂ¡nh Ã„â€˜ÃƒÂ³
+        // 2.3 Tìm chi nhánh của nhân viên tiếp nhận phiếu để xác định kho hàng chi nhánh đó
         var receivedUser = await userRepo.GetByIdAsync(ticket.ReceivedById, cancellationToken);
         if (receivedUser == null)
         {
-            throw new BadRequestException("KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y nhÃƒÂ¢n viÃƒÂªn lÃ¡ÂºÂ­p phiÃ¡ÂºÂ¿u tiÃ¡ÂºÂ¿p nhÃ¡ÂºÂ­n.");
+            throw new BadRequestException("Không tìm thấy nhân viên lập phiếu tiếp nhận.");
         }
 
-        var branchId = receivedUser.BranchId;
+        var branchId = ticket.BranchId ?? receivedUser.BranchId;
 
-        // LÃ¡ÂºÂ¥y danh sÃƒÂ¡ch cÃƒÂ¡c kho hÃƒÂ ng Ã„â€˜ang hoÃ¡ÂºÂ¡t Ã„â€˜Ã¡Â»â„¢ng thuÃ¡Â»â„¢c chi nhÃƒÂ¡nh nÃƒÂ y
+        // Lấy danh sách các kho hàng đang hoạt động thuộc chi nhánh này
         var branchWarehouses = await warehouseRepo.FindAsync(w => w.BranchId == branchId && !w.IsDeleted, cancellationToken);
         var warehouseIds = branchWarehouses.Select(w => w.Id).ToList();
 
         if (!warehouseIds.Any())
         {
-            throw new BadRequestException("Chi nhÃƒÂ¡nh nÃƒÂ y khÃƒÂ´ng cÃƒÂ³ kho hÃƒÂ ng nÃƒÂ o Ã„â€˜ang hoÃ¡ÂºÂ¡t Ã„â€˜Ã¡Â»â„¢ng Ã„â€˜Ã¡Â»Æ’ xuÃ¡ÂºÂ¥t linh kiÃ¡Â»â€¡n.");
+            throw new BadRequestException("Chi nhánh này không có kho hàng nào đang hoạt động để xuất linh kiện.");
         }
 
-        // 2.4 KiÃ¡Â»Æ’m tra tÃ¡Â»â€œn kho cÃ¡Â»Â§a linh kiÃ¡Â»â€¡n thay thÃ¡ÂºÂ¿ tÃ¡ÂºÂ¡i cÃƒÂ¡c kho hÃƒÂ ng thuÃ¡Â»â„¢c chi nhÃƒÂ¡nh nÃƒÂ y
+        // 2.4 Kiểm tra tồn kho của linh kiện thay thế tại các kho hàng thuộc chi nhánh này
         var inventories = await inventoryRepo.FindAsync(
             inv => warehouseIds.Contains(inv.WarehouseId) && inv.ProductVariantId == request.ProductVariantId, 
             cancellationToken
@@ -280,7 +325,7 @@ public class RepairCommandHandlers :
     }
 
     /// <summary>
-    /// 3. XÃ¡Â»Â­ lÃƒÂ½ cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a (Linear Status Transition).
+    /// 3. Xử lý cập nhật trạng thái phiếu sửa chữa (Linear Status Transition).
     /// </summary>
     public async Task<bool> Handle(UpdateRepairStatusCommand request, CancellationToken cancellationToken)
     {
@@ -291,12 +336,14 @@ public class RepairCommandHandlers :
         var partRepo = _unitOfWork.Repository<RepairPartEntity>();
         var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
 
-        // 3.1 TÃƒÂ¬m phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a chÃƒÂ­nh
+        // 3.1 Tìm phiếu sửa chữa chính
         var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
         if (ticket == null)
         {
-            throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.RepairTicketId);
+            throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
         }
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
 
         // NÃ¡ÂºÂ¿u trÃ¡ÂºÂ¡ng thÃƒÂ¡i mÃ¡Â»â€ºi trÃƒÂ¹ng trÃ¡ÂºÂ¡ng thÃƒÂ¡i cÃ…Â©, khÃƒÂ´ng cÃ¡ÂºÂ§n xÃ¡Â»Â­ lÃƒÂ½, trÃ¡ÂºÂ£ vÃ¡Â»Â true
         if (ticket.Status == request.Status)
@@ -307,87 +354,104 @@ public class RepairCommandHandlers :
                 var tech = await userRepo.GetByIdAsync(request.TechnicianId.Value, cancellationToken);
                 if (tech == null)
                 {
-                    throw new NotFoundException("KÃ¡Â»Â¹ thuÃ¡ÂºÂ­t viÃƒÂªn", request.TechnicianId.Value);
+                    throw new NotFoundException("Kỹ thuật viên", request.TechnicianId.Value);
                 }
                 ticket.TechnicianId = request.TechnicianId.Value;
+                if (ticket.Status == RepairTicketStatus.PendingAssignment)
+                {
+                    ticket.Status = RepairTicketStatus.Received;
+                }
                 ticketRepo.Update(ticket);
                 _idempotencyService.AttachRecord(true);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
             return true;
         }
 
-        // 3.2 RÃƒâ‚¬NG BUÃ¡Â»ËœC BR-SERV-01: ChuyÃ¡Â»Æ’n dÃ¡Â»â€¹ch trÃ¡ÂºÂ¡ng thÃƒÂ¡i tuyÃ¡ÂºÂ¿n tÃƒÂ­nh (chÃ¡Â»â€° Ã„â€˜i lÃƒÂªn, khÃƒÂ´ng Ã„â€˜i lÃƒÂ¹i)
-                bool isValidTransition = false;
-        if (request.Status == RepairTicketStatus.Cancelled)
+        // 3.2 RÀNG BUỘC VÒNG ĐỜI (Section 2)
+        bool isValidTransition = false;
+        switch (ticket.Status)
         {
-            isValidTransition = ticket.Status != RepairTicketStatus.Completed && ticket.Status != RepairTicketStatus.Cancelled;
-        }
-        else
-        {
-            switch (ticket.Status)
-            {
-                case RepairTicketStatus.Received:
-                    isValidTransition = request.Status == RepairTicketStatus.Diagnosing || request.Status == RepairTicketStatus.WaitingForParts || request.Status == RepairTicketStatus.Repairing || request.Status == RepairTicketStatus.Completed;
-                    break;
-                case RepairTicketStatus.Diagnosing:
-                    isValidTransition = request.Status == RepairTicketStatus.WaitingApproval || request.Status == RepairTicketStatus.WaitingForParts || request.Status == RepairTicketStatus.Repairing;
-                    break;
-                case RepairTicketStatus.WaitingApproval:
-                    isValidTransition = request.Status == RepairTicketStatus.WaitingForParts || request.Status == RepairTicketStatus.Repairing;
-                    break;
-                case RepairTicketStatus.WaitingForParts:
-                    isValidTransition = request.Status == RepairTicketStatus.Repairing || request.Status == RepairTicketStatus.Completed;
-                    break;
-                case RepairTicketStatus.Repairing:
-                    isValidTransition = request.Status == RepairTicketStatus.WaitingQC || request.Status == RepairTicketStatus.Completed;
-                    break;
-                case RepairTicketStatus.WaitingQC:
-                    isValidTransition = request.Status == RepairTicketStatus.Repairing || request.Status == RepairTicketStatus.Completed;
-                    break;
-                case RepairTicketStatus.Completed:
-                    isValidTransition = request.Status == RepairTicketStatus.WaitingPickup || request.Status == RepairTicketStatus.Delivered;
-                    break;
-                case RepairTicketStatus.WaitingPickup:
-                    isValidTransition = request.Status == RepairTicketStatus.Delivered;
-                    break;
-            }
+            case RepairTicketStatus.PendingAssignment:
+                isValidTransition = request.Status == RepairTicketStatus.Received 
+                    || request.Status == RepairTicketStatus.Diagnosing 
+                    || request.Status == RepairTicketStatus.Cancelled;
+                break;
+            case RepairTicketStatus.Received:
+                isValidTransition = request.Status == RepairTicketStatus.Diagnosing 
+                    || request.Status == RepairTicketStatus.Cancelled;
+                break;
+            case RepairTicketStatus.Diagnosing:
+                isValidTransition = request.Status == RepairTicketStatus.WaitingApproval 
+                    || request.Status == RepairTicketStatus.WaitingForParts 
+                    || request.Status == RepairTicketStatus.Repairing 
+                    || request.Status == RepairTicketStatus.Cancelled;
+                break;
+            case RepairTicketStatus.WaitingApproval:
+                isValidTransition = request.Status == RepairTicketStatus.Repairing 
+                    || request.Status == RepairTicketStatus.WaitingForParts
+                    || request.Status == RepairTicketStatus.Cancelled;
+                break;
+            case RepairTicketStatus.WaitingForParts:
+                isValidTransition = request.Status == RepairTicketStatus.Repairing 
+                    || request.Status == RepairTicketStatus.Cancelled;
+                break;
+            case RepairTicketStatus.Repairing:
+                isValidTransition = request.Status == RepairTicketStatus.WaitingQC 
+                    || request.Status == RepairTicketStatus.WaitingForParts 
+                    || request.Status == RepairTicketStatus.Completed 
+                    || request.Status == RepairTicketStatus.Cancelled;
+                break;
+            case RepairTicketStatus.WaitingQC:
+                isValidTransition = request.Status == RepairTicketStatus.Repairing // QC không đạt
+                    || request.Status == RepairTicketStatus.Completed; // QC đạt
+                break;
+            case RepairTicketStatus.Completed:
+                isValidTransition = request.Status == RepairTicketStatus.WaitingPickup;
+                break;
+            case RepairTicketStatus.WaitingPickup:
+                isValidTransition = request.Status == RepairTicketStatus.Delivered;
+                break;
+            default:
+                isValidTransition = false;
+                break;
         }
 
         if (!isValidTransition)
         {
-            throw new ConflictException($"KhÃ´ng Ä‘Æ°á»£c phÃ©p lÃ¹i tráº¡ng thÃ¡i hoáº·c chuyá»ƒn Ä‘á»•i tráº¡ng thÃ¡i tá»« '{ticket.Status}' sang '{request.Status}'.");
+            throw new ConflictException($"Không được phép chuyển đổi trạng thái từ '{ticket.Status}' sang '{request.Status}' theo quy trình nghiệp vụ.");
         }
 
         // 3.3 NÃ¡ÂºÂ¿u cÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t KÃ¡Â»Â¹ thuÃ¡ÂºÂ­t viÃƒÂªn
+        // 3.3 Cập nhật Kỹ thuật viên
         if (request.TechnicianId.HasValue)
         {
             var tech = await userRepo.GetByIdAsync(request.TechnicianId.Value, cancellationToken);
             if (tech == null)
             {
-                throw new NotFoundException("KÃ¡Â»Â¹ thuÃ¡ÂºÂ­t viÃƒÂªn", request.TechnicianId.Value);
+                throw new NotFoundException("Kỹ thuật viên", request.TechnicianId.Value);
             }
             ticket.TechnicianId = request.TechnicianId.Value;
         }
 
-        // 3.4 Bá» qua cáº­p nháº­t tiá»n cÃ´ng thá»£ sá»­a (Ä‘Ã£ chuyá»ƒn sang module khÃ¡c hoáº·c sáº½ cáº­p nháº­t riÃªng)
+        // 3.4 Bỏ qua cập nhật tiền công thợ sửa (đã chuyển sang module khác hoặc sẽ cập nhật riêng)
 
-        // 3.5 BÃ¡ÂºÂ®T Ã„ Ã¡ÂºÂ¦U xÃ¡Â»Â­ lÃƒÂ½ nghiÃ¡Â»â€¡p vÃ¡Â»Â¥ khi chuyÃ¡Â»Æ’n sang trÃ¡ÂºÂ¡ng thÃƒÂ¡i Completed (HoÃƒÂ n thÃƒÂ nh)
+        // 3.5 BẮT ĐẦU xử lý nghiệp vụ khi chuyển sang trạng thái Completed (Hoàn thành)
         if (request.Status == RepairTicketStatus.Completed)
         {
-            // LÃ¡ÂºÂ¥y toÃƒÂ n bÃ¡Â»â„¢ linh kiÃ¡Â»â€¡n thay thÃ¡ÂºÂ¿ Ã„â€˜ÃƒÂ£ sÃ¡Â»Â­ dÃ¡Â»Â¥ng
+            // Lấy toàn bộ linh kiện thay thế đã sử dụng (không tính linh kiện đã hoàn trả)
             var parts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
-            decimal partsTotal = parts.Sum(p => p.UnitPrice * p.Quantity);
+            decimal partsTotal = parts.Where(p => p.Status == RepairPartStatus.Installed || p.Status == RepairPartStatus.Issued).Sum(p => p.UnitPrice * p.Quantity);
 
-            // TÃƒÂ­nh toÃƒÂ¡n lÃ¡ÂºÂ¡i tÃ¡Â»â€¢ng chi phÃƒÂ­ thÃ¡Â»Â±c tÃ¡ÂºÂ¿ khÃƒÂ¡ch hÃƒÂ ng phÃ¡ÂºÂ£i trÃ¡ÂºÂ£ (ActualCost = TiÃ¡Â»Ân cÃƒÂ´ng + TiÃ¡Â»Ân linh kiÃ¡Â»â€¡n)
+            // Tính toán lại tổng chi phí thực tế khách hàng phải trả (ActualCost = Tiền công + Tiền linh kiện)
             ticket.ActualCost = ticket.LaborCost + partsTotal;
             ticket.CompletedDate = DateTime.UtcNow;
         }
 
-        // 3.6 BÃ¡ÂºÂ®T Ã„ÂÃ¡ÂºÂ¦U xÃ¡Â»Â­ lÃƒÂ½ nghiÃ¡Â»â€¡p vÃ¡Â»Â¥ khi chuyÃ¡Â»Æ’n sang trÃ¡ÂºÂ¡ng thÃƒÂ¡i Cancelled (HÃ¡Â»Â§y phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a)
+        // 3.6 BẮT ĐẦU xử lý nghiệp vụ khi chuyển sang trạng thái Cancelled (Hủy phiếu sửa chữa)
         if (request.Status == RepairTicketStatus.Cancelled)
         {
-            // HOÃƒâ‚¬N TRÃ¡ÂºÂ¢ linh kiÃ¡Â»â€¡n thay thÃ¡ÂºÂ¿ vÃ¡Â»Â kho hÃƒÂ ng cÃ¡Â»Â§a chi nhÃƒÂ¡nh (nÃ¡ÂºÂ¿u trÃ†Â°Ã¡Â»â€ºc Ã„â€˜ÃƒÂ³ Ã„â€˜ÃƒÂ£ lÃ¡Â»Â¡ xuÃ¡ÂºÂ¥t linh kiÃ¡Â»â€¡n)
+            // HOÀN TRẢ linh kiện thay thế về kho hàng của chi nhánh (nếu trước đó đã lỡ xuất linh kiện)
             var parts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
             if (parts.Any())
             {
@@ -400,7 +464,7 @@ public class RepairCommandHandlers :
 
                     if (warehouseIds.Any())
                     {
-                        var targetWarehouseId = warehouseIds.First(); // TrÃ¡ÂºÂ£ vÃ¡Â»Â kho Ã„â€˜Ã¡ÂºÂ§u tiÃƒÂªn cÃ¡Â»Â§a chi nhÃƒÂ¡nh
+                        var targetWarehouseId = warehouseIds.First(); // Trả về kho đầu tiên của chi nhánh
 
                         foreach (var part in parts)
                         {
@@ -417,7 +481,7 @@ public class RepairCommandHandlers :
                             }
                             else
                             {
-                                // NÃ¡ÂºÂ¿u chÃ†Â°a cÃƒÂ³ bÃ¡ÂºÂ£n ghi tÃ¡Â»â€œn kho Ã¡Â»Å¸ kho nÃƒÂ y, tÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+                                // Nếu chưa có bản ghi tồn kho ở kho này, tạo mới
                                 var newInventory = new InventoryEntity
                                 {
                                     WarehouseId = targetWarehouseId,
@@ -428,7 +492,7 @@ public class RepairCommandHandlers :
                                 await inventoryRepo.AddAsync(newInventory, cancellationToken);
                             }
                             
-                            // Ã„ÂÃƒÂ¡nh dÃ¡ÂºÂ¥u linh kiÃ¡Â»â€¡n Ã„â€˜ÃƒÂ£ bÃ¡Â»â€¹ xÃƒÂ³a (soft delete) do hÃ¡Â»Â§y phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a
+                            // Đánh dấu linh kiện đã bị xóa (soft delete) do hủy phiếu sửa
                             partRepo.Remove(part);
                         }
                     }
@@ -439,27 +503,25 @@ public class RepairCommandHandlers :
             ticket.CompletedDate = DateTime.UtcNow;
         }
 
-        // 3.7 CÃ¡ÂºÂ­p nhÃ¡ÂºÂ­t trÃ¡ÂºÂ¡ng thÃƒÂ¡i phiÃ¡ÂºÂ¿u
+        // 3.7 Cập nhật trạng thái phiếu
         ticket.Status = request.Status;
         ticketRepo.Update(ticket);
 
-        // 3.8 Ghi nhÃ¡ÂºÂ­n lÃ¡Â»â€¹ch sÃ¡Â»Â­ trÃ¡ÂºÂ¡ng thÃƒÂ¡i
+        // 3.8 Ghi nhận lịch sử trạng thái
         var history = new RepairStatusHistoryEntity
         {
             RepairTicketId = ticket.Id,
             Status = request.Status.ToString(),
-            Note = request.Note ?? $"HÃ¡Â»â€¡ thÃ¡Â»â€˜ng tÃ¡Â»Â± Ã„â€˜Ã¡Â»â„¢ng chuyÃ¡Â»Æ’n trÃ¡ÂºÂ¡ng thÃƒÂ¡i phiÃ¡ÂºÂ¿u sang {request.Status}."
+            Note = request.Note ?? $"Hệ thống tự động chuyển trạng thái phiếu sang {request.Status}."
         };
         await historyRepo.AddAsync(history, cancellationToken);
 
-        // 3.9 LÃ†Â°u tÃ¡ÂºÂ¥t cÃ¡ÂºÂ£ thay Ã„â€˜Ã¡Â»â€¢i
+        // 3.9 Lưu tất cả thay đổi
         _idempotencyService.AttachRecord(true);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;
     }
-
-    /// <summary>
     /// 4. XÃ¡Â»Â­ lÃƒÂ½ xÃƒÂ³a phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a (chÃ¡Â»â€° cho phÃƒÂ©p Ã¡Â»Å¸ trÃ¡ÂºÂ¡ng thÃƒÂ¡i Received vÃƒÂ  chÃ†Â°a cÃƒÂ³ linh kiÃ¡Â»â€¡n).
     /// </summary>
     public async Task<bool> Handle(DeleteRepairTicketCommand request, CancellationToken cancellationToken)
@@ -467,36 +529,38 @@ public class RepairCommandHandlers :
         var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
         var partRepo = _unitOfWork.Repository<RepairPartEntity>();
 
-        // 4.1 TÃƒÂ¬m phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a chÃƒÂ­nh
+        // 4.1 Tìm phiếu sửa chữa chính
         var ticket = await ticketRepo.GetByIdAsync(request.Id, cancellationToken);
         if (ticket == null)
         {
-            throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.Id);
+            throw new NotFoundException("Phiếu sửa chữa", request.Id);
         }
 
-        // 4.2 KiÃ¡Â»Æ’m tra rÃƒÂ ng buÃ¡Â»â„¢c xÃƒÂ³a
+        _scopeContext.ValidateBranchAccess(ticket.BranchId, "phiếu sửa chữa");
+
+        // 4.2 Kiểm tra ràng buộc xóa
         if (ticket.Status != RepairTicketStatus.Received)
         {
-            throw new BadRequestException($"KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a Ã¡Â»Å¸ trÃ¡ÂºÂ¡ng thÃƒÂ¡i '{ticket.Status}'. ChÃ¡Â»â€° cho phÃƒÂ©p xÃƒÂ³a khi Ã¡Â»Å¸ trÃ¡ÂºÂ¡ng thÃƒÂ¡i 'Received'.");
+            throw new BadRequestException($"Không thể xóa phiếu sửa chữa ở trạng thái '{ticket.Status}'. Chỉ cho phép xóa khi ở trạng thái 'Received'.");
         }
 
         var parts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
         if (parts.Any())
         {
-            throw new BadRequestException("KhÃƒÂ´ng thÃ¡Â»Æ’ xÃƒÂ³a phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a Ã„â€˜ÃƒÂ£ phÃƒÂ¡t sinh linh kiÃ¡Â»â€¡n thay thÃ¡ÂºÂ¿.");
+            throw new BadRequestException("Không thể xóa phiếu sửa chữa đã phát sinh linh kiện thay thế.");
         }
 
-        // 4.3 ThÃ¡Â»Â±c hiÃ¡Â»â€¡n xÃƒÂ³a mÃ¡Â»Âm phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a
+        // 4.3 Thực hiện xóa mềm phiếu sửa chữa
         ticketRepo.Remove(ticket);
 
-        // 4.4 LÃ†Â°u thay Ã„â€˜Ã¡Â»â€¢i
+        // 4.4 Lưu thay đổi
         _idempotencyService.AttachRecord(true);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;
     }
     /// <summary>
-    /// 5. XÃ¡Â»Â­ lÃƒÂ½ Update trÃ¡ÂºÂ¡ng thÃƒÂ¡i linh kiÃ¡Â»â€¡n (Issue, Install)
+    /// 5. Xử lý Update trạng thái linh kiện (Issue, Install)
     /// </summary>
     public async Task<bool> Handle(UpdateRepairPartStatusCommand request, CancellationToken cancellationToken)
     {
@@ -507,7 +571,9 @@ public class RepairCommandHandlers :
         var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
 
         var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
-        if (ticket == null) throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.RepairTicketId);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
 
         var part = await partRepo.GetByIdAsync(request.RepairPartId, cancellationToken);
         if (part == null || part.RepairTicketId != ticket.Id) throw new NotFoundException("Linh kiÃ¡Â»â€¡n", request.RepairPartId);
@@ -593,20 +659,26 @@ public class RepairCommandHandlers :
         var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
 
         var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
-        if (ticket == null) throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.RepairTicketId);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
 
         var part = await partRepo.GetByIdAsync(request.RepairPartId, cancellationToken);
-        if (part == null || part.RepairTicketId != ticket.Id) throw new NotFoundException("Linh kiÃ¡Â»â€¡n", request.RepairPartId);
+        if (part == null || part.RepairTicketId != ticket.Id) throw new NotFoundException("Linh kiện", request.RepairPartId);
 
-        if (!part.RowVersion.SequenceEqual(request.RowVersion))
-            throw new ConflictException("ThÃƒÂ´ng tin linh kiÃ¡Â»â€¡n Ã„â€˜ÃƒÂ£ bÃ¡Â»â€¹ thay Ã„â€˜Ã¡Â»â€¢i.");
+        if (request.RowVersion != null && request.RowVersion.Length > 0 && part.RowVersion != null && part.RowVersion.Length > 0 && !part.RowVersion.SequenceEqual(request.RowVersion))
+            throw new ConflictException("Thông tin linh kiện đã bị thay đổi.");
 
         if (part.Status != RepairPartStatus.Issued && part.Status != RepairPartStatus.Installed && part.Status != RepairPartStatus.Reserved)
-            throw new ConflictException($"KhÃ´ng thá»ƒ Return linh kiá»‡n Ä‘ang á»Ÿ tráº¡ng thÃ¡i {part.Status}.");
+            throw new ConflictException($"Không thể Return linh kiện đang ở trạng thái {part.Status}.");
+
+        var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
+        var partVariant = await variantRepo.GetByIdAsync(part.ProductVariantId, cancellationToken);
+        var partName = partVariant?.Name ?? "Linh kiện";
 
         if (part.Status == RepairPartStatus.Reserved)
         {
-            // BÃ¡Â»  Reserved, khÃƒÂ´ng lÃƒÂ m thay Ã„â€˜Ã¡Â»â€¢i tÃ¡Â»â€œn kho
+            // Bỏ Reserved, không làm thay đổi tồn kho
             part.Status = RepairPartStatus.Returned;
             partRepo.Update(part);
             
@@ -615,48 +687,65 @@ public class RepairCommandHandlers :
                 var imei = await imeiRepo.GetByIdAsync(part.ImeiId.Value, cancellationToken);
                 if (imei != null) { imei.Status = ImeiStatus.InStock; imeiRepo.Update(imei); }
             }
-            
-            _idempotencyService.AttachRecord(true);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        // Ã„ Ã„Â£ Issue hoÃ¡ÂºÂ·c Install => CÃ¡Â»â„¢ng lÃ¡ÂºÂ¡i tÃ¡Â»â€œn kho
-        var warehouses = await warehouseRepo.FindAsync(w => w.BranchId == ticket.BranchId && !w.IsDeleted, cancellationToken);
-        var warehouseId = warehouses.FirstOrDefault()?.Id;
-        if (warehouseId == null) throw new BadRequestException("KhÃƒÂ´ng tÃƒÂ¬m thÃ¡ÂºÂ¥y kho.");
-
-        var inventory = (await inventoryRepo.FindAsync(i => i.WarehouseId == warehouseId.Value && i.ProductVariantId == part.ProductVariantId, cancellationToken)).FirstOrDefault();
-        if (inventory != null)
-        {
-            inventory.Quantity += part.Quantity;
-            inventoryRepo.Update(inventory);
         }
         else
         {
-            inventory = new InventoryEntity { WarehouseId = warehouseId.Value, ProductVariantId = part.ProductVariantId, Quantity = part.Quantity };
-            await inventoryRepo.AddAsync(inventory, cancellationToken);
+            // Đã Issue hoặc Install => Cộng lại tồn kho
+            var warehouses = await warehouseRepo.FindAsync(w => w.BranchId == ticket.BranchId && !w.IsDeleted, cancellationToken);
+            var warehouseId = warehouses.FirstOrDefault()?.Id;
+            if (warehouseId == null) throw new BadRequestException("Không tìm thấy kho.");
+
+            var inventory = (await inventoryRepo.FindAsync(i => i.WarehouseId == warehouseId.Value && i.ProductVariantId == part.ProductVariantId, cancellationToken)).FirstOrDefault();
+            if (inventory != null)
+            {
+                inventory.Quantity += part.Quantity;
+                inventoryRepo.Update(inventory);
+            }
+            else
+            {
+                inventory = new InventoryEntity { WarehouseId = warehouseId.Value, ProductVariantId = part.ProductVariantId, Quantity = part.Quantity };
+                await inventoryRepo.AddAsync(inventory, cancellationToken);
+            }
+
+            var txn = new InventoryTransactionEntity
+            {
+                WarehouseId = warehouseId.Value,
+                ProductVariantId = part.ProductVariantId,
+                Type = InventoryTransactionType.REPAIR_RETURN,
+                QuantityChange = part.Quantity,
+                ReferenceId = part.Id,
+                ActorId = Guid.TryParse(_currentUserService.UserId, out var uid) ? uid : Guid.Empty
+            };
+            await transactionRepo.AddAsync(txn, cancellationToken);
+
+            part.Status = RepairPartStatus.Returned;
+            partRepo.Update(part);
+            
+            if (part.ImeiId.HasValue)
+            {
+                var imei = await imeiRepo.GetByIdAsync(part.ImeiId.Value, cancellationToken);
+                if (imei != null) { imei.Status = ImeiStatus.InStock; imeiRepo.Update(imei); }
+            }
         }
 
-        var txn = new InventoryTransactionEntity
+        // Tự động tính toán lại ActualCost nếu đã có chi phí
+        var remainingParts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted && p.Id != part.Id, cancellationToken);
+        var remainingPartsCost = remainingParts.Where(p => p.Status == RepairPartStatus.Installed || p.Status == RepairPartStatus.Issued).Sum(p => p.UnitPrice * p.Quantity);
+        if (ticket.ActualCost.HasValue && ticket.ActualCost > 0)
         {
-            WarehouseId = warehouseId.Value,
-            ProductVariantId = part.ProductVariantId,
-            Type = InventoryTransactionType.REPAIR_RETURN,
-            QuantityChange = part.Quantity,
-            ReferenceId = part.Id,
-            ActorId = Guid.TryParse(_currentUserService.UserId, out var uid) ? uid : Guid.Empty
-        };
-        await transactionRepo.AddAsync(txn, cancellationToken);
-
-        part.Status = RepairPartStatus.Returned;
-        partRepo.Update(part);
-        
-        if (part.ImeiId.HasValue)
-        {
-            var imei = await imeiRepo.GetByIdAsync(part.ImeiId.Value, cancellationToken);
-            if (imei != null) { imei.Status = ImeiStatus.InStock; imeiRepo.Update(imei); }
+            ticket.ActualCost = ticket.LaborCost + remainingPartsCost;
+            ticketRepo.Update(ticket);
         }
+
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+        await AddAuditHistoryAsync(
+            historyRepo, 
+            ticket.Id, 
+            ticket.Status.ToString(), 
+            "Part Returned", 
+            $"Đã gỡ bỏ linh kiện '{partName}' (SL: {part.Quantity}) và hoàn trả lại kho.", 
+            cancellationToken: cancellationToken
+        );
 
         _idempotencyService.AttachRecord(true);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -664,7 +753,7 @@ public class RepairCommandHandlers :
     }
 
     /// <summary>
-    /// 7. XÃ¡Â»Â­ lÃƒÂ½ WriteOff linh kiÃ¡Â»â€¡n
+    /// 7. Xử lý WriteOff linh kiện
     /// </summary>
     public async Task<bool> Handle(WriteOffRepairPartCommand request, CancellationToken cancellationToken)
     {
@@ -674,16 +763,18 @@ public class RepairCommandHandlers :
         var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
 
         var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
-        if (ticket == null) throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.RepairTicketId);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
 
         var part = await partRepo.GetByIdAsync(request.RepairPartId, cancellationToken);
-        if (part == null || part.RepairTicketId != ticket.Id) throw new NotFoundException("Linh kiÃ¡Â»â€¡n", request.RepairPartId);
+        if (part == null || part.RepairTicketId != ticket.Id) throw new NotFoundException("Linh kiện", request.RepairPartId);
 
         if (!part.RowVersion.SequenceEqual(request.RowVersion))
-            throw new ConflictException("ThÃƒÂ´ng tin linh kiÃ¡Â»â€¡n Ã„â€˜ÃƒÂ£ bÃ¡Â»â€¹ thay Ã„â€˜Ã¡Â»â€¢i.");
+            throw new ConflictException("Thông tin linh kiện đã bị thay đổi.");
 
         if (part.Status != RepairPartStatus.Issued && part.Status != RepairPartStatus.Installed)
-            throw new ConflictException($"Chá»‰ cÃ³ thá»ƒ WriteOff linh kiá»‡n Ä‘Ã£ Issue hoáº·c Install. Tráº¡ng thÃ¡i hiá»‡n táº¡i: {part.Status}.");
+            throw new ConflictException($"Chỉ có thể WriteOff linh kiện đã Issue hoặc Install. Trạng thái hiện tại: {part.Status}.");
 
         var warehouses = await warehouseRepo.FindAsync(w => w.BranchId == ticket.BranchId && !w.IsDeleted, cancellationToken);
         var warehouseId = warehouses.FirstOrDefault()?.Id ?? Guid.Empty;
@@ -705,11 +796,17 @@ public class RepairCommandHandlers :
 
         _idempotencyService.AttachRecord(true);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await NotifyManagersAsync(ticket.BranchId,
+            $"[Hao hụt linh kiện] Ca {ticket.Code} phát sinh Write-Off",
+            $"Linh kiện đã bị xóa sổ do: '{request.Reason}'. Chi phí hao hụt: {part.CostAtWriteOff:N0} đ.",
+            cancellationToken);
+
         return true;
     }
 
     /// <summary>
-    /// 8. XÃ¡Â»Â­ lÃƒÂ½ HÃ¡Â»Â§y phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a kÃƒÂ¨m Dispositions
+    /// 8. Xử lý Hủy phiếu sửa chữa kèm Dispositions
     /// </summary>
     public async Task<bool> Handle(CancelRepairTicketCommand request, CancellationToken cancellationToken)
     {
@@ -718,11 +815,31 @@ public class RepairCommandHandlers :
         var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
         
         var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
-        if (ticket == null) throw new NotFoundException("PhiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a", request.RepairTicketId);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
         if (ticket.Status == RepairTicketStatus.Completed || ticket.Status == RepairTicketStatus.Cancelled)
-            throw new ConflictException("KhÃ´ng thá»ƒ há»§y phiáº¿u Ä‘Ã£ hoÃ n thÃ nh hoáº·c Ä‘Ã£ há»§y.");
+            throw new ConflictException("Không thể hủy phiếu đã hoàn thành hoặc đã hủy.");
+
+        var isManagerOrAdmin = _currentUserService != null && (
+            _currentUserService.IsInRole(CanonicalRoles.Owner) ||
+            _currentUserService.IsInRole(CanonicalRoles.Admin) ||
+            _currentUserService.IsInRole(CanonicalRoles.Manager));
+        var isSales = _currentUserService != null && _currentUserService.IsInRole(CanonicalRoles.Sales) && !isManagerOrAdmin;
+
+        if (isSales)
+        {
+            if (ticket.Status != RepairTicketStatus.PendingAssignment && ticket.Status != RepairTicketStatus.Received)
+            {
+                throw new ForbiddenException("Nhân viên bán hàng chỉ có thể hủy phiếu khi thiết bị mới ở bước tiếp nhận ban đầu. Ca sửa chữa đang trong tiến trình kỹ thuật, vui lòng liên hệ Kỹ thuật viên hoặc Quản lý.");
+            }
+        }
 
         var parts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
+        if (isSales && parts.Any(p => p.Status == RepairPartStatus.Issued || p.Status == RepairPartStatus.Installed))
+        {
+            throw new ForbiddenException("Phiếu sửa chữa đã xuất linh kiện kỹ thuật, nhân viên bán hàng không thể hủy. Vui lòng liên hệ Kỹ thuật viên hoặc Quản lý.");
+        }
         foreach (var part in parts)
         {
             if (part.Status == RepairPartStatus.Reserved)
@@ -733,14 +850,14 @@ public class RepairCommandHandlers :
             {
                 var disp = request.Dispositions?.FirstOrDefault(d => d.RepairPartId == part.Id);
                 if (disp == null) 
-                    throw new BadRequestException($"Linh kiÃ¡Â»â€¡n {part.Id} Ã„â€˜ang Ã¡Â»Å¸ trÃ¡ÂºÂ¡ng thÃƒÂ¡i {part.Status} cÃ¡ÂºÂ§n quyÃ¡ÂºÂ¿t Ã„â€˜Ã¡Â»â€¹nh xÃ¡Â»Â­ lÃƒÂ½ (Return hoÃ¡ÂºÂ·c WriteOff) khi hÃ¡Â»Â§y phiÃ¡ÂºÂ¿u.");
+                    throw new BadRequestException($"Linh kiện {part.Id} đang ở trạng thái {part.Status} cần quyết định xử lý (Return hoặc WriteOff) khi hủy phiếu.");
                 
                 if (disp.Disposition == RepairPartStatus.Returned)
                     await Handle(new ReturnRepairPartCommand(ticket.Id, part.Id, part.RowVersion), cancellationToken);
                 else if (disp.Disposition == RepairPartStatus.WriteOff)
-                    await Handle(new WriteOffRepairPartCommand(ticket.Id, part.Id, disp.Reason ?? "HÃ¡Â»Â§y phiÃ¡ÂºÂ¿u", part.RowVersion), cancellationToken);
+                    await Handle(new WriteOffRepairPartCommand(ticket.Id, part.Id, disp.Reason ?? "Hủy phiếu", part.RowVersion), cancellationToken);
                 else
-                    throw new BadRequestException("QuyÃ¡ÂºÂ¿t Ã„â€˜Ã¡Â»â€¹nh xÃ¡Â»Â­ lÃƒÂ½ linh kiÃ¡Â»â€¡n khÃƒÂ´ng hÃ¡Â»Â£p lÃ¡Â»â€¡.");
+                    throw new BadRequestException("Quyết định xử lý linh kiện không hợp lệ.");
             }
         }
 
@@ -753,11 +870,514 @@ public class RepairCommandHandlers :
         {
             RepairTicketId = ticket.Id,
             Status = ticket.Status.ToString(),
-            Note = request.Note ?? "HÃ¡Â»Â§y phiÃ¡ÂºÂ¿u sÃ¡Â»Â­a chÃ¡Â»Â¯a."
+            Note = request.Note ?? "Hủy phiếu sửa chữa."
         };
         await historyRepo.AddAsync(history, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await NotifyManagersAsync(ticket.BranchId,
+            $"[Hủy ca sửa chữa] Ca {ticket.Code} đã bị hủy",
+            $"Phiếu sửa chữa {ticket.Code} đã bị hủy. Lý do: '{request.Note ?? "Hủy phiếu"}'. Vui lòng kiểm tra đối soát hoàn cọc (nếu có).",
+            cancellationToken);
+
         return true;
+    }
+
+    /// <summary>
+    /// 9. Phân công Kỹ thuật viên phụ trách sửa chữa (Section 7)
+    /// </summary>
+    public async Task<bool> Handle(AssignTechnicianCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var userRepo = _unitOfWork.Repository<UserEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateBranchAccess(ticket.BranchId, "phiếu sửa chữa");
+
+        if (ticket.Status == RepairTicketStatus.Completed || ticket.Status == RepairTicketStatus.Delivered || ticket.Status == RepairTicketStatus.Cancelled)
+        {
+            throw new BadRequestException($"Không thể phân công kỹ thuật viên cho phiếu ở trạng thái '{ticket.Status}'.");
+        }
+
+        // Kiểm tra phân quyền:
+        // Nếu là Technician thuần túy: Chỉ được phép tự nhận việc (request.TechnicianId == CurrentUserId)
+        // Nếu là Manager, Admin, Owner: Được phép gán cho bất kỳ KTV nào thuộc chi nhánh
+        if (_currentUserService != null && _currentUserService.IsInRole(CanonicalRoles.Technician) &&
+            !_currentUserService.IsInRole(CanonicalRoles.Manager) &&
+            !_currentUserService.IsInRole(CanonicalRoles.Admin) &&
+            !_currentUserService.IsInRole(CanonicalRoles.Owner))
+        {
+            if (string.IsNullOrWhiteSpace(_currentUserService.UserId) ||
+                !Guid.TryParse(_currentUserService.UserId, out var currentUserId) ||
+                request.TechnicianId != currentUserId)
+            {
+                throw new ForbiddenException("Kỹ thuật viên chỉ có thể tự nhận phiếu sửa chữa cho chính mình, không có quyền phân công cho người khác.");
+            }
+
+            // Nếu phiếu đã được nhận bởi một KTV khác, không cho phép nhận đè / cướp đơn
+            if (ticket.TechnicianId.HasValue && ticket.TechnicianId.Value != Guid.Empty && ticket.TechnicianId.Value != currentUserId)
+            {
+                throw new ConflictException("Phiếu sửa chữa này đã được tiếp nhận bởi kỹ thuật viên khác. Vui lòng liên hệ Quản lý nếu cần điều phối lại.");
+            }
+        }
+
+        var tech = await userRepo.GetByIdAsync(request.TechnicianId, cancellationToken);
+        if (tech == null) throw new NotFoundException("Kỹ thuật viên", request.TechnicianId);
+
+        // Kiểm tra phạm vi chi nhánh của kỹ thuật viên
+        if (!_scopeContext.IsEnterpriseScope && ticket.BranchId.HasValue && tech.BranchId != Guid.Empty && tech.BranchId != ticket.BranchId.Value)
+        {
+            throw new BadRequestException("Kỹ thuật viên không thuộc cùng chi nhánh với phiếu sửa chữa.");
+        }
+
+        ticket.TechnicianId = request.TechnicianId;
+        
+        // Nếu đang ở trạng thái PendingAssignment (Chờ phân công), tự động chuyển sang Received (Tiếp nhận)
+        if (ticket.Status == RepairTicketStatus.PendingAssignment)
+        {
+            ticket.Status = RepairTicketStatus.Received;
+        }
+
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(historyRepo, ticket.Id, ticket.Status.ToString(), "Technician Assigned", $"Phân công cho kỹ thuật viên {tech.FullName} ({tech.Username}).", cancellationToken: cancellationToken);
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 10. Bắt đầu chẩn đoán thiết bị (Section 5: Received -> Diagnosing)
+    /// </summary>
+    public async Task<bool> Handle(StartDiagnosisCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
+
+        if (ticket.Status != RepairTicketStatus.Received)
+        {
+            throw new ConflictException($"Chỉ có thể bắt đầu chẩn đoán khi phiếu ở trạng thái Received. Trạng thái hiện tại: {ticket.Status}.");
+        }
+
+        ticket.Status = RepairTicketStatus.Diagnosing;
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(historyRepo, ticket.Id, ticket.Status.ToString(), "Diagnosis Started", "Kỹ thuật viên bắt đầu tiến hành kiểm tra và chẩn đoán tình trạng máy.", cancellationToken: cancellationToken);
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 11. Gửi kết quả chẩn đoán và phương án sửa chữa (Section 5)
+    /// </summary>
+    public async Task<bool> Handle(SubmitDiagnosisCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
+
+        if (ticket.Status != RepairTicketStatus.Diagnosing)
+        {
+            throw new ConflictException($"Chỉ có thể nộp chẩn đoán khi phiếu ở trạng thái Diagnosing. Trạng thái hiện tại: {ticket.Status}.");
+        }
+
+        ticket.DiagnosisRootCause = request.RootCause.Trim();
+        ticket.DiagnosisProposedSolution = request.ProposedSolution.Trim();
+        ticket.TechnicalNotes = request.TechnicalNotes?.Trim();
+        ticket.EstimatedDays = request.EstimatedDays;
+        ticket.DiagnosedAt = DateTime.UtcNow;
+        if (Guid.TryParse(_currentUserService.UserId, out var diagId))
+        {
+            ticket.DiagnosedById = diagId;
+        }
+
+        if (request.EstimatedCost.HasValue)
+        {
+            ticket.EstimatedCost = request.EstimatedCost.Value;
+        }
+
+        // Phân nhánh quy trình theo Section 2 & Section 5
+        if (request.RequiresCustomerApproval)
+        {
+            ticket.Status = RepairTicketStatus.WaitingApproval;
+            ticket.CustomerApprovalStatus = "Pending";
+            await NotifyManagersAsync(ticket.BranchId,
+                $"[Chờ duyệt báo giá] Ca {ticket.Code} cần duyệt phương án",
+                $"Thiết bị {ticket.CustomModelName ?? "Điện thoại"}: KTV nộp chẩn đoán '{request.RootCause}', phương án '{request.ProposedSolution}', chi phí ước tính {ticket.EstimatedCost:N0} đ. Đang chờ phê duyệt.",
+                cancellationToken);
+        }
+        else if (request.WaitingForParts)
+        {
+            ticket.Status = RepairTicketStatus.WaitingForParts;
+            await NotifyManagersAsync(ticket.BranchId,
+                $"[Thiếu linh kiện] Ca {ticket.Code} cần bổ sung linh kiện",
+                $"Thiết bị {ticket.CustomModelName ?? "Điện thoại"}: Phương án '{request.ProposedSolution}' thiếu linh kiện trong kho, cần quản lý kiểm tra điều chuyển hoặc nhập hàng.",
+                cancellationToken);
+        }
+        else
+        {
+            ticket.Status = RepairTicketStatus.Repairing;
+        }
+
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(
+            historyRepo, 
+            ticket.Id, 
+            ticket.Status.ToString(), 
+            "Diagnosis Submitted", 
+            $"Chẩn đoán: {request.RootCause}. Phương án: {request.ProposedSolution}.", 
+            $"Chi phí ước tính: {ticket.EstimatedCost:N0} đ. Chuyển sang: {ticket.Status}.", 
+            cancellationToken
+        );
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 12. Khách hàng phê duyệt sửa chữa (Section 6: WaitingApproval -> Repairing)
+    /// </summary>
+    public async Task<bool> Handle(ApproveRepairCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateBranchAccess(ticket.BranchId, "phiếu sửa chữa");
+
+        if (ticket.Status != RepairTicketStatus.WaitingApproval)
+        {
+            throw new ConflictException($"Phiếu không ở trạng thái WaitingApproval để thực hiện phê duyệt (Hiện tại: {ticket.Status}).");
+        }
+
+        ticket.CustomerApprovalStatus = "Approved";
+        ticket.CustomerApprovedAt = DateTime.UtcNow;
+        if (Guid.TryParse(_currentUserService.UserId, out var appUserId))
+        {
+            ticket.CustomerApprovedById = appUserId;
+        }
+        ticket.CustomerApprovalMethod = request.ApprovalMethod.Trim();
+        ticket.CustomerApprovedAmount = request.ApprovedAmount;
+        ticket.CustomerApprovalNote = request.Note?.Trim();
+
+        // Chuyển sang Repairing
+        ticket.Status = RepairTicketStatus.Repairing;
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(
+            historyRepo, 
+            ticket.Id, 
+            ticket.Status.ToString(), 
+            "Customer Approved", 
+            $"Khách hàng đồng ý sửa qua {request.ApprovalMethod}. Số tiền duyệt: {request.ApprovedAmount:N0} đ.", 
+            request.Note, 
+            cancellationToken
+        );
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 13. Khách hàng từ chối sửa chữa (Section 6: WaitingApproval -> Cancelled)
+    /// </summary>
+    public async Task<bool> Handle(RejectRepairCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var partRepo = _unitOfWork.Repository<RepairPartEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateBranchAccess(ticket.BranchId, "phiếu sửa chữa");
+
+        if (ticket.Status != RepairTicketStatus.WaitingApproval)
+        {
+            throw new ConflictException($"Phiếu không ở trạng thái WaitingApproval để từ chối sửa chữa (Hiện tại: {ticket.Status}).");
+        }
+
+        ticket.CustomerApprovalStatus = "Rejected";
+        ticket.CustomerApprovalNote = request.Reason?.Trim();
+        ticket.Status = RepairTicketStatus.Cancelled;
+        ticket.CompletedDate = DateTime.UtcNow;
+
+        // Giải phóng các linh kiện đang Reserved
+        var parts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
+        foreach (var part in parts)
+        {
+            if (part.Status == RepairPartStatus.Reserved)
+            {
+                part.Status = RepairPartStatus.Returned;
+                partRepo.Update(part);
+            }
+        }
+
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(
+            historyRepo, 
+            ticket.Id, 
+            ticket.Status.ToString(), 
+            "Customer Rejected", 
+            $"Khách hàng từ chối sửa chữa. Lý do: {request.Reason ?? "Không có"}", 
+            cancellationToken: cancellationToken
+        );
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 14. Sử dụng / Lắp ráp linh kiện vào máy (Section 8: Reserved/Issued -> Installed)
+    /// </summary>
+    public async Task<bool> Handle(UseRepairPartCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var partRepo = _unitOfWork.Repository<RepairPartEntity>();
+        var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
+        var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
+        var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
+
+        if (ticket.Status != RepairTicketStatus.Repairing)
+        {
+            throw new ConflictException($"Chỉ có thể lắp ráp linh kiện khi phiếu ở trạng thái Repairing. Hiện tại: {ticket.Status}.");
+        }
+
+        var part = await partRepo.GetByIdAsync(request.RepairPartId, cancellationToken);
+        if (part == null || part.RepairTicketId != ticket.Id) throw new NotFoundException("Linh kiện", request.RepairPartId);
+
+        if (!part.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Thông tin linh kiện đã bị thay đổi bởi giao dịch khác.");
+        }
+
+        if (part.Status != RepairPartStatus.Reserved && part.Status != RepairPartStatus.Issued)
+        {
+            throw new ConflictException($"Không thể lắp ráp linh kiện đang ở trạng thái {part.Status}.");
+        }
+
+        // Nếu part đang Reserved, cần trừ tồn kho
+        if (part.Status == RepairPartStatus.Reserved)
+        {
+            var warehouses = await warehouseRepo.FindAsync(w => w.BranchId == ticket.BranchId && !w.IsDeleted, cancellationToken);
+            var warehouseId = warehouses.FirstOrDefault()?.Id;
+            if (warehouseId == null) throw new BadRequestException("Không tìm thấy kho thuộc chi nhánh của phiếu sửa chữa.");
+
+            var inventory = (await inventoryRepo.FindAsync(i => i.WarehouseId == warehouseId.Value && i.ProductVariantId == part.ProductVariantId, cancellationToken)).FirstOrDefault();
+            if (inventory == null || inventory.Quantity < part.Quantity)
+            {
+                throw new ConflictException("Tồn kho không đủ để xuất linh kiện vào máy.");
+            }
+
+            inventory.Quantity -= part.Quantity;
+            inventoryRepo.Update(inventory);
+
+            var txn = new InventoryTransactionEntity
+            {
+                WarehouseId = warehouseId.Value,
+                ProductVariantId = part.ProductVariantId,
+                Type = InventoryTransactionType.REPAIR_ISSUE,
+                QuantityChange = -part.Quantity,
+                ReferenceId = part.Id,
+                ActorId = Guid.TryParse(_currentUserService.UserId, out var uid) ? uid : Guid.Empty,
+                CostSnapshot = part.UnitPrice
+            };
+            await transactionRepo.AddAsync(txn, cancellationToken);
+        }
+
+        part.Status = RepairPartStatus.Installed;
+        partRepo.Update(part);
+
+        // Kiểm tra nếu tất cả linh kiện đã được lắp và phiếu đang ở WaitingForParts
+        var allParts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
+        if (ticket.Status == RepairTicketStatus.WaitingForParts && allParts.All(p => p.Status == RepairPartStatus.Installed || p.Status == RepairPartStatus.Returned))
+        {
+            ticket.Status = RepairTicketStatus.Repairing;
+            ticketRepo.Update(ticket);
+        }
+
+        await AddAuditHistoryAsync(historyRepo, ticket.Id, ticket.Status.ToString(), "Part Used", $"Đã lắp ráp linh kiện vào thiết bị.", $"PartId: {part.Id}", cancellationToken);
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 15. Hoàn tất sửa chữa (Section 11: Repairing / WaitingQC -> Completed)
+    /// </summary>
+    public async Task<bool> Handle(CompleteRepairCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var partRepo = _unitOfWork.Repository<RepairPartEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateTechnicianExecution(ticket.TechnicianId, ticket.BranchId);
+
+        if (ticket.Status != RepairTicketStatus.WaitingQC && ticket.Status != RepairTicketStatus.Repairing && ticket.Status != RepairTicketStatus.Completed)
+        {
+            throw new ConflictException($"Không thể hoàn tất sửa chữa khi phiếu ở trạng thái {ticket.Status}. Cần ở trạng thái Repairing, WaitingQC hoặc Completed.");
+        }
+
+        // Section 11: Validate that no parts are left in Reserved status
+        var parts = await partRepo.FindAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
+        var unhandledParts = parts.Where(p => p.Status == RepairPartStatus.Reserved).ToList();
+        if (unhandledParts.Any())
+        {
+            throw new ConflictException($"Không thể hoàn tất: Còn {unhandledParts.Count} linh kiện đang ở trạng thái Reserved chưa được xử lý (lắp ráp hoặc hoàn kho).");
+        }
+
+        // Section 11: Final Cost calculated from server data
+        decimal installedPartsCost = parts.Where(p => p.Status == RepairPartStatus.Installed || p.Status == RepairPartStatus.Issued).Sum(p => p.UnitPrice * p.Quantity);
+        ticket.ActualCost = ticket.LaborCost + installedPartsCost;
+        ticket.CompletedDate = DateTime.UtcNow;
+        ticket.Status = ticket.Status == RepairTicketStatus.Completed 
+            ? RepairTicketStatus.WaitingPickup 
+            : RepairTicketStatus.Completed;
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(
+            historyRepo, 
+            ticket.Id, 
+            ticket.Status.ToString(), 
+            "Completed", 
+            $"Hoàn tất sửa chữa thiết bị. Chi phí thực tế: {ticket.ActualCost:N0} đ (Tiền công: {ticket.LaborCost:N0} đ, Linh kiện: {installedPartsCost:N0} đ).", 
+            request.CompletionNotes, 
+            cancellationToken
+        );
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// 16. Bàn giao thiết bị cho khách hàng (Section 12: Completed / WaitingPickup -> Delivered)
+    /// </summary>
+    public async Task<bool> Handle(DeliverRepairCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<RepairStatusHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.RepairTicketId, cancellationToken);
+        if (ticket == null) throw new NotFoundException("Phiếu sửa chữa", request.RepairTicketId);
+
+        _scopeContext.ValidateBranchAccess(ticket.BranchId, "phiếu sửa chữa");
+
+        if (ticket.Status != RepairTicketStatus.WaitingPickup && ticket.Status != RepairTicketStatus.Completed)
+        {
+            throw new ConflictException($"Chỉ có thể bàn giao khi phiếu ở trạng thái Completed hoặc WaitingPickup. Hiện tại: {ticket.Status}.");
+        }
+
+        if (Guid.TryParse(_currentUserService.UserId, out var delUserId))
+        {
+            ticket.DeliveredById = delUserId;
+        }
+        ticket.DeliveredAt = DateTime.UtcNow;
+        ticket.DeliveredToCustomerName = request.ReceiverName.Trim();
+        ticket.DeliveryNotes = request.Notes?.Trim();
+        ticket.DeliverySignatureUrl = request.CustomerSignatureUrl?.Trim();
+        ticket.Status = RepairTicketStatus.Delivered;
+
+        ticketRepo.Update(ticket);
+
+        await AddAuditHistoryAsync(
+            historyRepo, 
+            ticket.Id, 
+            ticket.Status.ToString(), 
+            "Delivered", 
+            $"Bàn giao thiết bị cho khách hàng: {request.ReceiverName} (SĐT: {request.ReceiverPhone}).", 
+            request.Notes, 
+            cancellationToken
+        );
+
+        _idempotencyService.AttachRecord(true);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private async Task AddAuditHistoryAsync(
+        IRepository<RepairStatusHistoryEntity> historyRepo,
+        Guid ticketId,
+        string status,
+        string action,
+        string? note,
+        string? details = null,
+        CancellationToken cancellationToken = default)
+    {
+        Guid? actorId = null;
+        if (Guid.TryParse(_currentUserService.UserId, out var uid))
+        {
+            actorId = uid;
+        }
+
+        var history = new RepairStatusHistoryEntity
+        {
+            RepairTicketId = ticketId,
+            Status = status,
+            Action = action,
+            Note = note,
+            ActorId = actorId,
+            ActorName = _currentUserService.Username ?? "Nhân viên",
+            Details = details
+        };
+        await historyRepo.AddAsync(history, cancellationToken);
+    }
+
+    private async Task NotifyManagersAsync(Guid? branchId, string title, string content, CancellationToken cancellationToken)
+    {
+        if (_notificationService == null) return;
+        try
+        {
+            var userRepo = _unitOfWork.Repository<UserEntity>();
+            var targetBranch = branchId ?? Guid.Empty;
+            var managerUserIds = await userRepo.GetQueryableAsNoTracking()
+                .Where(u => u.Status == UserStatus.Active &&
+                            (targetBranch == Guid.Empty || u.BranchId == targetBranch || u.BranchId == Guid.Empty) &&
+                            u.UserRoles.Any(ur => ur.Role.Name == CanonicalRoles.Manager || ur.Role.Name == CanonicalRoles.Admin || ur.Role.Name == CanonicalRoles.Owner))
+                .Select(u => u.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var managerId in managerUserIds)
+            {
+                await _notificationService.SendToUserAsync(managerId, title, content, cancellationToken);
+            }
+        }
+        catch
+        {
+            // Tránh ngắt quãng luồng chính nếu có sự cố gửi thông báo
+        }
     }
 }

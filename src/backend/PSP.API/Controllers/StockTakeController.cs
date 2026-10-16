@@ -4,6 +4,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Application.Modules.Inventory.DTOs;
 using PSP.Application.Modules.Inventory.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP quản lý việc Kiểm kê kho (StockTake).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.StockTake.View)]
 [Route("api/[controller]")]
 [Tags("StockTakes")]
 public class StockTakeController : BaseApiController
@@ -23,7 +24,7 @@ public class StockTakeController : BaseApiController
     /// API Tạo mới Phiếu kiểm kê kho (Trạng thái mặc định là Draft).
     /// POST: /api/StockTake
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.StockTake.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateStockTakeCommand command, CancellationToken cancellationToken)
     {
@@ -35,13 +36,18 @@ public class StockTakeController : BaseApiController
     /// API Cập nhật thông tin Phiếu kiểm kê (Chỉ áp dụng khi phiếu ở trạng thái Draft hoặc InProgress).
     /// PUT: /api/StockTake/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.StockTake.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateStockTakeCommand command, CancellationToken cancellationToken)
     {
-        if (id != command.Id)
+        if (command.Id != Guid.Empty && id != command.Id)
         {
             return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
+        }
+
+        if (command.Id == Guid.Empty)
+        {
+            command = command with { Id = id };
         }
 
         var result = await Mediator.Send(command, cancellationToken);
@@ -52,7 +58,7 @@ public class StockTakeController : BaseApiController
     /// API Bắt đầu kiểm kê kho (Chuyển trạng thái sang InProgress).
     /// PUT: /api/StockTake/{id}/start
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.StockTake.Start)]
     [HttpPut("{id:guid}/start")]
     public async Task<IActionResult> Start(Guid id, CancellationToken cancellationToken)
     {
@@ -63,15 +69,23 @@ public class StockTakeController : BaseApiController
 
     /// <summary>
     /// API Hoàn tất kiểm kê kho (InProgress -> Completed). Điều chỉnh số lượng tồn và IMEI theo thực tế kiểm đếm.
+    /// Quyền hạn: StockTake.COMPLETE (Owner, Admin, Manager - Bị từ chối đối với Inventory).
     /// PUT: /api/StockTake/{id}/complete
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.StockTake.Complete)]
     [HttpPut("{id:guid}/complete")]
-    public async Task<IActionResult> Complete(Guid id, [FromBody] CompleteStockTakeCommand command, CancellationToken cancellationToken)
+    public async Task<IActionResult> Complete(Guid id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] CompleteStockTakeCommand? command, CancellationToken cancellationToken)
     {
-        if (id != command.Id)
+        command ??= new CompleteStockTakeCommand { Id = id };
+
+        if (command.Id != Guid.Empty && id != command.Id)
         {
             return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
+        }
+
+        if (command.Id == Guid.Empty)
+        {
+            command = command with { Id = id };
         }
 
         var result = await Mediator.Send(command, cancellationToken);
@@ -79,10 +93,10 @@ public class StockTakeController : BaseApiController
     }
 
     /// <summary>
-    /// API Hủy phiếu kiểm kê kho.
+    /// API Hủy phiếu kiểm kê kho (StockTake.CANCEL - Owner, Admin, Manager).
     /// PUT: /api/StockTake/{id}/cancel
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.StockTake.Cancel)]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {
@@ -95,7 +109,7 @@ public class StockTakeController : BaseApiController
     /// API Xóa mềm Phiếu kiểm kê kho (Chỉ áp dụng khi phiếu ở trạng thái Draft).
     /// DELETE: /api/StockTake/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.StockTake.Cancel)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

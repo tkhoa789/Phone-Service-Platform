@@ -36,6 +36,11 @@ public class PurchaseOrderDto
     public DateTime CreatedAt { get; set; }
     
     /// <summary>
+    /// Concurrency check token (RowVersion)
+    /// </summary>
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+    /// <summary>
     /// Danh sách các dòng mặt hàng nhập trong phiếu
     /// </summary>
     public List<PurchaseOrderItemDto> Items { get; set; } = new();
@@ -64,6 +69,11 @@ public class PurchaseOrderItemDto
     
     public decimal UnitPrice { get; set; }
     
+    /// <summary>
+    /// Sản phẩm có yêu cầu quản lý theo IMEI (Điện thoại MOBILE) hay không
+    /// </summary>
+    public bool IsImeiControlled { get; set; }
+
     /// <summary>
     /// Thành tiền dòng mặt hàng (Quantity * UnitPrice)
     /// </summary>

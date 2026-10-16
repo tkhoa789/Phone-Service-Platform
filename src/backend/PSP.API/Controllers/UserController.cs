@@ -5,6 +5,7 @@ using PSP.Application.Modules.Auth.DTOs;
 using PSP.Application.Modules.Auth.Queries;
 
 using Microsoft.AspNetCore.Authorization;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
@@ -12,7 +13,7 @@ namespace PSP.API.Controllers;
 /// "Lễ tân" chuyên phụ trách luồng công việc liên quan đến tài khoản Nhân viên (User).
 /// Không tự viết logic xử lý ở đây. Mọi yêu cầu đều đóng gói gửi xuống cho "Nhà bếp" (MediatR).
 /// </summary>
-[Authorize(Roles = "Owner,Admin")]
+[Authorize(Policy = Permissions.User.View)]
 [Route("api/[controller]")]
 [Tags("Users")]
 public class UserController : BaseApiController
@@ -21,6 +22,7 @@ public class UserController : BaseApiController
     /// API Tạo mới người dùng (nhân viên).
     /// </summary>
     [HttpPost]
+    [Authorize(Policy = Permissions.User.Create)]
     public async Task<IActionResult> Create([FromBody] CreateUserCommand command, CancellationToken cancellationToken)
     {
         // Chuyển lệnh xuống Handler để lưu Database
@@ -35,6 +37,7 @@ public class UserController : BaseApiController
     /// Cần truyền vào ID trên URL (ví dụ: api/User/123-456-abc) và cục dữ liệu sửa nằm trong Body.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Permissions.User.Update)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserCommand command, CancellationToken cancellationToken)
     {
         // Chống hack: Cố tình truyền 1 ID trên thanh địa chỉ, nhưng gửi ruột của 1 thằng khác.
@@ -51,6 +54,7 @@ public class UserController : BaseApiController
     /// API Xóa nhân viên khỏi hệ thống (Xóa mềm - ẩn đi chứ không xóa mất dữ liệu).
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Permissions.User.Delete)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var command = new DeleteUserCommand(id);

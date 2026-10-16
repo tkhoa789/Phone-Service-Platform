@@ -4,27 +4,23 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Product.Commands;
 using PSP.Application.Modules.Product.DTOs;
 using PSP.Application.Modules.Product.Queries;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
 /// <summary>
-/// CONTROLLER (Lớp tiếp nhận các yêu cầu HTTP từ Client)
-/// Quản lý các API liên quan đến Danh mục sản phẩm (Categories).
-/// Cho phép tạo danh mục cha-con đa cấp.
+/// CONTROLLER quản lý các API liên quan đến Danh mục sản phẩm (Categories).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Product.View)]
 [Route("api/[controller]")]
 [Tags("Categories")]
 public class CategoryController : BaseApiController
 {
     /// <summary>
-    /// API Tạo mới danh mục sản phẩm (Hỗ trợ danh mục cha-con).
+    /// API Tạo mới danh mục sản phẩm (Product.CREATE).
     /// POST: /api/Category
     /// </summary>
-    /// <param name="command">Dữ liệu tạo danh mục (mã, tên, parentId)</param>
-    /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
-    /// <returns>Trả về Guid của danh mục vừa tạo</returns>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCategoryCommand command, CancellationToken cancellationToken)
     {
@@ -33,18 +29,13 @@ public class CategoryController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật thông tin danh mục.
+    /// API Cập nhật thông tin danh mục (Product.UPDATE).
     /// PUT: /api/Category/{id}
     /// </summary>
-    /// <param name="id">Id danh mục cần cập nhật trên URL</param>
-    /// <param name="command">Dữ liệu cập nhật mới trong body request</param>
-    /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
-    /// <returns>Trả về true nếu cập nhật thành công</returns>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryCommand command, CancellationToken cancellationToken)
     {
-        // Kiểm tra tính đồng nhất của Id
         if (id != command.Id)
         {
             return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp"));
@@ -55,13 +46,10 @@ public class CategoryController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa danh mục sản phẩm (Xóa mềm).
+    /// API Xóa danh mục sản phẩm (Product.DELETE).
     /// DELETE: /api/Category/{id}
     /// </summary>
-    /// <param name="id">Id danh mục cần xóa</param>
-    /// <param name="cancellationToken">Token quản lý hủy request bất đồng bộ</param>
-    /// <returns>Trả về true nếu xóa thành công</returns>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Product.Delete)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -5,8 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Mapster;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Sales.Commands;
+using PSP.Domain.Common.Constants;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
 using PSP.Domain.Modules.Auth.Entities;
@@ -33,12 +36,21 @@ public class SalesOrderCommandHandlers :
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly IScopeContextService _scopeContext;
+    private readonly INotificationService? _notificationService;
 
-    public SalesOrderCommandHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IIdempotencyService idempotencyService)
+    public SalesOrderCommandHandlers(
+        IUnitOfWork unitOfWork, 
+        ICurrentUserService currentUserService, 
+        IIdempotencyService idempotencyService,
+        IScopeContextService? scopeContext = null,
+        INotificationService? notificationService = null)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _idempotencyService = idempotencyService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -59,6 +71,9 @@ public class SalesOrderCommandHandlers :
             throw new NotFoundException("Khách hàng", request.CustomerId);
         }
 
+        // Xác định khách mặc định/vãng lai (SĐT 0000000000)
+        bool isDefaultCustomer = customer.Phone == "0000000000" || customer.FullName.Contains("Khách lẻ");
+
         // Lấy thông tin người lập đơn từ tài khoản đang đăng nhập
         Guid employeeId = Guid.Empty;
         if (!string.IsNullOrEmpty(_currentUserService.UserId) && Guid.TryParse(_currentUserService.UserId, out var parsedGuid))
@@ -78,6 +93,9 @@ public class SalesOrderCommandHandlers :
         }
 
         var branchId = employee.BranchId;
+
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(branchId, "đơn hàng");
 
         // 2. Kiểm tra Chi nhánh có tồn tại không
         var branch = await branchRepo.GetByIdAsync(branchId, cancellationToken);
@@ -100,6 +118,17 @@ public class SalesOrderCommandHandlers :
             throw new BadRequestException("Chi nhánh này hiện chưa có kho hàng hoạt động nào.");
         }
 
+        // BR-INV-04: Kiểm tra tính duy nhất của danh sách IMEI trong cùng đơn hàng
+        var providedImeis = request.Items
+            .Where(x => !string.IsNullOrWhiteSpace(x.Imei))
+            .Select(x => x.Imei!.Trim())
+            .ToList();
+
+        if (providedImeis.Count != providedImeis.Distinct(StringComparer.OrdinalIgnoreCase).Count())
+        {
+            throw new BadRequestException("Danh sách mã IMEI trong đơn hàng bị trùng lặp.");
+        }
+
         // 4. Lặp qua từng dòng sản phẩm được mua để kiểm tra tồn kho và lấy giá bán
         foreach (var itemDto in request.Items)
         {
@@ -118,6 +147,11 @@ public class SalesOrderCommandHandlers :
                 if (string.IsNullOrWhiteSpace(itemDto.Imei))
                 {
                     throw new BadRequestException($"Sản phẩm '{variant.Name}' yêu cầu mã IMEI bắt buộc.");
+                }
+
+                if (itemDto.Quantity != 1)
+                {
+                    throw new BadRequestException($"Sản phẩm quản lý theo IMEI '{variant.Name}' phải có số lượng là 1 cho mỗi mã IMEI.");
                 }
 
                 var cleanImei = itemDto.Imei.Trim();
@@ -191,9 +225,25 @@ public class SalesOrderCommandHandlers :
             }
         }
 
-        // 5. Tính toán Voucher giảm giá (nếu có)
+        // 5. Tính toán Ưu đãi Thành viên (Member Tier Discount) & Voucher giảm giá
         decimal discount = 0;
         Guid? voucherId = null;
+
+        // Ưu đãi theo hạng thành viên (Không áp dụng cho khách mặc định 0000000000)
+        decimal tierDiscountRate = 0m;
+        if (!isDefaultCustomer && !string.IsNullOrEmpty(customer.MemberTier))
+        {
+            tierDiscountRate = customer.MemberTier.ToUpperInvariant() switch
+            {
+                "DIAMOND" => 0.20m, // Giảm 20%
+                "PLATINUM" => 0.15m, // Giảm 15%
+                "GOLD" => 0.10m, // Giảm 10%
+                "SILVER" => 0.05m, // Giảm 5%
+                _ => 0m
+            };
+        }
+        decimal tierDiscount = Math.Round(subtotal * tierDiscountRate, 0);
+        decimal voucherDiscount = 0m;
 
         if (!string.IsNullOrWhiteSpace(request.VoucherCode))
         {
@@ -238,17 +288,12 @@ public class SalesOrderCommandHandlers :
                 throw new BadRequestException("Chương trình khuyến mãi đi kèm mã giảm giá này đã ngừng hoặc không có hiệu lực.");
             }
 
-            // Đủ điều kiện, tính toán giảm giá
+            // Đủ điều kiện, tính toán giảm giá voucher
             voucherId = voucher.Id;
-            discount = voucher.DiscountAmount;
-            
-            // Số tiền giảm giá tối đa bằng giá trị đơn hàng
-            if (discount > subtotal)
-            {
-                discount = subtotal;
-            }
+            voucherDiscount = voucher.DiscountAmount;
         }
 
+        discount = Math.Min(subtotal, tierDiscount + voucherDiscount);
         decimal total = subtotal - discount;
 
         // 6. Tạo mã số đơn hàng tự động duy nhất
@@ -307,14 +352,8 @@ public class SalesOrderCommandHandlers :
             employeeId = parsedGuid;
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && order.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền cập nhật đơn hàng của chi nhánh khác.");
-            }
-        }
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(order.BranchId, "đơn hàng");
 
         // 2. Nếu trạng thái trùng lặp thì không làm gì
         if (order.Status == request.Status)
@@ -438,13 +477,21 @@ public class SalesOrderCommandHandlers :
                 }
             }
 
-            // Tích điểm thưởng CRM Loyalty PTS (BR-306): 10.000 VNĐ = 1 PTS
+            // Tích điểm thưởng CRM Loyalty PTS (BR-306): 10.000 VNĐ = 1 PTS (Không áp dụng cho khách lẻ mặc định 0000000000)
             var customerRepo = _unitOfWork.Repository<CustomerEntity>();
             var customer = await customerRepo.GetByIdAsync(order.CustomerId, cancellationToken);
-            if (customer != null)
+            if (customer != null && customer.Phone != "0000000000" && !customer.FullName.Contains("Khách lẻ"))
             {
                 customer.TotalSpent += order.Total;
                 customer.RewardPoints += (int)(order.Total / 10000m);
+                
+                // Tự động thăng hạng khách hàng theo chi tiêu thực tế
+                if (customer.TotalSpent >= 50000000m) customer.MemberTier = "DIAMOND";
+                else if (customer.TotalSpent >= 20000000m) customer.MemberTier = "PLATINUM";
+                else if (customer.TotalSpent >= 10000000m) customer.MemberTier = "GOLD";
+                else if (customer.TotalSpent >= 5000000m) customer.MemberTier = "SILVER";
+                else customer.MemberTier = "BRONZE";
+
                 customerRepo.Update(customer);
             }
 
@@ -546,7 +593,7 @@ public class SalesOrderCommandHandlers :
                 // Thu hồi điểm thưởng CRM Loyalty PTS (BR-306) chống trục lợi
                 var customerRepo = _unitOfWork.Repository<CustomerEntity>();
                 var customer = await customerRepo.GetByIdAsync(order.CustomerId, cancellationToken);
-                if (customer != null)
+                if (customer != null && customer.Phone != "0000000000" && !customer.FullName.Contains("Khách lẻ"))
                 {
                     customer.TotalSpent = Math.Max(0, customer.TotalSpent - order.Total);
                     customer.RewardPoints = Math.Max(0, customer.RewardPoints - (int)(order.Total / 10000m));
@@ -565,6 +612,36 @@ public class SalesOrderCommandHandlers :
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (request.Status == SalesOrderStatus.Cancelled && _notificationService != null)
+        {
+            try
+            {
+                var userRepo = _unitOfWork.Repository<UserEntity>();
+                var targetBranch = order.BranchId;
+                var managerUserIds = await userRepo.GetQueryableAsNoTracking()
+                    .Where(u => u.Status == UserStatus.Active &&
+                                (targetBranch == Guid.Empty || u.BranchId == targetBranch || u.BranchId == Guid.Empty) &&
+                                u.UserRoles.Any(ur => ur.Role.Name == CanonicalRoles.Manager || ur.Role.Name == CanonicalRoles.Admin || ur.Role.Name == CanonicalRoles.Owner))
+                    .Select(u => u.Id)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var managerId in managerUserIds)
+                {
+                    await _notificationService.SendToUserAsync(
+                        managerId,
+                        $"[Hủy đơn bán hàng] Đơn hàng {order.Code} đã bị hủy",
+                        $"Đơn hàng bán lẻ {order.Code} trị giá {order.Total:N0} đ đã bị hủy. Hệ thống đã hoàn trả số lượng tồn kho và thu hồi điểm CRM/voucher.",
+                        cancellationToken
+                    );
+                }
+            }
+            catch
+            {
+                // Tránh ngắt quãng giao dịch hủy đơn
+            }
+        }
+
         return true;
     }
 
@@ -581,14 +658,8 @@ public class SalesOrderCommandHandlers :
             throw new NotFoundException("Đơn hàng", request.Id);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && order.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền xóa đơn hàng của chi nhánh khác.");
-            }
-        }
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(order.BranchId, "đơn hàng");
 
         // Ràng buộc bảo toàn dữ liệu tài chính
         if (order.Status == SalesOrderStatus.Completed)

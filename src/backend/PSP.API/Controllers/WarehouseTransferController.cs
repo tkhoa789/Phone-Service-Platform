@@ -4,6 +4,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Application.Modules.Inventory.DTOs;
 using PSP.Application.Modules.Inventory.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP liên quan đến Điều chuyển kho giữa các chi nhánh (Warehouse Transfer).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.WarehouseTransfer.View)]
 [Route("api/[controller]")]
 [Tags("WarehouseTransfers")]
 public class WarehouseTransferController : BaseApiController
@@ -23,7 +24,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Tạo mới Phiếu điều chuyển kho (Trạng thái mặc định là Pending).
     /// POST: /api/WarehouseTransfer
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.WarehouseTransfer.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -35,7 +36,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Cập nhật thông tin Phiếu điều chuyển kho (Chỉ áp dụng khi phiếu ở trạng thái Pending).
     /// PUT: /api/WarehouseTransfer/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.WarehouseTransfer.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -49,10 +50,10 @@ public class WarehouseTransferController : BaseApiController
     }
 
     /// <summary>
-    /// API Xuất giao hàng điều chuyển (Pending -> InTransit).
+    /// API Xuất giao hàng điều chuyển (WarehouseTransfer.SHIP).
     /// PUT: /api/WarehouseTransfer/{id}/ship
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.WarehouseTransfer.Ship)]
     [HttpPut("{id:guid}/ship")]
     public async Task<IActionResult> Ship(Guid id, [FromBody] ShipWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -65,10 +66,10 @@ public class WarehouseTransferController : BaseApiController
     }
 
     /// <summary>
-    /// API Hoàn tất nhận hàng điều chuyển kho (InTransit -> Received). Thực hiện trừ kho nguồn và cộng kho đích.
+    /// API Hoàn tất nhận hàng điều chuyển kho (WarehouseTransfer.RECEIVE).
     /// PUT: /api/WarehouseTransfer/{id}/receive
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.WarehouseTransfer.Receive)]
     [HttpPut("{id:guid}/receive")]
     public async Task<IActionResult> Receive(Guid id, [FromBody] ReceiveWarehouseTransferCommand command, CancellationToken cancellationToken)
     {
@@ -82,10 +83,10 @@ public class WarehouseTransferController : BaseApiController
     }
 
     /// <summary>
-    /// API Hủy phiếu điều chuyển kho.
+    /// API Hủy phiếu điều chuyển kho (WarehouseTransfer.CANCEL - Owner, Admin, Manager).
     /// PUT: /api/WarehouseTransfer/{id}/cancel
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.WarehouseTransfer.Cancel)]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {
@@ -98,7 +99,7 @@ public class WarehouseTransferController : BaseApiController
     /// API Xóa mềm Phiếu điều chuyển kho (Chỉ áp dụng khi phiếu ở trạng thái Pending).
     /// DELETE: /api/WarehouseTransfer/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.WarehouseTransfer.Cancel)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -17,13 +17,15 @@ public class ProductVariantQueryHandlers :
     IRequestHandler<GetAllProductVariantsQuery, IEnumerable<ProductVariantDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFieldVisibilityService _fieldVisibility;
 
     /// <summary>
     /// Constructor inject IUnitOfWork.
     /// </summary>
-    public ProductVariantQueryHandlers(IUnitOfWork unitOfWork)
+    public ProductVariantQueryHandlers(IUnitOfWork unitOfWork, IFieldVisibilityService? fieldVisibility = null)
     {
         _unitOfWork = unitOfWork;
+        _fieldVisibility = fieldVisibility ?? new PSP.Application.Common.Security.FieldVisibilityService();
     }
 
     /// <summary>
@@ -47,6 +49,7 @@ public class ProductVariantQueryHandlers :
         // 3. Ánh xạ và trả về
         var dto = variant.Adapt<ProductVariantDto>();
         dto.ProductName = product?.Name ?? "Không xác định";
+        _fieldVisibility.MaskProductVariant(dto);
 
         return dto;
     }
@@ -76,6 +79,8 @@ public class ProductVariantQueryHandlers :
             return dto;
         }).ToList();
 
+        _fieldVisibility.MaskProductVariants(dtos);
+
         return dtos;
     }
 
@@ -97,6 +102,8 @@ public class ProductVariantQueryHandlers :
             dto.ProductName = products.FirstOrDefault(p => p.Id == v.ProductId)?.Name ?? "Không xác định";
             return dto;
         }).ToList();
+
+        _fieldVisibility.MaskProductVariants(dtos);
 
         return dtos;
     }

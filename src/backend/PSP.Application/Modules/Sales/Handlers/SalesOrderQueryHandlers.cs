@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Mapster;
 using MediatR;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Sales.DTOs;
 using PSP.Application.Modules.Sales.Queries;
 using PSP.Domain.Common.Exceptions;
@@ -31,11 +32,16 @@ public class SalesOrderQueryHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IScopeContextService _scopeContext;
 
-    public SalesOrderQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public SalesOrderQueryHandlers(
+        IUnitOfWork unitOfWork, 
+        ICurrentUserService currentUserService,
+        IScopeContextService? scopeContext = null)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
     }
 
     /// <summary>
@@ -50,6 +56,7 @@ public class SalesOrderQueryHandlers :
         var voucherRepo = _unitOfWork.Repository<VoucherEntity>();
         var salesOrderItemRepo = _unitOfWork.Repository<SalesOrderItemEntity>();
         var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
+        var invoiceRepo = _unitOfWork.Repository<InvoiceEntity>();
 
         // 1. Tìm đơn hàng chính
         var order = await salesOrderRepo.GetByIdAsNoTrackingAsync(request.Id, cancellationToken);
@@ -58,14 +65,8 @@ public class SalesOrderQueryHandlers :
             throw new NotFoundException("Đơn hàng", request.Id);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && order.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền truy cập đơn hàng của chi nhánh khác.");
-            }
-        }
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(order.BranchId, "đơn hàng");
 
         // 2. Nạp tuần tự thông tin khách hàng, nhân viên, chi nhánh, voucher liên quan (EF Core không thread-safe)
         var customer = await customerRepo.GetByIdAsNoTrackingAsync(order.CustomerId, cancellationToken);
@@ -74,6 +75,8 @@ public class SalesOrderQueryHandlers :
         var voucher = order.VoucherId.HasValue 
             ? await voucherRepo.GetByIdAsNoTrackingAsync(order.VoucherId.Value, cancellationToken)
             : null;
+        var existingInvoices = await invoiceRepo.FindAsNoTrackingAsync(x => x.SalesOrderId == order.Id && !x.IsDeleted, cancellationToken);
+        var invoice = existingInvoices.FirstOrDefault();
 
         // 3. Lấy toàn bộ chi tiết sản phẩm của đơn hàng
         var items = await salesOrderItemRepo.FindAsNoTrackingAsync(x => x.SalesOrderId == order.Id, cancellationToken);
@@ -115,6 +118,9 @@ public class SalesOrderQueryHandlers :
             Total = order.Total,
             CreatedAt = order.CreatedAt,
             UpdatedAt = order.UpdatedAt,
+            HasInvoice = invoice != null,
+            InvoiceId = invoice?.Id,
+            InvoiceCode = invoice?.Code,
             Items = itemDtos
         };
 
@@ -127,13 +133,11 @@ public class SalesOrderQueryHandlers :
     public async Task<IEnumerable<SalesOrderDto>> Handle(GetSalesOrdersByCustomerIdQuery request, CancellationToken cancellationToken)
     {
         var salesOrderRepo = _unitOfWork.Repository<SalesOrderEntity>();
-        
-        bool isGlobalAdmin = _currentUserService.IsGlobalAdmin;
-        Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId);
+        var branchFilter = _scopeContext.GetEffectiveBranchFilter();
 
         var orders = await salesOrderRepo.FindAsNoTrackingAsync(x => 
             x.CustomerId == request.CustomerId && 
-            (isGlobalAdmin || x.BranchId == userBranchId), cancellationToken);
+            (!branchFilter.HasValue || x.BranchId == branchFilter.Value), cancellationToken);
 
         var result = new List<SalesOrderDto>();
         foreach (var order in orders)
@@ -151,12 +155,10 @@ public class SalesOrderQueryHandlers :
     public async Task<IEnumerable<SalesOrderDto>> Handle(GetAllSalesOrdersQuery request, CancellationToken cancellationToken)
     {
         var salesOrderRepo = _unitOfWork.Repository<SalesOrderEntity>();
-        
-        bool isGlobalAdmin = _currentUserService.IsGlobalAdmin;
-        Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId);
+        var branchFilter = _scopeContext.GetEffectiveBranchFilter();
 
         var orders = await salesOrderRepo.FindAsNoTrackingAsync(x => 
-            isGlobalAdmin || x.BranchId == userBranchId, cancellationToken);
+            !branchFilter.HasValue || x.BranchId == branchFilter.Value, cancellationToken);
 
         var result = new List<SalesOrderDto>();
         foreach (var order in orders)

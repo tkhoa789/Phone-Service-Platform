@@ -80,9 +80,9 @@ public class ProductVariantImeisDto
 /// <summary>
 /// COMMAND hủy phiếu nhập kho (Draft/Confirmed -> Cancelled).
 /// </summary>
-public record CancelPurchaseOrderCommand(Guid Id, byte[] RowVersion) : IRequest<bool>;
+public record CancelPurchaseOrderCommand(Guid Id, byte[]? RowVersion = null) : IRequest<bool>;
 
 /// <summary>
 /// COMMAND xóa mềm phiếu nhập kho (Chỉ áp dụng cho phiếu ở trạng thái Draft).
 /// </summary>
-public record DeletePurchaseOrderCommand(Guid Id, byte[] RowVersion) : IRequest<bool>;
+public record DeletePurchaseOrderCommand(Guid Id, byte[]? RowVersion = null) : IRequest<bool>;

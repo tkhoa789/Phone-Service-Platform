@@ -4,6 +4,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Customer.Commands;
 using PSP.Application.Modules.Customer.DTOs;
 using PSP.Application.Modules.Customer.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,16 +15,16 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER quản lý các API liên quan đến Hồ sơ khách hàng (Customer).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Customer.View)]
 [Route("api/[controller]")]
 [Tags("Customers")]
 public class CustomerController : BaseApiController
 {
     /// <summary>
-    /// API Tạo mới thông tin Khách hàng.
+    /// API Tạo mới thông tin Khách hàng (Customer.CREATE).
     /// POST: /api/Customer
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales,Technician")]
+    [Authorize(Policy = Permissions.Customer.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCustomerCommand command, CancellationToken cancellationToken)
     {
@@ -32,10 +33,10 @@ public class CustomerController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật thông tin Khách hàng theo ID.
+    /// API Cập nhật thông tin Khách hàng theo ID (Customer.UPDATE).
     /// PUT: /api/Customer/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales,Technician")]
+    [Authorize(Policy = Permissions.Customer.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerCommand command, CancellationToken cancellationToken)
     {
@@ -49,10 +50,10 @@ public class CustomerController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa mềm hồ sơ Khách hàng (Chỉ cho phép nếu chưa phát sinh giao dịch).
+    /// API Xóa mềm hồ sơ Khách hàng (Customer.DELETE - Owner, Admin, Manager).
     /// DELETE: /api/Customer/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Customer.Delete)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

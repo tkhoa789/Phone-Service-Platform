@@ -5,6 +5,7 @@ using PSP.Application.Modules.Auth.Commands;
 using PSP.Application.Modules.Auth.DTOs;
 using PSP.Domain.Common.Exceptions;
 using PSP.Domain.Modules.Auth.Entities;
+using PSP.Domain.Modules.Branch.Entities;
 
 namespace PSP.Application.Modules.Auth.Handlers;
 
@@ -125,6 +126,16 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
         // ===== BƯỚC 7: GHI LOG ĐĂNG NHẬP THÀNH CÔNG & TRẢ KẾT QUẢ =====
         await _authService.LogLoginAttemptAsync(user.Id, null, null, true, cancellationToken);
 
+        var branchRepo = _unitOfWork.Repository<BranchEntity>();
+        var branch = await branchRepo.GetByIdAsNoTrackingAsync(user.BranchId, cancellationToken);
+        var userDto = user.Adapt<UserDto>() with
+        {
+            BranchName = branch?.Name ?? string.Empty,
+            BranchAddress = branch?.Address ?? string.Empty,
+            BranchPhone = branch?.Phone ?? string.Empty,
+            Roles = roles.ToList()
+        };
+
         // Đóng gói kết quả vào "Hộp quà" AuthResponseDto để trả về cho Client.
         return new AuthResponseDto
         {
@@ -132,7 +143,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
             RefreshToken = refreshToken,
             TokenType = "Bearer",
             ExpiresIn = 3600, // 60 phút = 3600 giây
-            User = user.Adapt<UserDto>(),
+            User = userDto,
             Roles = roles,
             Permissions = permissions
         };

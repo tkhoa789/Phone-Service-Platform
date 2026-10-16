@@ -5,6 +5,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Repair.Commands;
 using PSP.Application.Modules.Repair.DTOs;
 using PSP.Application.Modules.Repair.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -13,78 +14,92 @@ using System.Threading.Tasks;
 namespace PSP.API.Controllers;
 
 /// <summary>
-/// API Controller quáº£n lÃ½ cÃ¡c Phiáº¿u sá»­a chá»¯a thiáº¿t bá»‹ dá»‹ch vá»¥ (RepairTickets).
-/// 
-/// DÃ nh cho ngÆ°á» i má»›i há» c vÃ  trÃ¬nh Ä‘á»™ dÆ°á»›i junior:
-/// - Lá»›p nÃ y cung cáº¥p cÃ¡c endpoint tiáº¿p nháº­n thiáº¿t bá»‹, xuáº¥t linh kiá»‡n thay tháº¿, cáº­p nháº­t tiáº¿n Ä‘á»™ tráº¡ng thÃ¡i vÃ  tra cá»©u lá»‹ch sá»­ sá»­a chá»¯a.
-/// - CÃ¡c logic nghiá»‡p vá»¥ Ä‘Æ°á»£c Ä‘Ã³ng gÃ³i hoÃ n toÃ n trong táº§ng Application vÃ  Ä‘iá» u phá»‘i qua MediatR.
+/// API Controller quản lý các Phiếu sửa chữa thiết bị dịch vụ (RepairTickets).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Repair.View)]
 [Route("api/[controller]")]
 [Tags("RepairTickets")]
 public class RepairTicketController : BaseApiController
 {
     /// <summary>
-    /// API Táº¡o má»›i Phiáº¿u sá»­a chá»¯a (Tiáº¿p nháº­n mÃ¡y lá»—i cá»§a khÃ¡ch).
+    /// API Tạo mới Phiếu sửa chữa (Repair.CREATE).
     /// POST: /api/RepairTicket
     /// </summary>
-    [Authorize(Roles = "Manager,Technician,Receptionist")]
+    [Authorize(Policy = Permissions.Repair.Create)]
     [HttpPost]
     [Idempotent]
     public async Task<IActionResult> Create([FromBody] CreateRepairTicketCommand command, CancellationToken cancellationToken)
     {
+        // Chỉ tài khoản có role Admin, Owner hoặc QA mới được phép kích hoạt cờ IsTest (qua Header hoặc Request Body).
+        // Nếu không có quyền, hệ thống âm thầm gán IsTest = false để không làm vỡ luồng tiếp nhận của người dùng.
+        var isPrivilegedForTest = User.IsInRole("Admin") || User.IsInRole("Owner") || User.IsInRole("QA");
+        bool isTest = false;
+
+        if (isPrivilegedForTest)
+        {
+            if (Request.Headers.TryGetValue("X-PSP-Is-Test", out var isTestHeader) && bool.TryParse(isTestHeader, out var parsedIsTest))
+            {
+                isTest = parsedIsTest;
+            }
+            else if (command.IsTest)
+            {
+                isTest = true;
+            }
+        }
+
+        command = command with { IsTest = isTest };
         var result = await Mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<Guid>.Success(result, "Láº­p phiáº¿u tiáº¿p nháº­n sá»­a chá»¯a thÃ nh cÃ´ng"));
+        return Ok(ApiResponse<Guid>.Success(result, "Lập phiếu tiếp nhận sửa chữa thành công"));
     }
 
     /// <summary>
-    /// API Xuáº¥t/thÃªm linh kiá»‡n thay tháº¿ cho phiáº¿u sá»­a chá»¯a.
+    /// API Xuất/thêm linh kiện thay thế cho phiếu sửa chữa (Repair.UPDATE).
     /// POST: /api/RepairTicket/part
     /// </summary>
-    [Authorize(Roles = "Manager,Technician")]
+    [Authorize(Policy = Permissions.Repair.Update)]
     [HttpPost("{id}/parts")]
     [Idempotent]
     public async Task<IActionResult> AddPart(Guid id, [FromBody] AddRepairPartCommand command, CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<Guid>.Success(result, "Xuáº¥t linh kiá»‡n thay tháº¿ thÃ nh cÃ´ng"));
+        return Ok(ApiResponse<Guid>.Success(result, "Xuất linh kiện thay thế thành công"));
     }
 
     /// <summary>
-    /// API Táº¡o má»›i BiÃªn báº£n kiá»ƒm tra tÃ¬nh tráº¡ng mÃ¡y (Checklist 8-point).
+    /// API Tạo mới Biên bản kiểm tra tình trạng máy (Repair.DIAGNOSE).
     /// POST: /api/RepairTicket/checklist
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales,Technician")]
+    [Authorize(Policy = Permissions.Repair.Diagnose)]
     [HttpPost("checklist")]
     public async Task<IActionResult> CreateChecklist([FromBody] CreateRepairChecklistCommand command, CancellationToken cancellationToken)
     {
         var result = await Mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<Guid>.Success(result, "LÆ°u biÃªn báº£n kiá»ƒm tra thÃ nh cÃ´ng"));
+        return Ok(ApiResponse<Guid>.Success(result, "Lưu biên bản kiểm tra thành công"));
     }
 
     /// <summary>
-    /// API Cáº­p nháº­t tráº¡ng thÃ¡i phiáº¿u sá»­a chá»¯a (Received -> Diagnosing -> ... -> Completed / Cancelled).
+    /// API Cập nhật trạng thái phiếu sửa chữa (Repair.UPDATE).
     /// PUT: /api/RepairTicket/{id}/status
     /// </summary>
-    [Authorize(Roles = "Manager,Technician,Receptionist")]
+    [Authorize(Policy = Permissions.Repair.Update)]
     [HttpPut("{id}/status")]
     [Idempotent]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateRepairStatusCommand command, CancellationToken cancellationToken)
     {
         if (id != command.RepairTicketId)
         {
-            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id phiáº¿u trong URL vÃ  body khÃ´ng khá»›p."));
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id phiếu trong URL và body không khớp."));
         }
 
         var result = await Mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<bool>.Success(result, "Cáº­p nháº­t tráº¡ng thÃ¡i sá»­a chá»¯a thÃ nh cÃ´ng"));
+        return Ok(ApiResponse<bool>.Success(result, "Cập nhật trạng thái sửa chữa thành công"));
     }
 
     /// <summary>
-    /// API XÃ³a má» m phiáº¿u sá»­a chá»¯a (Chá»‰ cho phÃ©p khi á»Ÿ tráº¡ng thÃ¡i Received vÃ  chÆ°a xuáº¥t linh kiá»‡n).
+    /// API Xóa mềm phiếu sửa chữa (Repair.CANCEL - Owner, Admin, Manager).
     /// DELETE: /api/RepairTicket/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Repair.Cancel)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
@@ -106,66 +121,78 @@ public class RepairTicketController : BaseApiController
     }
 
     /// <summary>
-    /// API Láº¥y danh sÃ¡ch phiáº¿u sá»­a chá»¯a cÃ³ há»— trá»£ lá» c vÃ  phÃ¢n trang.
+    /// API Lấy danh sách phiếu sửa chữa có hỗ trợ lọc theo hàng chờ (Queue) và phân trang.
     /// GET: /api/RepairTicket
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] GetRepairTicketsQuery query, CancellationToken cancellationToken)
     {
-        // Nháº­n Query parameters trá»±c tiáº¿p tá»« URL query string
         var (items, totalCount) = await Mediator.Send(query, cancellationToken);
+        var stats = await Mediator.Send(new GetRepairQueueStatsQuery(query.IncludeTest), cancellationToken);
         
-        // Tráº£ vá»  kÃ¨m metadata phÃ¢n trang Ä‘á»ƒ frontend dá»… xá»­ lÃ½
         return Ok(new
         {
             success = true,
-            message = "Láº¥y danh sÃ¡ch phiáº¿u sá»­a chá»¯a thÃ nh cÃ´ng",
+            message = "Lấy danh sách phiếu sửa chữa thành công",
             data = items,
             pagination = new
             {
                 pageIndex = query.PageIndex,
                 pageSize = query.PageSize,
                 totalCount = totalCount
-            }
+            },
+            stats = stats
         });
     }
 
     /// <summary>
-    /// API Thu tiá» n cá» c cho phiáº¿u sá»­a chá»¯a (Chá»‰ thu Ä‘Æ°á»£c khi phiáº¿u chÆ°a hoÃ n thÃ nh/há»§y).
+    /// API Lấy số liệu thống kê các hàng chờ sửa chữa (Unassigned, My Tasks, In Progress, Completed, Total) trực tiếp từ Database.
+    /// GET: /api/RepairTicket/stats
+    /// </summary>
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetQueueStats([FromQuery] bool includeTest = false, CancellationToken cancellationToken = default)
+    {
+        var query = new GetRepairQueueStatsQuery(includeTest);
+        var result = await Mediator.Send(query, cancellationToken);
+        return Ok(ApiResponse<RepairQueueStatsDto>.Success(result));
+    }
+
+    /// <summary>
+    /// API Thu tiền cọc cho phiếu sửa chữa (Chỉ thu được khi phiếu chưa hoàn thành/hủy).
     /// POST: /api/RepairTicket/{id}/deposit
     /// </summary>
-    [Authorize(Roles = "Manager,Receptionist")]
+    [Authorize(Policy = Permissions.Repair.Deposit)]
     [HttpPost("{id}/deposits")]
     [Idempotent]
     public async Task<IActionResult> CreateDeposit(Guid id, [FromBody] CreateRepairDepositCommand command, CancellationToken cancellationToken)
     {
         if (id != command.RepairTicketId)
         {
-            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id phiáº¿u trong URL vÃ  body khÃ´ng khá»›p."));
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id phiếu trong URL và body không khớp."));
         }
 
         var result = await Mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<Guid>.Success(result, "Thu tiá»n cá»c thÃ nh cÃ´ng"));
+        return Ok(ApiResponse<Guid>.Success(result, "Thu tiền cọc thành công"));
     }
 
     /// <summary>
-    /// API HoÃ n tráº£ tiá»n cá»c cho khÃ¡ch hÃ ng (thÆ°á»ng dÃ¹ng khi Há»§y phiáº¿u).
+    /// API Hoàn trả tiền cọc cho khách hàng (thường dùng khi Hủy phiếu).
     /// POST: /api/RepairTicket/deposit/{depositId}/refund
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Repair.Refund)]
     [HttpPost("deposit/{depositId:guid}/refund")]
     public async Task<IActionResult> RefundDeposit(Guid depositId, CancellationToken cancellationToken)
     {
         var command = new RefundRepairDepositCommand(depositId);
         var result = await Mediator.Send(command, cancellationToken);
-        return Ok(ApiResponse<bool>.Success(result, "HoÃ n tráº£ tiá»n cá»c thÃ nh cÃ´ng"));
+        return Ok(ApiResponse<bool>.Success(result, "Hoàn trả tiền cọc thành công"));
     }
 
     /// <summary>
     /// API Cập nhật trạng thái linh kiện thay thế (Issue / Install).
     /// PUT: /api/RepairTicket/{id}/part/{partId}/status
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Technician")]
+    [Authorize(Policy = Permissions.Repair.UpdatePart)]
     [HttpPut("{id:guid}/part/{partId:guid}/status")]
     public async Task<IActionResult> UpdatePartStatus(Guid id, Guid partId, [FromBody] UpdateRepairPartStatusCommand command, CancellationToken cancellationToken)
     {
@@ -180,7 +207,7 @@ public class RepairTicketController : BaseApiController
     /// API Hoàn trả linh kiện (Return).
     /// POST: /api/RepairTicket/{id}/part/{partId}/return
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Technician")]
+    [Authorize(Policy = Permissions.Repair.ReturnPart)]
     [HttpPost("{id:guid}/part/{partId:guid}/return")]
     public async Task<IActionResult> ReturnPart(Guid id, Guid partId, [FromBody] ReturnRepairPartCommand command, CancellationToken cancellationToken)
     {
@@ -195,7 +222,7 @@ public class RepairTicketController : BaseApiController
     /// API Ghi nhận hỏng/mất linh kiện (Write-Off).
     /// POST: /api/RepairTicket/{id}/part/{partId}/writeoff
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Repair.WriteOffPart)]
     [HttpPost("{id:guid}/part/{partId:guid}/writeoff")]
     public async Task<IActionResult> WriteOffPart(Guid id, Guid partId, [FromBody] WriteOffRepairPartCommand command, CancellationToken cancellationToken)
     {
@@ -210,7 +237,7 @@ public class RepairTicketController : BaseApiController
     /// API Hủy phiếu sửa chữa kèm quyết định xử lý linh kiện (Cancel with Dispositions).
     /// POST: /api/RepairTicket/{id}/cancel
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
+    [Authorize(Policy = Permissions.Repair.Cancel)]
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> CancelTicket(Guid id, [FromBody] CancelRepairTicketCommand command, CancellationToken cancellationToken)
     {
@@ -219,6 +246,124 @@ public class RepairTicketController : BaseApiController
 
         var result = await Mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Hủy phiếu sửa chữa thành công"));
+    }
+
+    /// <summary>
+    /// API Phân công kỹ thuật viên phụ trách sửa chữa (Section 7).
+    /// POST: /api/RepairTicket/{id}/assign-technician
+    /// </summary>
+    [Authorize(Policy = Permissions.Repair.Update)]
+    [HttpPost("{id:guid}/assign-technician")]
+    public async Task<IActionResult> AssignTechnician(Guid id, [FromBody] AssignTechnicianCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Phân công kỹ thuật viên thành công"));
+    }
+
+    /// <summary>
+    /// API Bắt đầu chẩn đoán thiết bị (Section 5: Received -> Diagnosing).
+    /// POST: /api/RepairTicket/{id}/start-diagnosis
+    /// </summary>
+    [Authorize(Policy = Permissions.Repair.Diagnose)]
+    [HttpPost("{id:guid}/start-diagnosis")]
+    public async Task<IActionResult> StartDiagnosis(Guid id, CancellationToken cancellationToken)
+    {
+        var command = new StartDiagnosisCommand(id);
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Bắt đầu chẩn đoán thiết bị"));
+    }
+
+    /// <summary>
+    /// API Nộp kết quả chẩn đoán và phương án sửa chữa (Section 5).
+    /// POST: /api/RepairTicket/{id}/submit-diagnosis
+    /// </summary>
+    [Authorize(Policy = Permissions.Repair.Diagnose)]
+    [HttpPost("{id:guid}/submit-diagnosis")]
+    public async Task<IActionResult> SubmitDiagnosis(Guid id, [FromBody] SubmitDiagnosisCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Ghi nhận kết quả chẩn đoán thành công"));
+    }
+
+    /// <summary>
+    /// API Khách hàng phê duyệt phương án & báo giá sửa chữa (Section 6: WaitingApproval -> Repairing).
+    /// POST: /api/RepairTicket/{id}/approve
+    /// </summary>
+    [Authorize(Roles = $"{CanonicalRoles.Owner},{CanonicalRoles.Admin},{CanonicalRoles.Manager},{CanonicalRoles.Technician},{CanonicalRoles.Sales}")]
+    [HttpPost("{id:guid}/approve")]
+    public async Task<IActionResult> ApproveRepair(Guid id, [FromBody] ApproveRepairCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Xác nhận khách hàng đồng ý sửa chữa"));
+    }
+
+    /// <summary>
+    /// API Khách hàng từ chối sửa chữa (Section 6: WaitingApproval -> Cancelled).
+    /// POST: /api/RepairTicket/{id}/reject
+    /// </summary>
+    [Authorize(Policy = Permissions.Repair.Cancel)]
+    [HttpPost("{id:guid}/reject")]
+    public async Task<IActionResult> RejectRepair(Guid id, [FromBody] RejectRepairCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Ghi nhận khách hàng từ chối sửa chữa"));
+    }
+
+    /// <summary>
+    /// API Lắp ráp linh kiện vào máy (Section 8: Reserved/Issued -> Installed).
+    /// POST: /api/RepairTicket/{id}/parts/{partId}/use
+    /// </summary>
+    [Authorize(Policy = Permissions.Repair.UpdatePart)]
+    [HttpPost("{id:guid}/parts/{partId:guid}/use")]
+    public async Task<IActionResult> UseRepairPart(Guid id, Guid partId, [FromBody] UseRepairPartCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId || partId != command.RepairPartId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Lắp ráp linh kiện vào máy thành công"));
+    }
+
+    /// <summary>
+    /// API Hoàn tất sửa chữa (Section 11: WaitingQC/Repairing -> Completed).
+    /// POST: /api/RepairTicket/{id}/complete
+    /// </summary>
+    [Authorize(Policy = Permissions.Repair.Update)]
+    [HttpPost("{id:guid}/complete")]
+    public async Task<IActionResult> CompleteRepair(Guid id, [FromBody] CompleteRepairCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Hoàn tất sửa chữa thiết bị thành công"));
+    }
+
+    /// <summary>
+    /// API Bàn giao thiết bị cho khách hàng (Section 12: Completed/WaitingPickup -> Delivered).
+    /// POST: /api/RepairTicket/{id}/deliver
+    /// </summary>
+    [Authorize(Roles = $"{CanonicalRoles.Owner},{CanonicalRoles.Admin},{CanonicalRoles.Manager},{CanonicalRoles.Technician},{CanonicalRoles.Sales}")]
+    [HttpPost("{id:guid}/deliver")]
+    public async Task<IActionResult> DeliverRepair(Guid id, [FromBody] DeliverRepairCommand command, CancellationToken cancellationToken)
+    {
+        if (id != command.RepairTicketId)
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trong URL và body không khớp."));
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(ApiResponse<bool>.Success(result, "Bàn giao máy cho khách hàng thành công"));
     }
 }
 

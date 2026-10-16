@@ -22,10 +22,12 @@ public class CustomerQueryHandlers :
     IRequestHandler<GetCustomersQuery, IEnumerable<CustomerDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFieldVisibilityService _fieldVisibility;
 
-    public CustomerQueryHandlers(IUnitOfWork unitOfWork)
+    public CustomerQueryHandlers(IUnitOfWork unitOfWork, IFieldVisibilityService? fieldVisibility = null)
     {
         _unitOfWork = unitOfWork;
+        _fieldVisibility = fieldVisibility ?? new PSP.Application.Common.Security.FieldVisibilityService();
     }
 
     /// <summary>
@@ -40,7 +42,9 @@ public class CustomerQueryHandlers :
             throw new NotFoundException("Khách hàng", request.Id);
         }
 
-        return customer.Adapt<CustomerDto>();
+        var dto = customer.Adapt<CustomerDto>();
+        _fieldVisibility.MaskCustomer(dto);
+        return dto;
     }
 
     /// <summary>
@@ -56,7 +60,9 @@ public class CustomerQueryHandlers :
             throw new NotFoundException("Khách hàng với số điện thoại", request.Phone);
         }
 
-        return customer.Adapt<CustomerDto>();
+        var dto = customer.Adapt<CustomerDto>();
+        _fieldVisibility.MaskCustomer(dto);
+        return dto;
     }
 
     /// <summary>
@@ -79,6 +85,8 @@ public class CustomerQueryHandlers :
             );
         }
 
-        return list.Select(c => c.Adapt<CustomerDto>()).ToList();
+        var dtos = list.Select(c => c.Adapt<CustomerDto>()).ToList();
+        _fieldVisibility.MaskCustomers(dtos);
+        return dtos;
     }
 }

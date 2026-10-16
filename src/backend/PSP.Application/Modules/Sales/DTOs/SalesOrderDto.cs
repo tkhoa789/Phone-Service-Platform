@@ -55,6 +55,10 @@ public record SalesOrderDto
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 
+    public bool HasInvoice { get; init; }
+    public Guid? InvoiceId { get; init; }
+    public string? InvoiceCode { get; init; }
+
     // Danh sách chi tiết các mặt hàng trong đơn hàng
     public IEnumerable<SalesOrderItemDto> Items { get; init; } = new List<SalesOrderItemDto>();
 }

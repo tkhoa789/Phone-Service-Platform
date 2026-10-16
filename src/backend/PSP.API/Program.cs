@@ -128,7 +128,7 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 120,
+                PermitLimit = 2000,
                 Window = TimeSpan.FromMinutes(1)
             });
     });
@@ -199,6 +199,13 @@ builder.Services.AddAuthentication(options =>
 });
 
 // =====================================================================
+// AUTHORIZATION FOUNDATION & PERMISSION MODEL (RBAC-01 / RBAC-02)
+// =====================================================================
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, PSP.API.Authorization.PermissionPolicyProvider>();
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, PSP.API.Authorization.PermissionAuthorizationHandler>();
+
+// =====================================================================
 // KHỞI TẠO ỨNG DỤNG & MIDDLEWARE PIPELINE BẢO MẬT MULTI-LAYERED
 // =====================================================================
 var app = builder.Build();
@@ -213,6 +220,9 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Phone Service Platform API v1");
     c.DocumentTitle = "PSP API Documentation";
 });
+
+// Phục vụ tệp tĩnh (ảnh tải lên, attachments, v.v.)
+app.UseStaticFiles();
 
 // 1. Middleware Tiêm Security Headers OWASP (Chống Clickjacking, MIME Sniffing, XSS)
 app.UseMiddleware<SecurityHeadersMiddleware>();

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Warranty.Commands;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
@@ -13,31 +14,37 @@ using PSP.Domain.Modules.Inventory.Entities;
 using PSP.Domain.Modules.Product.Entities;
 using PSP.Domain.Modules.Sales.Entities;
 using PSP.Domain.Modules.Warranty.Entities;
+using PSP.Domain.Modules.Repair.Entities;
 
 namespace PSP.Application.Modules.Warranty.Handlers;
 
 /// <summary>
 /// Bộ xử lý các Lệnh (Commands) của Phân hệ Bảo hành (Module 16).
-/// 
-/// Dành cho người mới học và trình độ dưới junior:
-/// - Lớp này hiện thực logic nghiệp vụ tiếp nhận bảo hành, đổi máy lỗi cho khách và cập nhật tiến độ xử lý.
-/// - Áp dụng các quy tắc bảo hành (Business Rules):
-///   1. Chỉ sản phẩm đã bán mới được bảo hành (IMEI phải có hóa đơn mua hàng đã hoàn thành).
-///   2. Thời hạn bảo hành tối đa là 12 tháng kể từ ngày bán (BR-902).
-///   3. Quy trình đổi máy: Máy cũ chuyển sang Disposed (ngừng dùng), máy mới lấy từ kho chuyển sang Sold (đã bán) và rời kho (BR-905).
-///   4. Quản lý vòng đời trạng thái của IMEI (chuyển sang WarrantyHold khi tiếp nhận, trả về Sold khi xong hoặc từ chối).
 /// </summary>
 public class WarrantyCommandHandlers :
     IRequestHandler<CreateWarrantyTicketCommand, Guid>,
     IRequestHandler<UpdateWarrantyStatusCommand, bool>,
-    IRequestHandler<DeleteWarrantyTicketCommand, bool>
+    IRequestHandler<DeleteWarrantyTicketCommand, bool>,
+    IRequestHandler<RejectWarrantyCommand, bool>,
+    IRequestHandler<TransferToInHouseRepairCommand, Guid>,
+    IRequestHandler<ReplaceDeviceCommand, bool>,
+    IRequestHandler<SendToVendorCommand, bool>,
+    IRequestHandler<DeliverToCustomerCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IScopeContextService _scopeContext;
+    private readonly ICurrentUserService? _currentUserService;
 
-    public WarrantyCommandHandlers(IUnitOfWork unitOfWork)
+    public WarrantyCommandHandlers(
+        IUnitOfWork unitOfWork, 
+        IScopeContextService? scopeContext = null,
+        ICurrentUserService? currentUserService = null)
     {
         _unitOfWork = unitOfWork;
+        _scopeContext = scopeContext ?? new ScopeContextService();
+        _currentUserService = currentUserService;
     }
+
 
     /// <summary>
     /// 1. Xử lý tạo mới Phiếu tiếp nhận bảo hành.
@@ -88,6 +95,8 @@ public class WarrantyCommandHandlers :
         {
             throw new BadRequestException($"Đơn hàng liên quan đến IMEI '{cleanImei}' chưa được thanh toán hoặc đã bị hủy.");
         }
+
+        // Hỗ trợ bảo hành liên chi nhánh trong toàn hệ thống chuỗi cửa hàng PSP (BR-901)
 
         // 1.5 RÀNG BUỘC BR-902: Thời hạn bảo hành tối đa là 12 tháng kể từ ngày bán
         var purchaseDate = salesOrder.CreatedAt;
@@ -152,6 +161,14 @@ public class WarrantyCommandHandlers :
             throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
         }
 
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
         // 2.1.1 Pre-flight RowVersion Concurrency Check
         if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
         {
@@ -214,6 +231,11 @@ public class WarrantyCommandHandlers :
             if (newImeiEntity.Status != ImeiStatus.InStock)
             {
                 throw new BadRequestException($"Thiết bị mới với IMEI '{cleanNewImei}' không ở trạng thái Trong kho (InStock) để đổi trả (Trạng thái hiện tại: {newImeiEntity.Status}).");
+            }
+
+            if (newImeiEntity.WarehouseId.HasValue)
+            {
+                await _scopeContext.ValidateWarehouseAccessAsync(_unitOfWork, newImeiEntity.WarehouseId.Value, "đổi thiết bị bảo hành", cancellationToken);
             }
 
             // Tiến hành đổi máy:
@@ -310,8 +332,16 @@ public class WarrantyCommandHandlers :
             throw new NotFoundException("Phiếu bảo hành", request.Id);
         }
 
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
         // 3.1.1 Pre-flight RowVersion Concurrency Check
-        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        if (request.RowVersion != null && request.RowVersion.Length > 0 && !ticket.RowVersion.SequenceEqual(request.RowVersion))
         {
             throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
         }
@@ -349,4 +379,490 @@ public class WarrantyCommandHandlers :
 
         return true;
     }
+
+    /// <summary>
+    /// 4. Nhánh 1: Xử lý từ chối bảo hành do vi phạm chính sách (rơi vỡ, ẩm nước, hết hạn, can thiệp ngoài).
+    /// Hỗ trợ cờ TransferToPaidRepair tự động tạo phiếu sửa chữa có phí nếu khách đồng ý.
+    /// </summary>
+    public async Task<bool> Handle(RejectWarrantyCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<WarrantyTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<WarrantyHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.WarrantyTicketId, cancellationToken);
+        if (ticket == null)
+        {
+            throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
+        }
+
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
+        // Concurrency Check
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        // State Machine Check
+        if (ticket.Status == WarrantyTicketStatus.Completed || ticket.Status == WarrantyTicketStatus.Rejected || ticket.Status == WarrantyTicketStatus.Cancelled)
+        {
+            throw new BadRequestException($"Phiếu bảo hành đang ở trạng thái {ticket.Status} và đã kết thúc xử lý, không thể cập nhật thêm.");
+        }
+
+        ticket.Status = WarrantyTicketStatus.Rejected;
+        ticket.RejectReason = request.Reason;
+        ticket.RejectNotes = request.RejectNotes?.Trim();
+        ticket.EvidencePhotoUrls = request.EvidencePhotoUrls?.Trim();
+        ticket.TransferToPaidRepair = request.TransferToPaidRepair;
+
+        var reasonText = request.Reason switch
+        {
+            RejectReason.WaterDamage => "Vào nước / Ẩm LCI",
+            RejectReason.Dropped => "Rơi vỡ / Cấn móp cơ học",
+            RejectReason.ThirdPartyIntervention => "Can thiệp ngoài / Rách tem",
+            RejectReason.Expired => "Hết hạn bảo hành",
+            _ => "Lý do khác"
+        };
+
+        if (request.TransferToPaidRepair)
+        {
+            var repairRepo = _unitOfWork.Repository<RepairTicketEntity>();
+            var currentUserId = Guid.TryParse(_currentUserService?.UserId, out var uid) ? uid : Guid.Parse("20000000-0000-0000-0000-000000000001");
+            var branchId = salesOrder?.BranchId ?? (Guid.TryParse(_currentUserService?.BranchId, out var bid) ? bid : (Guid?)null);
+            var repairCode = "REP-" + DateTime.UtcNow.ToString("yyyyMMdd") + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+
+            var repairTicket = new RepairTicketEntity
+            {
+                CustomerId = ticket.CustomerId,
+                ProductVariantId = ticket.ProductVariantId,
+                Imei = ticket.Imei,
+                BranchId = branchId,
+                ReceivedById = currentUserId,
+                Code = repairCode,
+                Status = RepairTicketStatus.Received,
+                ProblemDescription = $"[Chuyển từ BH bị từ chối: {reasonText}] {request.RejectNotes}",
+                ExteriorCondition = $"Từ chối BH: {reasonText}",
+                EstimatedCost = 0,
+                ActualCost = 0,
+                LaborCost = 0,
+                ReceivedDate = DateTime.UtcNow,
+                WarrantyTicketId = ticket.Id
+            };
+            await repairRepo.AddAsync(repairTicket, cancellationToken);
+            ticket.RepairTicketId = repairTicket.Id;
+        }
+
+        ticket.Note = string.IsNullOrEmpty(ticket.Note)
+            ? $"[Từ chối BH: {reasonText}] {request.RejectNotes}"
+            : $"{ticket.Note} | [Từ chối BH: {reasonText}] {request.RejectNotes}";
+
+        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
+        string actorName = _currentUserService?.Username ?? "Kỹ thuật viên";
+
+        var historyDesc = $"Từ chối bảo hành: {reasonText}. Lý do chi tiết: {request.RejectNotes}";
+        if (request.TransferToPaidRepair)
+        {
+            historyDesc += " (Tư vấn chuyển sang sửa chữa dịch vụ có phí).";
+        }
+
+        var history = new WarrantyHistoryEntity
+        {
+            WarrantyTicketId = ticket.Id,
+            Action = "Từ chối bảo hành",
+            Status = WarrantyTicketStatus.Rejected.ToString(),
+            Description = historyDesc,
+            ActorId = actorId,
+            ActorName = actorName,
+            Notes = request.RejectNotes
+        };
+        await historyRepo.AddAsync(history, cancellationToken);
+
+        ticketRepo.Update(ticket);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 5. Nhánh 2: Chuyển sửa chữa nội bộ In-house. Tự động lập phiếu sửa chữa với chi phí 0đ trong cùng transaction.
+    /// </summary>
+    public async Task<Guid> Handle(TransferToInHouseRepairCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<WarrantyTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<WarrantyHistoryEntity>();
+        var repairRepo = _unitOfWork.Repository<RepairTicketEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.WarrantyTicketId, cancellationToken);
+        if (ticket == null)
+        {
+            throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
+        }
+
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        if (ticket.Status == WarrantyTicketStatus.Completed || ticket.Status == WarrantyTicketStatus.Rejected || ticket.Status == WarrantyTicketStatus.Cancelled)
+        {
+            throw new BadRequestException($"Phiếu bảo hành đang ở trạng thái {ticket.Status} và đã kết thúc xử lý.");
+        }
+
+        var currentUserId = Guid.TryParse(_currentUserService?.UserId, out var uid) ? uid : Guid.Parse("20000000-0000-0000-0000-000000000001");
+        var branchId = salesOrder?.BranchId ?? (Guid.TryParse(_currentUserService?.BranchId, out var bid) ? bid : (Guid?)null);
+        var repairCode = "REP-" + DateTime.UtcNow.ToString("yyyyMMdd") + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+
+        var repairTicket = new RepairTicketEntity
+        {
+            CustomerId = ticket.CustomerId,
+            ProductVariantId = ticket.ProductVariantId,
+            Imei = ticket.Imei,
+            BranchId = branchId,
+            ReceivedById = currentUserId,
+            TechnicianId = request.TechnicianId,
+            Code = repairCode,
+            Status = RepairTicketStatus.Received,
+            ProblemDescription = $"[Bảo hành nội bộ - Phiếu {ticket.Code}] {request.ComponentDiagnosis.Trim()}",
+            ExteriorCondition = "Bảo hành miễn phí theo tiêu chuẩn hãng",
+            EstimatedCost = 0,
+            ActualCost = 0,
+            LaborCost = 0,
+            ReceivedDate = DateTime.UtcNow,
+            WarrantyTicketId = ticket.Id
+        };
+        await repairRepo.AddAsync(repairTicket, cancellationToken);
+
+        ticket.Status = WarrantyTicketStatus.Processing;
+        ticket.RepairTicketId = repairTicket.Id;
+        ticket.Note = string.IsNullOrEmpty(ticket.Note)
+            ? $"[Chuyển sửa nội bộ: {repairCode}] {request.ComponentDiagnosis.Trim()}"
+            : $"{ticket.Note} | [Chuyển sửa nội bộ: {repairCode}] {request.ComponentDiagnosis.Trim()}";
+
+        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
+        string actorName = _currentUserService?.Username ?? "Kỹ thuật viên";
+
+        var history = new WarrantyHistoryEntity
+        {
+            WarrantyTicketId = ticket.Id,
+            Action = "Chuyển sửa chữa nội bộ",
+            Status = WarrantyTicketStatus.Processing.ToString(),
+            Description = $"Chuyển sửa chữa nội bộ: Đã tạo phiếu sửa chữa {repairCode} (Chi phí bảo hành 0đ). Chẩn đoán: {request.ComponentDiagnosis.Trim()}",
+            ActorId = actorId,
+            ActorName = actorName,
+            Notes = request.ComponentDiagnosis.Trim()
+        };
+        await historyRepo.AddAsync(history, cancellationToken);
+
+        ticketRepo.Update(ticket);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        return repairTicket.Id;
+    }
+
+    /// <summary>
+    /// 6. Nhánh 3: Đổi máy 1-1 theo quy chuẩn BR-905. Thu hồi IMEI cũ thành Disposed, xuất kho IMEI mới thành Sold.
+    /// </summary>
+    public async Task<bool> Handle(ReplaceDeviceCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<WarrantyTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<WarrantyHistoryEntity>();
+        var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.WarrantyTicketId, cancellationToken);
+        if (ticket == null)
+        {
+            throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
+        }
+
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        if (ticket.Status == WarrantyTicketStatus.Completed || ticket.Status == WarrantyTicketStatus.Rejected || ticket.Status == WarrantyTicketStatus.Cancelled)
+        {
+            throw new BadRequestException($"Phiếu bảo hành đang ở trạng thái {ticket.Status} và đã kết thúc xử lý.");
+        }
+
+        string oldImei = ticket.Imei ?? string.Empty;
+        string cleanNewImei = request.NewImei.Trim();
+
+        if (cleanNewImei == oldImei)
+        {
+            throw new BadRequestException("IMEI mới trùng với IMEI hiện tại của thiết bị.");
+        }
+
+        var newImeis = await imeiRepo.FindAsync(x => x.Imei == cleanNewImei, cancellationToken);
+        var newImeiEntity = newImeis.FirstOrDefault();
+        if (newImeiEntity == null)
+        {
+            throw new BadRequestException($"Số IMEI mới '{cleanNewImei}' không tồn tại trên hệ thống kho.");
+        }
+
+        if (newImeiEntity.Status != ImeiStatus.InStock)
+        {
+            throw new BadRequestException($"Thiết bị mới với IMEI '{cleanNewImei}' không ở trạng thái Trong kho (InStock) để đổi trả (Trạng thái hiện tại: {newImeiEntity.Status}).");
+        }
+
+        if (newImeiEntity.WarehouseId.HasValue)
+        {
+            await _scopeContext.ValidateWarehouseAccessAsync(_unitOfWork, newImeiEntity.WarehouseId.Value, "đổi thiết bị bảo hành", cancellationToken);
+        }
+
+        // a) Máy cũ -> Disposed
+        if (!string.IsNullOrEmpty(oldImei))
+        {
+            var oldImeis = await imeiRepo.FindAsync(x => x.Imei == oldImei, cancellationToken);
+            var oldImeiEntity = oldImeis.FirstOrDefault();
+            if (oldImeiEntity != null)
+            {
+                oldImeiEntity.Status = ImeiStatus.Disposed;
+                imeiRepo.Update(oldImeiEntity);
+            }
+        }
+
+        // b) Máy mới -> Sold, rời kho
+        newImeiEntity.Status = ImeiStatus.Sold;
+        newImeiEntity.WarehouseId = null;
+        imeiRepo.Update(newImeiEntity);
+
+        // c) Cập nhật phiếu bảo hành
+        ticket.Imei = cleanNewImei;
+        ticket.Status = WarrantyTicketStatus.Completed;
+        ticket.EndDate = DateTime.UtcNow;
+
+        var reasonDesc = !string.IsNullOrWhiteSpace(request.Reason) ? request.Reason.Trim() : "Lỗi phần cứng không thể khắc phục";
+        ticket.Note = string.IsNullOrEmpty(ticket.Note)
+            ? $"[Đổi máy mới 1-1 BR-905] Thu hồi {oldImei} -> Cấp mới {cleanNewImei}. Lý do: {reasonDesc}"
+            : $"{ticket.Note} | [Đổi máy mới 1-1 BR-905] Thu hồi {oldImei} -> Cấp mới {cleanNewImei}. Lý do: {reasonDesc}";
+
+        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
+        string actorName = _currentUserService?.Username ?? "Nhân viên";
+
+        var history = new WarrantyHistoryEntity
+        {
+            WarrantyTicketId = ticket.Id,
+            Action = "Đổi máy mới (BR-905)",
+            Status = WarrantyTicketStatus.Completed.ToString(),
+            Description = $"Thực hiện đổi máy mới 1-1: Thu hồi máy cũ ({oldImei}) sang Disposed, xuất máy mới ({cleanNewImei}) sang Sold. Lý do: {reasonDesc}",
+            ActorId = actorId,
+            ActorName = actorName,
+            Notes = reasonDesc
+        };
+        await historyRepo.AddAsync(history, cancellationToken);
+
+        ticketRepo.Update(ticket);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 7. Nhánh 4: Gửi máy sang Trung tâm bảo hành Hãng (OEM RMA).
+    /// </summary>
+    public async Task<bool> Handle(SendToVendorCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<WarrantyTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<WarrantyHistoryEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.WarrantyTicketId, cancellationToken);
+        if (ticket == null)
+        {
+            throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
+        }
+
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        if (ticket.Status == WarrantyTicketStatus.Completed || ticket.Status == WarrantyTicketStatus.Rejected || ticket.Status == WarrantyTicketStatus.Cancelled)
+        {
+            throw new BadRequestException($"Phiếu bảo hành đang ở trạng thái {ticket.Status} và đã kết thúc xử lý.");
+        }
+
+        ticket.Status = WarrantyTicketStatus.Processing;
+        ticket.VendorName = request.VendorName.Trim();
+        ticket.VendorTicketNumber = request.VendorTicketNumber.Trim();
+        ticket.TrackingNumber = request.TrackingNumber.Trim();
+        ticket.VendorSubStatus = VendorSubStatus.AtVendor;
+
+        var vendorInfo = $"TTBH: {request.VendorName.Trim()}, Mã phiếu hãng: {request.VendorTicketNumber.Trim()}, Vận đơn: {request.TrackingNumber.Trim()}";
+        ticket.Note = string.IsNullOrEmpty(ticket.Note)
+            ? $"[Gửi hãng OEM RMA: {vendorInfo}] {request.Notes?.Trim()}"
+            : $"{ticket.Note} | [Gửi hãng OEM RMA: {vendorInfo}] {request.Notes?.Trim()}";
+
+        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
+        string actorName = _currentUserService?.Username ?? "Nhân viên";
+
+        var history = new WarrantyHistoryEntity
+        {
+            WarrantyTicketId = ticket.Id,
+            Action = "Gửi hãng ủy quyền (OEM RMA)",
+            Status = WarrantyTicketStatus.Processing.ToString(),
+            Description = $"Chuyển thiết bị sang trung tâm bảo hành Hãng/NCC: {request.VendorName.Trim()}. Mã tiếp nhận hãng: {request.VendorTicketNumber.Trim()}. Mã vận đơn: {request.TrackingNumber.Trim()}. Ghi chú: {request.Notes?.Trim()}",
+            ActorId = actorId,
+            ActorName = actorName,
+            Notes = request.Notes?.Trim()
+        };
+        await historyRepo.AddAsync(history, cancellationToken);
+
+        ticketRepo.Update(ticket);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 8. Bàn giao thiết bị trả lại cho khách hàng (Deliver).
+    /// Hoàn tất vòng đời bảo hành khi máy đã xử lý xong hoặc máy bị từ chối bàn giao lại cho khách.
+    /// </summary>
+    public async Task<bool> Handle(DeliverToCustomerCommand request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<WarrantyTicketEntity>();
+        var historyRepo = _unitOfWork.Repository<WarrantyHistoryEntity>();
+        var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
+
+        var ticket = await ticketRepo.GetByIdAsync(request.WarrantyTicketId, cancellationToken);
+        if (ticket == null)
+        {
+            throw new NotFoundException("Phiếu bảo hành", request.WarrantyTicketId);
+        }
+
+        var salesOrder = ticket.SalesOrderId.HasValue
+            ? await _unitOfWork.Repository<SalesOrderEntity>().GetByIdAsync(ticket.SalesOrderId.Value, cancellationToken)
+            : null;
+        if (!_scopeContext.IsEnterpriseScope && salesOrder != null)
+        {
+            _scopeContext.ValidateBranchAccess(salesOrder.BranchId, "phiếu bảo hành");
+        }
+
+        if (request.RowVersion == null || !ticket.RowVersion.SequenceEqual(request.RowVersion))
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        // Only allow delivery if ticket is in Processing or Rejected
+        if (ticket.Status != WarrantyTicketStatus.Processing && ticket.Status != WarrantyTicketStatus.Rejected)
+        {
+            throw new BadRequestException($"Chỉ cho phép bàn giao trả khách khi phiếu bảo hành ở trạng thái Đang xử lý (Processing) hoặc Từ chối (Rejected). Trạng thái hiện tại: {ticket.Status}.");
+        }
+
+        // Update status: If Processing -> Completed. If Rejected, stays Rejected with EndDate set.
+        if (ticket.Status == WarrantyTicketStatus.Processing)
+        {
+            ticket.Status = WarrantyTicketStatus.Completed;
+        }
+        ticket.EndDate = DateTime.UtcNow;
+
+        // Return IMEI status to Sold
+        if (!string.IsNullOrEmpty(ticket.Imei))
+        {
+            var imeis = await imeiRepo.FindAsync(x => x.Imei == ticket.Imei, cancellationToken);
+            var imeiEntity = imeis.FirstOrDefault();
+            if (imeiEntity != null && imeiEntity.Status == ImeiStatus.WarrantyHold)
+            {
+                imeiEntity.Status = ImeiStatus.Sold;
+                imeiRepo.Update(imeiEntity);
+            }
+        }
+
+        var receiver = !string.IsNullOrWhiteSpace(request.ReceiverName) ? request.ReceiverName.Trim() : "Khách hàng";
+        var deliverNotes = !string.IsNullOrWhiteSpace(request.Notes) ? request.Notes.Trim() : "Bàn giao thiết bị hoàn tất";
+
+        ticket.Note = string.IsNullOrEmpty(ticket.Note)
+            ? $"[Bàn giao trả khách: {receiver}] {deliverNotes}"
+            : $"{ticket.Note} | [Bàn giao trả khách: {receiver}] {deliverNotes}";
+
+        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
+        string actorName = _currentUserService?.Username ?? "Nhân viên tiếp tân";
+
+        var history = new WarrantyHistoryEntity
+        {
+            WarrantyTicketId = ticket.Id,
+            Action = "Bàn giao trả khách",
+            Status = ticket.Status.ToString(),
+            Description = $"Bàn giao thiết bị cho khách hàng ({receiver}). Ghi chú: {deliverNotes}. Hoàn tất quy trình bảo hành.",
+            ActorId = actorId,
+            ActorName = actorName,
+            Notes = deliverNotes
+        };
+        await historyRepo.AddAsync(history, cancellationToken);
+
+        ticketRepo.Update(ticket);
+
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("Phiếu bảo hành đã bị thay đổi bởi một giao dịch khác. Vui lòng tải lại dữ liệu.");
+        }
+
+        return true;
+    }
 }
+

@@ -21,13 +21,15 @@ public class ProductQueryHandlers :
     IRequestHandler<GetAllProductsQuery, IEnumerable<ProductDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFieldVisibilityService _fieldVisibility;
 
     /// <summary>
     /// Hàm khởi tạo, nhận vào IUnitOfWork để truy cập các Repo.
     /// </summary>
-    public ProductQueryHandlers(IUnitOfWork unitOfWork)
+    public ProductQueryHandlers(IUnitOfWork unitOfWork, IFieldVisibilityService? fieldVisibility = null)
     {
         _unitOfWork = unitOfWork;
+        _fieldVisibility = fieldVisibility ?? new PSP.Application.Common.Security.FieldVisibilityService();
     }
 
     /// <summary>
@@ -69,6 +71,7 @@ public class ProductQueryHandlers :
         }).ToList();
 
         dto.Variants = variantDtos;
+        _fieldVisibility.MaskProduct(dto);
 
         return dto;
     }
@@ -109,6 +112,8 @@ public class ProductQueryHandlers :
 
             return dto;
         }).ToList();
+
+        _fieldVisibility.MaskProducts(dtos);
 
         return dtos;
     }

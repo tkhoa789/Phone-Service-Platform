@@ -4,17 +4,14 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Sales.Commands;
 using PSP.Application.Modules.Sales.DTOs;
 using PSP.Application.Modules.Sales.Queries;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
 /// <summary>
 /// API Controller quản lý Hóa đơn & Giao dịch thanh toán (Invoices & Payments).
-/// 
-/// Dành cho người mới học và trình độ dưới junior:
-/// - Tiếp nhận các yêu cầu xuất hóa đơn từ POS.
-/// - Cho phép ghi nhận giao dịch thanh toán và hủy bỏ hóa đơn.
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Invoice.View)]
 [Route("api/[controller]")]
 [Tags("Invoices")]
 public class InvoiceController : BaseApiController
@@ -23,7 +20,7 @@ public class InvoiceController : BaseApiController
     /// API Xuất hóa đơn tài chính mới từ một Đơn bán hàng (SalesOrder).
     /// POST: /api/Invoice
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
+    [Authorize(Policy = Permissions.Invoice.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInvoiceCommand command, CancellationToken cancellationToken)
     {
@@ -35,7 +32,7 @@ public class InvoiceController : BaseApiController
     /// API Ghi nhận giao dịch thanh toán mới cho hóa đơn (Chấp nhận thanh toán nhiều lần).
     /// POST: /api/Invoice/payment
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
+    [Authorize(Policy = Permissions.Invoice.Create)]
     [HttpPost("payment")]
     public async Task<IActionResult> Pay([FromBody] CreatePaymentCommand command, CancellationToken cancellationToken)
     {
@@ -44,10 +41,10 @@ public class InvoiceController : BaseApiController
     }
 
     /// <summary>
-    /// API Hủy hóa đơn tài chính (Chỉ được phép hủy khi hóa đơn chưa thanh toán).
+    /// API Hủy hóa đơn tài chính (Invoice.CANCEL - Owner, Admin, Manager).
     /// PUT: /api/Invoice/{id}/cancel
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
+    [Authorize(Policy = Permissions.Invoice.Cancel)]
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {

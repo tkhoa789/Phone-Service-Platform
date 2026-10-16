@@ -25,15 +25,18 @@ namespace PSP.Application.Modules.Repair.Handlers;
 /// </summary>
 public class RepairQueryHandlers :
     IRequestHandler<GetRepairTicketByIdQuery, RepairTicketDto>,
-    IRequestHandler<GetRepairTicketsQuery, (IEnumerable<RepairTicketDto> Items, int TotalCount)>
+    IRequestHandler<GetRepairTicketsQuery, (IEnumerable<RepairTicketDto> Items, int TotalCount)>,
+    IRequestHandler<GetRepairQueueStatsQuery, RepairQueueStatsDto>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IScopeContextService _scopeContext;
 
-    public RepairQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public RepairQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -57,6 +60,9 @@ public class RepairQueryHandlers :
             throw new NotFoundException("Phiếu sửa chữa", request.Id);
         }
 
+        // Fail-Closed Branch Isolation Check
+        _scopeContext.ValidateBranchAccess(ticket.BranchId, "phiếu sửa chữa");
+
         // 1.2 Nạp thông tin Khách hàng
         var customer = await customerRepo.GetByIdAsNoTrackingAsync(ticket.CustomerId, cancellationToken);
         
@@ -65,18 +71,6 @@ public class RepairQueryHandlers :
 
         // 1.4 Nạp thông tin Nhân viên tiếp nhận và Kỹ thuật viên
         var receivedBy = await userRepo.GetByIdAsNoTrackingAsync(ticket.ReceivedById, cancellationToken);
-        
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
-            {
-                if (ticket.BranchId != userBranchId)
-                {
-                    throw new ForbiddenException("Bạn không có quyền truy cập phiếu sửa chữa của chi nhánh khác.");
-                }
-            }
-        }
 
         var technician = ticket.TechnicianId.HasValue
             ? await userRepo.GetByIdAsNoTrackingAsync(ticket.TechnicianId.Value, cancellationToken)
@@ -98,10 +92,17 @@ public class RepairQueryHandlers :
                 ProductName = partVariant?.Name ?? "Linh kiện không xác định",
                 ProductSku = partVariant?.Sku ?? string.Empty,
                 Quantity = part.Quantity,
-                UnitPrice = part.UnitPrice
+                UnitPrice = part.UnitPrice,
+                Status = part.Status.ToString(),
+                AddedBy = part.CreatedBy,
+                AddedAt = part.CreatedAt,
+                RowVersion = part.RowVersion
             });
 
-            partsTotal += part.UnitPrice * part.Quantity;
+            if (part.Status != RepairPartStatus.Returned)
+            {
+                partsTotal += part.UnitPrice * part.Quantity;
+            }
         }
 
         // 1.6 Lấy lịch sử chuyển đổi trạng thái của phiếu sửa chữa
@@ -114,6 +115,10 @@ public class RepairQueryHandlers :
                 RepairTicketId = h.RepairTicketId,
                 Status = h.Status,
                 Note = h.Note,
+                Action = h.Action ?? "Status Changed",
+                ActorId = h.ActorId,
+                ActorName = h.ActorName ?? h.CreatedBy,
+                Details = h.Details,
                 CreatedAt = h.CreatedAt,
                 CreatedBy = h.CreatedBy
             })
@@ -184,7 +189,7 @@ public class RepairQueryHandlers :
             ProductVariantId = ticket.ProductVariantId,
             ProductName = variant?.Name ?? "Thiết bị không xác định",
             ProductSku = variant?.Sku ?? string.Empty,
-            Imei = ticket.Imei,
+            Imei = string.IsNullOrWhiteSpace(ticket.Imei) ? null : ticket.Imei.Trim(),
             ReceivedById = ticket.ReceivedById,
             ReceivedByName = receivedBy?.FullName ?? "Hệ thống",
             TechnicianId = ticket.TechnicianId,
@@ -192,14 +197,37 @@ public class RepairQueryHandlers :
             Code = ticket.Code,
             Status = ticket.Status.ToString(),
             ProblemDescription = ticket.ProblemDescription,
+            ExteriorCondition = string.IsNullOrWhiteSpace(ticket.ExteriorCondition) ? null : ticket.ExteriorCondition.Trim(),
+            CustomModelName = string.IsNullOrWhiteSpace(ticket.CustomModelName) ? null : ticket.CustomModelName.Trim(),
             EstimatedCost = ticket.EstimatedCost,
             ActualCost = ticket.ActualCost,
             LaborCost = ticket.LaborCost,
             PartsTotal = partsTotal,
             ReceivedDate = ticket.ReceivedDate,
             CompletedDate = ticket.CompletedDate,
+            // Section 5: Diagnosis
+            DiagnosisRootCause = ticket.DiagnosisRootCause,
+            DiagnosisProposedSolution = ticket.DiagnosisProposedSolution,
+            EstimatedDays = ticket.EstimatedDays,
+            TechnicalNotes = ticket.TechnicalNotes,
+            DiagnosedAt = ticket.DiagnosedAt,
+            DiagnosedById = ticket.DiagnosedById,
+            // Section 6: Approval
+            CustomerApprovalStatus = ticket.CustomerApprovalStatus,
+            CustomerApprovedAt = ticket.CustomerApprovedAt,
+            CustomerApprovedById = ticket.CustomerApprovedById,
+            CustomerApprovalMethod = ticket.CustomerApprovalMethod,
+            CustomerApprovedAmount = ticket.CustomerApprovedAmount,
+            CustomerApprovalNote = ticket.CustomerApprovalNote,
+            // Section 12: Delivery
+            DeliveredById = ticket.DeliveredById,
+            DeliveredAt = ticket.DeliveredAt,
+            DeliveredToCustomerName = ticket.DeliveredToCustomerName,
+            DeliveryNotes = ticket.DeliveryNotes,
+            DeliverySignatureUrl = ticket.DeliverySignatureUrl,
             CreatedAt = ticket.CreatedAt,
             CreatedBy = ticket.CreatedBy,
+            IsTest = ticket.IsTest,
             Parts = partDtos,
             StatusHistories = historyDtos,
             Checklists = checklistDtos,
@@ -219,21 +247,38 @@ public class RepairQueryHandlers :
         var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
         var userRepo = _unitOfWork.Repository<UserEntity>();
         var partRepo = _unitOfWork.Repository<RepairPartEntity>();
+        var depositRepo = _unitOfWork.Repository<RepairDepositEntity>();
 
         // 2.1 Sử dụng IQueryable để xây dựng câu truy vấn động trên SQL Server
         var query = ticketRepo.GetQueryableAsNoTracking();
 
-        // 2.1.5 Branch Isolation
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        // 2.1.5 Fail-Closed Branch Isolation
+        if (!_scopeContext.IsEnterpriseScope)
         {
+            var userBranchId = _scopeContext.GetRequiredBranchId();
             query = query.Where(t => t.BranchId == userBranchId);
         }
 
-        // 2.2 Áp dụng các bộ lọc nếu được truyền lên từ API
-        if (!string.IsNullOrWhiteSpace(request.Code))
+        // 2.1.6 Ẩn dữ liệu test mặc định (chỉ hiển thị khi IncludeTest = true)
+        if (!request.IncludeTest)
         {
-            var cleanCode = request.Code.Trim();
-            query = query.Where(t => t.Code.Contains(cleanCode));
+            query = query.Where(t => !t.IsTest);
+        }
+
+        // 2.2 Áp dụng các bộ lọc nếu được truyền lên từ API
+        var search = !string.IsNullOrWhiteSpace(request.Search) ? request.Search.Trim() : (!string.IsNullOrWhiteSpace(request.Code) ? request.Code.Trim() : null);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var matchingCustomerIds = customerRepo.GetQueryableAsNoTracking()
+                .Where(c => c.FullName.Contains(search) || c.Phone.Contains(search))
+                .Select(c => c.Id)
+                .ToList();
+
+            query = query.Where(t => t.Code.Contains(search) 
+                || (t.Imei != null && t.Imei.Contains(search)) 
+                || t.ProblemDescription.Contains(search)
+                || (t.CustomModelName != null && t.CustomModelName.Contains(search))
+                || matchingCustomerIds.Contains(t.CustomerId));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Status))
@@ -254,12 +299,77 @@ public class RepairQueryHandlers :
             query = query.Where(t => t.TechnicianId == request.TechnicianId.Value);
         }
 
+        // 2.2.5 Bộ lọc hàng chờ chuyên dụng (Work Queue Tab)
+        if (!string.IsNullOrWhiteSpace(request.Queue))
+        {
+            var q = request.Queue.Trim().ToUpperInvariant();
+            if (q == "UNASSIGNED")
+            {
+                query = query.Where(t => 
+                    (!t.TechnicianId.HasValue || t.TechnicianId.Value == Guid.Empty || t.Status == RepairTicketStatus.PendingAssignment) &&
+                    t.Status != RepairTicketStatus.Completed && 
+                    t.Status != RepairTicketStatus.WaitingPickup && 
+                    t.Status != RepairTicketStatus.Delivered && 
+                    t.Status != RepairTicketStatus.Cancelled);
+            }
+            else if (q == "MY_TICKETS")
+            {
+                if (Guid.TryParse(_currentUserService?.UserId, out var currentUserId))
+                {
+                    query = query.Where(t => 
+                        t.TechnicianId.HasValue && 
+                        t.TechnicianId.Value == currentUserId &&
+                        t.Status != RepairTicketStatus.Completed && 
+                        t.Status != RepairTicketStatus.WaitingPickup && 
+                        t.Status != RepairTicketStatus.Delivered && 
+                        t.Status != RepairTicketStatus.Cancelled);
+                }
+            }
+            else if (q == "IN_PROGRESS")
+            {
+                var inProgressStatuses = new[]
+                {
+                    RepairTicketStatus.Received,
+                    RepairTicketStatus.Diagnosing,
+                    RepairTicketStatus.WaitingApproval,
+                    RepairTicketStatus.WaitingForParts,
+                    RepairTicketStatus.Repairing,
+                    RepairTicketStatus.WaitingQC
+                };
+                query = query.Where(t => inProgressStatuses.Contains(t.Status));
+            }
+            else if (q == "COMPLETED")
+            {
+                query = query.Where(t => 
+                    t.Status == RepairTicketStatus.Completed || 
+                    t.Status == RepairTicketStatus.WaitingPickup);
+            }
+            else if (q == "DELIVERED")
+            {
+                query = query.Where(t => t.Status == RepairTicketStatus.Delivered);
+            }
+            else if (q == "BLOCKED")
+            {
+                query = query.Where(t => 
+                    t.Status == RepairTicketStatus.WaitingForParts || 
+                    t.Status == RepairTicketStatus.WaitingApproval);
+            }
+        }
+
         // 2.3 Lấy tổng số dòng khớp bộ lọc (để phục vụ việc tính toán phân trang ở Client)
         var totalCount = query.Count();
 
-        // 2.4 Áp dụng Phân trang (Skip / Take) và sắp xếp mới nhất lên đầu
+        // 2.4 Áp dụng Phân trang (Skip / Take) và sắp xếp nghiệp vụ:
+        // Nhóm 0: Máy chưa có KTV nhận (!TechnicianId.HasValue) và chưa đóng -> ƯU TIÊN LÊN ĐẦU
+        // Nhóm 1: Máy đã có KTV nhận đang trong tiến trình xử lý -> XẾP TIẾP THEO
+        // Nhóm 2: Máy đã hoàn tất / bàn giao / hủy (Completed, Delivered, Cancelled) -> XẾP CUỐI CÙNG
+        // Trong mỗi nhóm: Sắp xếp theo CreatedAt giảm dần (mới nhất lên trước)
         var tickets = query
-            .OrderByDescending(t => t.CreatedAt)
+            .OrderBy(t => 
+                (t.Status == RepairTicketStatus.Completed || t.Status == RepairTicketStatus.Delivered || t.Status == RepairTicketStatus.Cancelled) ? 2 :
+                (!t.TechnicianId.HasValue ? 0 : 1)
+            )
+            .ThenByDescending(t => t.CreatedAt)
             .Skip((request.PageIndex - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToList();
@@ -276,9 +386,25 @@ public class RepairQueryHandlers :
                 ? await userRepo.GetByIdAsNoTrackingAsync(ticket.TechnicianId.Value, cancellationToken)
                 : null;
 
-            // Tính tổng tiền linh kiện đã lắp cho phiếu này
+            // Tính tổng tiền linh kiện đã lắp cho phiếu này (không tính linh kiện đã hoàn trả)
             var parts = await partRepo.FindAsNoTrackingAsync(p => p.RepairTicketId == ticket.Id && !p.IsDeleted, cancellationToken);
-            decimal partsTotal = parts.Sum(p => p.UnitPrice * p.Quantity);
+            decimal partsTotal = parts.Where(p => p.Status != RepairPartStatus.Returned).Sum(p => p.UnitPrice * p.Quantity);
+
+            var deposits = await depositRepo.FindAsNoTrackingAsync(d => d.RepairTicketId == ticket.Id && !d.IsDeleted, cancellationToken);
+            var depositDtos = deposits.Select(d => new RepairDepositDto
+            {
+                Id = d.Id,
+                RepairTicketId = d.RepairTicketId,
+                Amount = d.Amount,
+                PaymentMethodId = d.PaymentMethodId,
+                PaymentMethodName = d.PaymentMethod?.Name ?? "Tiền mặt",
+                TransactionCode = d.TransactionCode,
+                ReceivedById = d.ReceivedById,
+                ReceivedByName = string.Empty,
+                PaidAt = d.PaidAt,
+                Status = d.Status.ToString(),
+                AppliedToInvoiceId = d.AppliedToInvoiceId
+            }).ToList();
 
             dtoList.Add(new RepairTicketDto
             {
@@ -289,7 +415,7 @@ public class RepairQueryHandlers :
                 ProductVariantId = ticket.ProductVariantId,
                 ProductName = variant?.Name ?? "Thiết bị không xác định",
                 ProductSku = variant?.Sku ?? string.Empty,
-                Imei = ticket.Imei,
+                Imei = string.IsNullOrWhiteSpace(ticket.Imei) ? null : ticket.Imei.Trim(),
                 ReceivedById = ticket.ReceivedById,
                 ReceivedByName = receivedBy?.FullName ?? "Hệ thống",
                 TechnicianId = ticket.TechnicianId,
@@ -297,17 +423,131 @@ public class RepairQueryHandlers :
                 Code = ticket.Code,
                 Status = ticket.Status.ToString(),
                 ProblemDescription = ticket.ProblemDescription,
+                ExteriorCondition = string.IsNullOrWhiteSpace(ticket.ExteriorCondition) ? null : ticket.ExteriorCondition.Trim(),
+                CustomModelName = string.IsNullOrWhiteSpace(ticket.CustomModelName) ? null : ticket.CustomModelName.Trim(),
                 EstimatedCost = ticket.EstimatedCost,
                 ActualCost = ticket.ActualCost,
                 LaborCost = ticket.LaborCost,
                 PartsTotal = partsTotal,
                 ReceivedDate = ticket.ReceivedDate,
                 CompletedDate = ticket.CompletedDate,
+                DiagnosisRootCause = ticket.DiagnosisRootCause,
+                DiagnosisProposedSolution = ticket.DiagnosisProposedSolution,
+                EstimatedDays = ticket.EstimatedDays,
+                TechnicalNotes = ticket.TechnicalNotes,
+                DiagnosedAt = ticket.DiagnosedAt,
+                DiagnosedById = ticket.DiagnosedById,
+                CustomerApprovalStatus = ticket.CustomerApprovalStatus,
+                CustomerApprovedAt = ticket.CustomerApprovedAt,
+                CustomerApprovedById = ticket.CustomerApprovedById,
+                CustomerApprovalMethod = ticket.CustomerApprovalMethod,
+                CustomerApprovedAmount = ticket.CustomerApprovedAmount,
+                CustomerApprovalNote = ticket.CustomerApprovalNote,
+                DeliveredById = ticket.DeliveredById,
+                DeliveredAt = ticket.DeliveredAt,
+                DeliveredToCustomerName = ticket.DeliveredToCustomerName,
+                DeliveryNotes = ticket.DeliveryNotes,
+                DeliverySignatureUrl = ticket.DeliverySignatureUrl,
                 CreatedAt = ticket.CreatedAt,
-                CreatedBy = ticket.CreatedBy
+                CreatedBy = ticket.CreatedBy,
+                IsTest = ticket.IsTest,
+                Deposits = depositDtos
             });
         }
 
         return (dtoList, totalCount);
+    }
+
+    /// <summary>
+    /// 3. Truy vấn thống kê số lượng phiếu sửa chữa theo từng hàng chờ nghiệp vụ.
+    /// Đảm bảo tính toán chính xác 100% từ Database theo phân quyền chi nhánh.
+    /// </summary>
+    public async Task<RepairQueueStatsDto> Handle(GetRepairQueueStatsQuery request, CancellationToken cancellationToken)
+    {
+        var ticketRepo = _unitOfWork.Repository<RepairTicketEntity>();
+        var baseQuery = ticketRepo.GetQueryableAsNoTracking();
+
+        // Fail-Closed Branch Isolation
+        if (!_scopeContext.IsEnterpriseScope)
+        {
+            var userBranchId = _scopeContext.GetRequiredBranchId();
+            baseQuery = baseQuery.Where(t => t.BranchId == userBranchId);
+        }
+
+        // Ẩn dữ liệu test mặc định
+        if (!request.IncludeTest)
+        {
+            baseQuery = baseQuery.Where(t => !t.IsTest);
+        }
+
+        Guid currentUserId = Guid.Empty;
+        if (!string.IsNullOrWhiteSpace(_currentUserService?.UserId))
+        {
+            Guid.TryParse(_currentUserService.UserId, out currentUserId);
+        }
+
+        // 1. Chờ nhận việc: Chưa có KTV (hoặc PendingAssignment) và chưa đóng
+        var unassignedCount = baseQuery.Count(t =>
+            (!t.TechnicianId.HasValue || t.TechnicianId.Value == Guid.Empty || t.Status == RepairTicketStatus.PendingAssignment) &&
+            t.Status != RepairTicketStatus.Completed &&
+            t.Status != RepairTicketStatus.WaitingPickup &&
+            t.Status != RepairTicketStatus.Delivered &&
+            t.Status != RepairTicketStatus.Cancelled);
+
+        // 2. Việc của tôi: Thuộc về KTV hiện tại và chưa đóng
+        var myTasksCount = currentUserId != Guid.Empty
+            ? baseQuery.Count(t =>
+                t.TechnicianId.HasValue &&
+                t.TechnicianId.Value == currentUserId &&
+                t.Status != RepairTicketStatus.Completed &&
+                t.Status != RepairTicketStatus.WaitingPickup &&
+                t.Status != RepairTicketStatus.Delivered &&
+                t.Status != RepairTicketStatus.Cancelled)
+            : 0;
+
+        // 3. Đang trong tiến trình sửa chữa
+        var inProgressStatuses = new[]
+        {
+            RepairTicketStatus.Received,
+            RepairTicketStatus.Diagnosing,
+            RepairTicketStatus.WaitingApproval,
+            RepairTicketStatus.WaitingForParts,
+            RepairTicketStatus.Repairing,
+            RepairTicketStatus.WaitingQC
+        };
+        var inProgressCount = baseQuery.Count(t => inProgressStatuses.Contains(t.Status));
+
+        // 4. Đã hoàn tất sửa chữa (Đang chờ khách lấy tại cửa hàng) - KHÔNG BAO GỒM Delivered
+        var completedCount = baseQuery.Count(t =>
+            t.Status == RepairTicketStatus.Completed || t.Status == RepairTicketStatus.WaitingPickup);
+
+        // 5. Đã bàn giao cho khách (Máy đã rời khỏi cửa hàng)
+        var deliveredCount = baseQuery.Count(t =>
+            t.Status == RepairTicketStatus.Delivered);
+
+        // 6. Tổng số phiếu trong chi nhánh
+        var totalCount = baseQuery.Count();
+
+        // 7. Chi tiết các trạng thái kỹ thuật (Đếm trực tiếp từ Database)
+        var waitingForPartsCount = baseQuery.Count(t => t.Status == RepairTicketStatus.WaitingForParts);
+        var waitingApprovalCount = baseQuery.Count(t => t.Status == RepairTicketStatus.WaitingApproval);
+        var diagnosingCount = baseQuery.Count(t => t.Status == RepairTicketStatus.Diagnosing);
+        var repairingCount = baseQuery.Count(t => t.Status == RepairTicketStatus.Repairing);
+        var waitingQcCount = baseQuery.Count(t => t.Status == RepairTicketStatus.WaitingQC);
+
+        return new RepairQueueStatsDto
+        {
+            UnassignedCount = unassignedCount,
+            MyTasksCount = myTasksCount,
+            InProgressCount = inProgressCount,
+            CompletedCount = completedCount,
+            DeliveredCount = deliveredCount,
+            TotalCount = totalCount,
+            WaitingForPartsCount = waitingForPartsCount,
+            WaitingApprovalCount = waitingApprovalCount,
+            DiagnosingCount = diagnosingCount,
+            RepairingCount = repairingCount,
+            WaitingQcCount = waitingQcCount
+        };
     }
 }

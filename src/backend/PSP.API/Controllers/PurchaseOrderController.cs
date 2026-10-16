@@ -4,6 +4,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Application.Modules.Inventory.DTOs;
 using PSP.Application.Modules.Inventory.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER quản lý các API liên quan đến Phiếu nhập kho (Purchase Orders).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.PurchaseOrder.View)]
 [Route("api/[controller]")]
 [Tags("PurchaseOrders")]
 public class PurchaseOrderController : BaseApiController
@@ -23,7 +24,7 @@ public class PurchaseOrderController : BaseApiController
     /// API Tạo mới Phiếu nhập kho (Trạng thái mặc định là Draft).
     /// POST: /api/PurchaseOrder
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.PurchaseOrder.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePurchaseOrderCommand command, CancellationToken cancellationToken)
     {
@@ -35,7 +36,7 @@ public class PurchaseOrderController : BaseApiController
     /// API Cập nhật Phiếu nhập kho (Chỉ áp dụng khi phiếu ở trạng thái Draft).
     /// PUT: /api/PurchaseOrder/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.PurchaseOrder.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePurchaseOrderCommand command, CancellationToken cancellationToken)
     {
@@ -49,10 +50,10 @@ public class PurchaseOrderController : BaseApiController
     }
 
     /// <summary>
-    /// API Hoàn tất nhập kho (Received - Nhận hàng thành công). Kích hoạt cộng tồn kho và sinh thẻ IMEI.
+    /// API Hoàn tất nhận hàng nhập kho (Received - PurchaseOrder.RECEIVE).
     /// PUT: /api/PurchaseOrder/{id}/complete
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.PurchaseOrder.Receive)]
     [HttpPut("{id:guid}/complete")]
     public async Task<IActionResult> Complete(Guid id, [FromBody] CompletePurchaseOrderCommand command, CancellationToken cancellationToken)
     {
@@ -66,15 +67,21 @@ public class PurchaseOrderController : BaseApiController
     }
 
     /// <summary>
-    /// API Hủy phiếu nhập kho.
+    /// API Hủy phiếu nhập kho (PurchaseOrder.CANCEL - Owner, Admin, Manager).
     /// PUT: /api/PurchaseOrder/{id}/cancel
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.PurchaseOrder.Cancel)]
     [HttpPut("{id:guid}/cancel")]
-    public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelPurchaseOrderCommand command, CancellationToken cancellationToken)
+    public async Task<IActionResult> Cancel(Guid id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] CancelPurchaseOrderCommand? command, CancellationToken cancellationToken)
     {
-        if (id != command.Id) return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
-        var result = await Mediator.Send(command, cancellationToken);
+        if (command != null && command.Id != Guid.Empty && id != command.Id)
+        {
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
+        }
+        var effectiveCommand = command == null || command.Id == Guid.Empty
+            ? new CancelPurchaseOrderCommand(id, command?.RowVersion ?? Array.Empty<byte>())
+            : command;
+        var result = await Mediator.Send(effectiveCommand, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Hủy phiếu nhập kho thành công."));
     }
 
@@ -82,12 +89,18 @@ public class PurchaseOrderController : BaseApiController
     /// API Xóa mềm Phiếu nhập kho (Chỉ áp dụng khi phiếu ở trạng thái Draft).
     /// DELETE: /api/PurchaseOrder/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.PurchaseOrder.Cancel)]
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, [FromBody] DeletePurchaseOrderCommand command, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] DeletePurchaseOrderCommand? command, CancellationToken cancellationToken)
     {
-        if (id != command.Id) return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
-        var result = await Mediator.Send(command, cancellationToken);
+        if (command != null && command.Id != Guid.Empty && id != command.Id)
+        {
+            return BadRequest(ApiResponse<bool>.Fail("SYS_002", "Id trên URL và Body không khớp."));
+        }
+        var effectiveCommand = command == null || command.Id == Guid.Empty
+            ? new DeletePurchaseOrderCommand(id, command?.RowVersion ?? Array.Empty<byte>())
+            : command;
+        var result = await Mediator.Send(effectiveCommand, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Xóa phiếu nhập kho thành công."));
     }
 

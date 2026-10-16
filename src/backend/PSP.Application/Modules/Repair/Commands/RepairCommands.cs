@@ -13,7 +13,11 @@ public record CreateRepairTicketCommand(
     string? Imei,
     string ProblemDescription,
     decimal? EstimatedCost,
-    Guid? TechnicianId
+    Guid? TechnicianId,
+    string? ExteriorCondition = null,
+    string? CustomModelName = null,
+    bool IsTest = false,
+    Guid? BranchId = null
 ) : IRequest<Guid>;
 
 /// <summary>
@@ -80,4 +84,79 @@ public record WriteOffRepairPartCommand(
     Guid RepairPartId,
     string Reason,
     byte[] RowVersion
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh phân công Kỹ thuật viên phụ trách sửa chữa (Section 7).
+/// </summary>
+public record AssignTechnicianCommand(
+    Guid RepairTicketId,
+    Guid TechnicianId
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh bắt đầu chẩn đoán thiết bị (Received -> Diagnosing) (Section 5).
+/// </summary>
+public record StartDiagnosisCommand(
+    Guid RepairTicketId
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh nộp kết quả chẩn đoán và phương án sửa chữa (Section 5).
+/// </summary>
+public record SubmitDiagnosisCommand(
+    Guid RepairTicketId,
+    string RootCause,
+    string ProposedSolution,
+    decimal? EstimatedCost,
+    int? EstimatedDays,
+    string? TechnicalNotes,
+    bool RequiresCustomerApproval,
+    bool WaitingForParts = false
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh khách hàng phê duyệt phương án & báo giá sửa chữa (WaitingApproval -> Repairing) (Section 6).
+/// </summary>
+public record ApproveRepairCommand(
+    Guid RepairTicketId,
+    decimal ApprovedAmount,
+    string ApprovalMethod,
+    string? Note
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh khách hàng từ chối sửa chữa (WaitingApproval -> Cancelled) (Section 6).
+/// </summary>
+public record RejectRepairCommand(
+    Guid RepairTicketId,
+    string? Reason
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh sử dụng / lắp ráp linh kiện vào máy (Section 8).
+/// </summary>
+public record UseRepairPartCommand(
+    Guid RepairTicketId,
+    Guid RepairPartId,
+    byte[] RowVersion
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh hoàn tất sửa chữa (WaitingQC / Repairing -> Completed) (Section 11).
+/// </summary>
+public record CompleteRepairCommand(
+    Guid RepairTicketId,
+    string? CompletionNotes
+) : IRequest<bool>;
+
+/// <summary>
+/// Lệnh bàn giao thiết bị cho khách hàng (WaitingPickup / Completed -> Delivered) (Section 12).
+/// </summary>
+public record DeliverRepairCommand(
+    Guid RepairTicketId,
+    string ReceiverName,
+    string? ReceiverPhone,
+    string? Notes,
+    string? CustomerSignatureUrl
 ) : IRequest<bool>;

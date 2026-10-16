@@ -45,7 +45,7 @@ public class ProductVariantDto
     /// <summary>
     /// Giá nhập kho gốc của sản phẩm.
     /// </summary>
-    public decimal CostPrice { get; set; }
+    public decimal? CostPrice { get; set; }
 
     /// <summary>
     /// Giá bán lẻ niêm yết.

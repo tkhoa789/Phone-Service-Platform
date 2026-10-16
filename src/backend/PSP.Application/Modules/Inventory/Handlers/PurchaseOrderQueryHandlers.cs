@@ -22,10 +22,12 @@ public class PurchaseOrderQueryHandlers :
     IRequestHandler<GetPurchaseOrdersQuery, IEnumerable<PurchaseOrderDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IScopeContextService _scopeContext;
 
-    public PurchaseOrderQueryHandlers(IUnitOfWork unitOfWork)
+    public PurchaseOrderQueryHandlers(IUnitOfWork unitOfWork, IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -49,6 +51,7 @@ public class PurchaseOrderQueryHandlers :
         // 2. Tải Nhà cung cấp & Kho hàng liên kết
         var supplier = await supplierRepo.GetByIdAsNoTrackingAsync(po.SupplierId, cancellationToken);
         var warehouse = await warehouseRepo.GetByIdAsNoTrackingAsync(po.WarehouseId, cancellationToken);
+        _scopeContext.ValidateBranchAccess(warehouse?.BranchId, "phiếu nhập kho");
 
         // 3. Tải tất cả chi tiết mặt hàng của phiếu nhập
         var items = await itemRepo.FindAsNoTrackingAsync(i => i.PurchaseOrderId == po.Id, cancellationToken);
@@ -58,6 +61,7 @@ public class PurchaseOrderQueryHandlers :
         dto.SupplierName = supplier?.Name ?? "Không xác định";
         dto.WarehouseName = warehouse?.Name ?? "Không xác định";
         dto.Status = po.Status.ToString();
+        dto.RowVersion = po.RowVersion;
         dto.Items = new List<PurchaseOrderItemDto>();
 
         // 5. Nạp thông tin biến thể sản phẩm cho từng Item
@@ -67,6 +71,7 @@ public class PurchaseOrderQueryHandlers :
             var itemDto = item.Adapt<PurchaseOrderItemDto>();
             itemDto.VariantName = variant?.Name ?? "Mặt hàng không tồn tại";
             itemDto.Sku = variant?.Sku ?? string.Empty;
+            itemDto.IsImeiControlled = await IsImeiControlledAsync(item.ProductVariantId, cancellationToken);
             dto.Items.Add(itemDto);
         }
 
@@ -87,6 +92,13 @@ public class PurchaseOrderQueryHandlers :
         // 1. Tải toàn bộ Phiếu nhập kho không theo dõi lên RAM
         var pos = await poRepo.GetAllAsNoTrackingAsync(cancellationToken);
 
+        // RBAC-03: Scope & Branch/Warehouse Isolation
+        var accessibleWarehouseIds = await _scopeContext.GetAccessibleWarehouseIdsAsync(_unitOfWork, cancellationToken);
+        if (accessibleWarehouseIds != null)
+        {
+            pos = pos.Where(x => accessibleWarehouseIds.Contains(x.WarehouseId));
+        }
+
         // 2. Áp dụng các điều kiện lọc (nếu có) trên RAM
         if (request.SupplierId.HasValue)
         {
@@ -95,6 +107,10 @@ public class PurchaseOrderQueryHandlers :
 
         if (request.WarehouseId.HasValue)
         {
+            if (accessibleWarehouseIds != null && !accessibleWarehouseIds.Contains(request.WarehouseId.Value))
+            {
+                throw new ForbiddenException("Bạn không có quyền truy cập kho hàng của chi nhánh khác.");
+            }
             pos = pos.Where(x => x.WarehouseId == request.WarehouseId.Value);
         }
 
@@ -120,6 +136,7 @@ public class PurchaseOrderQueryHandlers :
         {
             var dto = po.Adapt<PurchaseOrderDto>();
             dto.Status = po.Status.ToString();
+            dto.RowVersion = po.RowVersion;
 
             // Gán tên Nhà cung cấp
             if (supplierMap.TryGetValue(po.SupplierId, out var supplierName))
@@ -164,5 +181,36 @@ public class PurchaseOrderQueryHandlers :
         }).ToList();
 
         return dtos;
+    }
+
+    /// <summary>
+    /// HÀM TRỢ GIÚP: Xác định xem biến thể sản phẩm có bắt buộc quản lý theo IMEI hay không.
+    /// Dựa trên mã danh mục Code = "MOBILE" hoặc danh mục cha của nó có Code = "MOBILE".
+    /// </summary>
+    private async Task<bool> IsImeiControlledAsync(Guid productVariantId, CancellationToken cancellationToken)
+    {
+        var variant = await _unitOfWork.Repository<ProductVariantEntity>().GetByIdAsNoTrackingAsync(productVariantId, cancellationToken);
+        if (variant == null) return false;
+
+        var product = await _unitOfWork.Repository<ProductEntity>().GetByIdAsNoTrackingAsync(variant.ProductId, cancellationToken);
+        if (product == null) return false;
+
+        var category = await _unitOfWork.Repository<CategoryEntity>().GetByIdAsNoTrackingAsync(product.CategoryId, cancellationToken);
+        if (category == null) return false;
+
+        // Nếu mã danh mục trực tiếp là MOBILE
+        if (category.Code.StartsWith("MOBILE", StringComparison.OrdinalIgnoreCase)) return true;
+
+        // Nếu mã danh mục cha là MOBILE
+        if (category.ParentId.HasValue)
+        {
+            var parentCategory = await _unitOfWork.Repository<CategoryEntity>().GetByIdAsNoTrackingAsync(category.ParentId.Value, cancellationToken);
+            if (parentCategory != null && parentCategory.Code.StartsWith("MOBILE", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

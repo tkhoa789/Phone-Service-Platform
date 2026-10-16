@@ -17,8 +17,10 @@ public static class DependencyInjection
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         });
 
-        // Mapster setup can go here later
-        
+        services.AddScoped<PSP.Application.Common.Interfaces.IScopeContextService, PSP.Application.Common.Security.ScopeContextService>();
+        services.AddScoped<PSP.Application.Common.Interfaces.IFieldVisibilityService, PSP.Application.Common.Security.FieldVisibilityService>();
+        services.AddScoped<PSP.Application.Common.Interfaces.IAIAuthorizationService, PSP.Application.Common.Security.AIAuthorizationService>();
+
         return services;
     }
 }

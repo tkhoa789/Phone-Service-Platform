@@ -4,6 +4,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Application.Modules.Inventory.DTOs;
 using PSP.Application.Modules.Inventory.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -13,22 +14,17 @@ namespace PSP.API.Controllers;
 
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP liên quan đến Kho hàng (Warehouses).
-/// 
-/// Giải thích cho người mới bắt đầu:
-/// - Lớp này đón nhận HTTP Requests từ Client, gọi MediatR gửi Command/Query xuống tầng Application, và bọc kết quả trả về bằng ApiResponse.
-/// - Đường dẫn mặc định: /api/Warehouse
-/// - Nhóm Swagger: Warehouses
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Warehouse.View)]
 [Route("api/[controller]")]
 [Tags("Warehouses")]
 public class WarehouseController : BaseApiController
 {
     /// <summary>
-    /// API Tạo mới Kho hàng.
+    /// API Tạo mới Kho hàng (Warehouse.CREATE - Owner, Admin).
     /// POST: /api/Warehouse
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Warehouse.Create)]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateWarehouseCommand command, CancellationToken cancellationToken)
     {
@@ -37,10 +33,10 @@ public class WarehouseController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật thông tin Kho hàng.
+    /// API Cập nhật thông tin Kho hàng (Warehouse.UPDATE).
     /// PUT: /api/Warehouse/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Warehouse.Update)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWarehouseCommand command, CancellationToken cancellationToken)
     {
@@ -54,10 +50,10 @@ public class WarehouseController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa kho hàng (Xóa mềm).
+    /// API Xóa kho hàng (Warehouse.DELETE - Owner, Admin).
     /// DELETE: /api/Warehouse/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Warehouse.Delete)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

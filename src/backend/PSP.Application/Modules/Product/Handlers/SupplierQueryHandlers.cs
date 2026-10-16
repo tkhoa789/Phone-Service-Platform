@@ -14,10 +14,12 @@ public class SupplierQueryHandlers :
     IRequestHandler<GetSupplierDebtLedgerQuery, IEnumerable<SupplierDebtTransactionDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFieldVisibilityService _fieldVisibility;
 
-    public SupplierQueryHandlers(IUnitOfWork unitOfWork)
+    public SupplierQueryHandlers(IUnitOfWork unitOfWork, IFieldVisibilityService? fieldVisibility = null)
     {
         _unitOfWork = unitOfWork;
+        _fieldVisibility = fieldVisibility ?? new PSP.Application.Common.Security.FieldVisibilityService();
     }
 
     public async Task<SupplierDto> Handle(GetSupplierByIdQuery request, CancellationToken cancellationToken)
@@ -29,14 +31,18 @@ public class SupplierQueryHandlers :
             throw new NotFoundException("Nhà cung cấp", request.Id);
         }
 
-        return supplier.Adapt<SupplierDto>();
+        var dto = supplier.Adapt<SupplierDto>();
+        _fieldVisibility.MaskSupplier(dto);
+        return dto;
     }
 
     public async Task<IEnumerable<SupplierDto>> Handle(GetAllSuppliersQuery request, CancellationToken cancellationToken)
     {
         var supplierRepo = _unitOfWork.Repository<SupplierEntity>();
         var suppliers = await supplierRepo.GetAllAsNoTrackingAsync(cancellationToken);
-        return suppliers.Adapt<IEnumerable<SupplierDto>>();
+        var dtos = suppliers.Adapt<List<SupplierDto>>();
+        _fieldVisibility.MaskSuppliers(dtos);
+        return dtos;
     }
 
     public async Task<IEnumerable<SupplierDebtTransactionDto>> Handle(GetSupplierDebtLedgerQuery request, CancellationToken cancellationToken)

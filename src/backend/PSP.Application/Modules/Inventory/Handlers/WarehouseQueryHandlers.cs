@@ -24,11 +24,13 @@ public class WarehouseQueryHandlers :
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IScopeContextService _scopeContext;
 
-    public WarehouseQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public WarehouseQueryHandlers(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -46,14 +48,8 @@ public class WarehouseQueryHandlers :
             throw new NotFoundException("Kho hàng", request.Id);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && warehouse.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền truy cập kho hàng của chi nhánh khác.");
-            }
-        }
+        // Fail-Closed Branch Isolation Check
+        _scopeContext.ValidateBranchAccess(warehouse.BranchId, "kho hàng");
 
         // 2. Tải thông tin chi nhánh liên kết để lấy Tên chi nhánh
         var branch = await branchRepo.GetByIdAsNoTrackingAsync(warehouse.BranchId, cancellationToken);
@@ -80,14 +76,8 @@ public class WarehouseQueryHandlers :
             throw new NotFoundException("Chi nhánh", request.BranchId);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin)
-        {
-            if (Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId) && request.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền truy cập danh sách kho hàng của chi nhánh khác.");
-            }
-        }
+        // Fail-Closed Branch Isolation Check
+        _scopeContext.ValidateBranchAccess(request.BranchId, "chi nhánh");
 
         // 2. Truy vấn danh sách các kho của chi nhánh đó
         var warehouses = await warehouseRepo.FindAsNoTrackingAsync(w => w.BranchId == request.BranchId, cancellationToken);
@@ -115,9 +105,10 @@ public class WarehouseQueryHandlers :
         var warehousesQuery = warehouseRepo.GetQueryableAsNoTracking();
         var branchesQuery = branchRepo.GetQueryableAsNoTracking();
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
+        // Fail-Closed Branch Isolation Check
+        if (!_scopeContext.IsEnterpriseScope)
         {
+            var userBranchId = _scopeContext.GetRequiredBranchId();
             warehousesQuery = warehousesQuery.Where(w => w.BranchId == userBranchId);
             branchesQuery = branchesQuery.Where(b => b.Id == userBranchId);
         }

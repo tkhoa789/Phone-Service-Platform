@@ -22,13 +22,15 @@ public class WarehouseCommandHandlers :
     IRequestHandler<DeleteWarehouseCommand, bool>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IScopeContextService _scopeContext;
 
     /// <summary>
     /// Inject Unit of Work để quản lý các Repository và Transactions.
     /// </summary>
-    public WarehouseCommandHandlers(IUnitOfWork unitOfWork)
+    public WarehouseCommandHandlers(IUnitOfWork unitOfWork, IScopeContextService scopeContext)
     {
         _unitOfWork = unitOfWork;
+        _scopeContext = scopeContext;
     }
 
     /// <summary>
@@ -43,6 +45,8 @@ public class WarehouseCommandHandlers :
         {
             throw new NotFoundException("Chi nhánh", request.BranchId);
         }
+
+        _scopeContext.ValidateBranchAccess(request.BranchId, "chi nhánh");
 
         // 2. Kiểm tra trùng lặp mã kho hàng (Code)
         var warehouseRepo = _unitOfWork.Repository<WarehouseEntity>();
@@ -76,6 +80,8 @@ public class WarehouseCommandHandlers :
             throw new NotFoundException("Kho hàng", request.Id);
         }
 
+        _scopeContext.ValidateBranchAccess(warehouse.BranchId, "kho hàng");
+
         // 2. Cập nhật thông tin mới từ Command vào thực thể cũ
         request.Adapt(warehouse);
         warehouseRepo.Update(warehouse);
@@ -98,6 +104,8 @@ public class WarehouseCommandHandlers :
         {
             throw new NotFoundException("Kho hàng", request.Id);
         }
+
+        _scopeContext.ValidateBranchAccess(warehouse.BranchId, "kho hàng");
 
         // 2. KIỂM TRA RÀNG BUỘC 1: Còn hàng tồn kho khả dụng (Quantity > 0) trong kho không?
         var hasStock = await warehouseRepo.FindAsync(

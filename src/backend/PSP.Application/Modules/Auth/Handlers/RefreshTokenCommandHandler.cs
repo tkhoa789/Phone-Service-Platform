@@ -5,6 +5,7 @@ using PSP.Application.Modules.Auth.Commands;
 using PSP.Application.Modules.Auth.DTOs;
 using PSP.Domain.Common.Exceptions;
 using PSP.Domain.Modules.Auth.Entities;
+using PSP.Domain.Modules.Branch.Entities;
 
 namespace PSP.Application.Modules.Auth.Handlers;
 
@@ -80,6 +81,15 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         var newExpiry = DateTime.UtcNow.AddDays(7);
         await _authService.SaveRefreshTokenAsync(userId, newRefreshToken, newExpiry, cancellationToken);
 
+        var branchRepo = _unitOfWork.Repository<BranchEntity>();
+        var branch = await branchRepo.GetByIdAsNoTrackingAsync(user.BranchId, cancellationToken);
+        var userDto = user.Adapt<UserDto>() with
+        {
+            BranchName = branch?.Name ?? string.Empty,
+            BranchAddress = branch?.Address ?? string.Empty,
+            BranchPhone = branch?.Phone ?? string.Empty
+        };
+
         // ===== BƯỚC 5: TRẢ KẾT QUẢ =====
         return new AuthResponseDto
         {
@@ -87,7 +97,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
             RefreshToken = newRefreshToken,
             TokenType = "Bearer",
             ExpiresIn = 3600,
-            User = user.Adapt<UserDto>(),
+            User = userDto,
             Roles = roles,
             Permissions = permissions
         };

@@ -4,6 +4,7 @@ using PSP.Application.Common.Models;
 using PSP.Application.Modules.Inventory.Commands;
 using PSP.Application.Modules.Inventory.DTOs;
 using PSP.Application.Modules.Inventory.Queries;
+using PSP.Domain.Common.Constants;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -14,7 +15,7 @@ namespace PSP.API.Controllers;
 /// <summary>
 /// CONTROLLER tiếp nhận các yêu cầu HTTP quản lý Số lượng Tồn kho (Inventory) và Định danh thiết bị (IMEI).
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.Inventory.View)]
 [Route("api/[controller]")]
 [Tags("Inventory")]
 public class InventoryController : BaseApiController
@@ -47,7 +48,7 @@ public class InventoryController : BaseApiController
     /// API Cập nhật định mức tồn tối thiểu cảnh báo cho một dòng hàng tồn kho.
     /// PUT: /api/Inventory/{id}/min-stock
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.Inventory.ManageMinimumStock)]
     [HttpPut("{id:guid}/min-stock")]
     public async Task<IActionResult> UpdateMinStock(Guid id, [FromBody] int minimumStock, CancellationToken cancellationToken)
     {
@@ -60,6 +61,7 @@ public class InventoryController : BaseApiController
     /// API Tra cứu thông tin chi tiết của một mã số IMEI.
     /// GET: /api/Inventory/imei/{imei}
     /// </summary>
+    [Authorize(Policy = Permissions.IMEI.View)]
     [HttpGet("imei/{imei}")]
     public async Task<IActionResult> GetImeiDetails(string imei, CancellationToken cancellationToken)
     {
@@ -72,6 +74,7 @@ public class InventoryController : BaseApiController
     /// API Lấy danh sách các IMEI kèm bộ lọc tùy chọn.
     /// GET: /api/Inventory/imeis
     /// </summary>
+    [Authorize(Policy = Permissions.IMEI.View)]
     [HttpGet("imeis")]
     public async Task<IActionResult> GetImeis([FromQuery] Guid? warehouseId, [FromQuery] Guid? productVariantId, [FromQuery] string? status, CancellationToken cancellationToken)
     {
@@ -84,10 +87,20 @@ public class InventoryController : BaseApiController
     /// API Cập nhật trạng thái vòng đời của một mã số IMEI (InStock, Sold, Repairing, WarrantyHold, Disposed).
     /// PUT: /api/Inventory/imei/{imei}/status
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.IMEI.Manage)]
     [HttpPut("imei/{imei}/status")]
-    public async Task<IActionResult> UpdateImeiStatus(string imei, [FromBody] string status, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateImeiStatus(string imei, [FromBody] System.Text.Json.JsonElement body, CancellationToken cancellationToken)
     {
+        string status = string.Empty;
+        if (body.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            status = body.GetString() ?? string.Empty;
+        }
+        else if (body.ValueKind == System.Text.Json.JsonValueKind.Object && (body.TryGetProperty("status", out var prop) || body.TryGetProperty("Status", out prop)))
+        {
+            status = prop.GetString() ?? string.Empty;
+        }
+
         var command = new UpdateImeiStatusCommand(imei, status);
         var result = await Mediator.Send(command, cancellationToken);
         return Ok(ApiResponse<bool>.Success(result, "Cập nhật trạng thái IMEI thành công."));

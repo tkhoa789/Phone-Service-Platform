@@ -5,17 +5,14 @@ using PSP.Application.Modules.Sales.Commands;
 using PSP.Application.Modules.Sales.DTOs;
 using PSP.Application.Modules.Sales.Queries;
 using PSP.API.Attributes;
+using PSP.Domain.Common.Constants;
 
 namespace PSP.API.Controllers;
 
 /// <summary>
 /// API Controller quản lý các Đơn hàng bán lẻ (SalesOrders).
-/// 
-/// Dành cho người mới học và trình độ dưới junior:
-/// - Lớp này tiếp nhận các yêu cầu lập đơn hàng từ máy POS/Frontend.
-/// - Cung cấp cổng thay đổi trạng thái đơn hàng (Duyệt thanh toán / Hủy đơn) và tra cứu lịch sử mua hàng.
 /// </summary>
-[Authorize]
+[Authorize(Policy = Permissions.SalesOrder.View)]
 [Route("api/[controller]")]
 [Tags("SalesOrders")]
 public class SalesOrderController : BaseApiController
@@ -24,7 +21,7 @@ public class SalesOrderController : BaseApiController
     /// API Tạo mới đơn hàng bán lẻ (POS).
     /// POST: /api/SalesOrder
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
+    [Authorize(Policy = Permissions.SalesOrder.Create)]
     [HttpPost]
     [Idempotent]
     public async Task<IActionResult> Create([FromBody] CreateSalesOrderCommand command, CancellationToken cancellationToken)
@@ -34,10 +31,10 @@ public class SalesOrderController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật trạng thái đơn hàng (Pending -> Confirmed -> Completed / Cancelled).
+    /// API Cập nhật trạng thái đơn hàng.
     /// PUT: /api/SalesOrder/{id}/status
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager,Sales")]
+    [Authorize(Policy = Permissions.SalesOrder.Update)]
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateSalesOrderStatusCommand command, CancellationToken cancellationToken)
     {
@@ -51,10 +48,10 @@ public class SalesOrderController : BaseApiController
     }
 
     /// <summary>
-    /// API Xóa mềm đơn hàng (Chỉ cho phép xóa khi đơn hàng chưa Hoàn thành).
+    /// API Xóa mềm đơn hàng (SalesOrder.CANCEL - Owner, Admin, Manager).
     /// DELETE: /api/SalesOrder/{id}
     /// </summary>
-    [Authorize(Roles = "Owner,Admin,Manager")]
+    [Authorize(Policy = Permissions.SalesOrder.Cancel)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

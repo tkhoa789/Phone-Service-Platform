@@ -70,4 +70,9 @@ public class StockTakeItemDto
     /// Ghi chú chênh lệch (ví dụ: thất thoát, hư hỏng...)
     /// </summary>
     public string? Note { get; set; }
+    
+    /// <summary>
+    /// Cho biết mặt hàng có được quản lý theo mã IMEI hay không
+    /// </summary>
+    public bool IsImeiControlled { get; set; }
 }

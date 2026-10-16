@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using PSP.Application.Common.Interfaces;
+using PSP.Application.Common.Security;
 using PSP.Application.Modules.Sales.Commands;
 using PSP.Domain.Common.Enums;
 using PSP.Domain.Common.Exceptions;
@@ -28,13 +29,20 @@ public class InvoiceCommandHandlers :
     private readonly IMediator _mediator;
     private readonly ICurrentUserService _currentUserService;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly IScopeContextService _scopeContext;
 
-    public InvoiceCommandHandlers(IUnitOfWork unitOfWork, IMediator mediator, ICurrentUserService currentUserService, IIdempotencyService idempotencyService)
+    public InvoiceCommandHandlers(
+        IUnitOfWork unitOfWork, 
+        IMediator mediator, 
+        ICurrentUserService currentUserService, 
+        IIdempotencyService idempotencyService,
+        IScopeContextService? scopeContext = null)
     {
         _unitOfWork = unitOfWork;
         _mediator = mediator;
         _currentUserService = currentUserService;
         _idempotencyService = idempotencyService;
+        _scopeContext = scopeContext ?? new ScopeContextService(currentUserService);
     }
 
     /// <summary>
@@ -53,6 +61,9 @@ public class InvoiceCommandHandlers :
         {
             throw new NotFoundException("Đơn hàng", request.SalesOrderId);
         }
+
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(order.BranchId, "đơn hàng");
 
         // 2. Chặn xuất hóa đơn trùng lặp (Mỗi đơn hàng chỉ có tối đa 1 hóa đơn)
         var existingInvoices = await invoiceRepo.FindAsync(x => x.SalesOrderId == order.Id && !x.IsDeleted, cancellationToken);
@@ -112,14 +123,8 @@ public class InvoiceCommandHandlers :
             throw new NotFoundException("Hóa đơn", request.InvoiceId);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
-        {
-            if (invoice.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền thao tác trên hóa đơn của chi nhánh khác.");
-            }
-        }
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(invoice.BranchId, "hóa đơn");
 
         // BR-803: Không cho phép thanh toán cho hóa đơn đã Paid hoặc đã Cancelled
         if (invoice.Status == InvoiceStatus.Paid)
@@ -159,65 +164,61 @@ public class InvoiceCommandHandlers :
             throw new BadRequestException($"Số tiền gửi lên ({request.Amount:N0}đ) vượt quá dư nợ còn lại của hóa đơn ({remaining:N0}đ).");
         }
 
-        // 5. Ghi nhận giao dịch thanh toán mới
-        var payment = new PaymentEntity
+        // 5. Ghi nhận giao dịch thanh toán mới trong transaction nguyên tử
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
         {
-            InvoiceId = invoice.Id,
-            PaymentMethodId = request.PaymentMethodId,
-            Code = request.Code.Trim(),
-            Amount = request.Amount,
-            Status = PaymentStatus.Completed, // Ghi nhận thành công trực tiếp
-            PaymentDate = DateTime.UtcNow
-        };
+            var payment = new PaymentEntity
+            {
+                InvoiceId = invoice.Id,
+                PaymentMethodId = request.PaymentMethodId,
+                Code = request.Code.Trim(),
+                Amount = request.Amount,
+                Status = PaymentStatus.Completed, // Ghi nhận thành công trực tiếp
+                PaymentDate = DateTime.UtcNow
+            };
 
-        await paymentRepo.AddAsync(payment, cancellationToken);
+            await paymentRepo.AddAsync(payment, cancellationToken);
 
-        // 6. Kiểm tra xem hóa đơn đã được thanh toán đầy đủ chưa (BR-801)
-        decimal totalPaid = paidSoFar + request.Amount;
-        if (totalPaid >= invoice.Amount)
-        {
-            // Cập nhật trạng thái hóa đơn sang Paid
-            invoice.Status = InvoiceStatus.Paid;
-        }
-        
-        // Luôn trigger UPDATE trên InvoiceEntity để cập nhật RowVersion (ngăn chặn concurrency double payment)
-        invoice.UpdatedAt = DateTime.UtcNow;
-        invoiceRepo.Update(invoice);
+            // 6. Kiểm tra xem hóa đơn đã được thanh toán đầy đủ chưa (BR-801)
+            decimal totalPaid = paidSoFar + request.Amount;
+            if (totalPaid >= invoice.Amount)
+            {
+                // Cập nhật trạng thái hóa đơn sang Paid
+                invoice.Status = InvoiceStatus.Paid;
+            }
+            
+            // Luôn trigger UPDATE trên InvoiceEntity để cập nhật RowVersion (ngăn chặn concurrency double payment)
+            invoice.UpdatedAt = DateTime.UtcNow;
+            invoiceRepo.Update(invoice);
 
-        // Transaction Boundary 1: Lưu Payment và Invoice
-        try 
-        {
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
-        {
-            throw new ConflictException("Giao dịch thanh toán đang bị xung đột với một giao dịch khác. Vui lòng thử lại.");
-        }
 
-        if (_idempotencyService != null)
-        {
-            _idempotencyService.AttachRecord(payment.Id);
-        }
+            if (_idempotencyService != null)
+            {
+                _idempotencyService.AttachRecord(payment.Id);
+            }
 
-        // Transaction Boundary 2: Tự động cập nhật trạng thái Đơn hàng sang Completed (Kích hoạt trừ kho)
-        // Nếu xuất kho thất bại (Exception), Payment vẫn được bảo toàn.
-        if (invoice.Status == InvoiceStatus.Paid && invoice.SalesOrderId.HasValue)
-        {
-            try
+            // Tự động cập nhật trạng thái Đơn hàng sang Completed (Kích hoạt trừ kho và IMEI) trong cùng transaction nguyên tử
+            if (invoice.Status == InvoiceStatus.Paid && invoice.SalesOrderId.HasValue)
             {
                 await _mediator.Send(new UpdateSalesOrderStatusCommand(invoice.SalesOrderId.Value, SalesOrderStatus.Completed), cancellationToken);
             }
-            catch (Exception ex)
-            {
-                // Tiền đã thu thành công, nhưng xuất kho thất bại (e.g., hết hàng, conflict RowVersion).
-                // Ghi log để theo dõi. Trạng thái hiện tại: Invoice = Paid, SalesOrder = Pending/Confirmed.
-                // Admin sẽ cần xử lý phần Fulfillment sau.
-                Console.WriteLine($"[CRITICAL] Thanh toán thành công nhưng xuất kho thất bại cho Invoice {invoice.Id}. Error: {ex.Message}");
-                // We purposefully suppress throwing this exception to the client so the API returns 200 OK for the Payment.
-            }
-        }
 
-        return payment.Id;
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            return payment.Id;
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw new ConflictException("Giao dịch thanh toán đang bị xung đột với một giao dịch khác. Vui lòng thử lại.");
+        }
+        catch (Exception)
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
     }
 
     /// <summary>
@@ -233,14 +234,8 @@ public class InvoiceCommandHandlers :
             throw new NotFoundException("Hóa đơn", request.Id);
         }
 
-        // BOLA / Branch Isolation Check
-        if (!_currentUserService.IsGlobalAdmin && Guid.TryParse(_currentUserService.BranchId, out Guid userBranchId))
-        {
-            if (invoice.BranchId != userBranchId)
-            {
-                throw new ForbiddenException("Bạn không có quyền thao tác trên hóa đơn của chi nhánh khác.");
-            }
-        }
+        // Scope Isolation Check (Fail-Closed)
+        _scopeContext.ValidateBranchAccess(invoice.BranchId, "hóa đơn");
 
         if (invoice.Status == InvoiceStatus.Paid)
         {

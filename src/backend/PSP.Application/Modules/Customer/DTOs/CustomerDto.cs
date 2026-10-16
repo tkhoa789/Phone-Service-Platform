@@ -30,7 +30,9 @@ public class CustomerDto
     
     public int RewardPoints { get; set; }
     
-    public decimal TotalSpent { get; set; }
+    public decimal? TotalSpent { get; set; }
+    
+    public string MemberTier { get; set; } = "BRONZE";
     
     public DateTime CreatedAt { get; set; }
     
