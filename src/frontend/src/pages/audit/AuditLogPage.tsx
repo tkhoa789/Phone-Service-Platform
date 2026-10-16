@@ -1,21 +1,163 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { auditLogService } from '../../services/auditLogService';
 import type { AuditLogDto } from '../../types/api.types';
-import { ShieldAlert, Search, Eye, Calendar, User, Database, Code, X } from 'lucide-react';
+import { ShieldAlert, Search, Eye, Calendar, User, Database, Code, X, Sparkles, RotateCcw, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Pagination } from '../../components/common/Pagination';
 import { useThemeStore } from '../../stores/themeStore';
 import { i18nDictionary } from '../../locales/dictionary';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuditLogsTour } from '../../features/audit/hooks/useAuditLogsTour';
+import { exitSandboxMode } from '../../utils/sandboxUtils';
+
+const SANDBOX_AUDIT_LOGS: AuditLogDto[] = [
+  {
+    id: 'audit-sb-01',
+    entityName: 'SalesOrder',
+    action: 'UPDATE',
+    entityId: 'SO-2609-0012',
+    userFullName: 'Trần Thị Thu Ngân (Sales)',
+    performedBy: 'Trần Thị Thu Ngân',
+    createdDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    oldValues: JSON.stringify({
+      orderCode: 'SO-2609-0012',
+      discountPercentage: 0,
+      totalAmount: 14500000,
+      note: 'Khách mua iPhone 15 128GB'
+    }),
+    newValues: JSON.stringify({
+      orderCode: 'SO-2609-0012',
+      discountPercentage: 35,
+      totalAmount: 9425000,
+      note: 'Áp dụng chiết khấu người quen (Chưa có phê duyệt của Cửa hàng trưởng)'
+    }),
+  },
+  {
+    id: 'audit-sb-02',
+    entityName: 'StockTake',
+    action: 'UPDATE',
+    entityId: 'ST-Q1-01',
+    userFullName: 'Lê Văn Kho (Thủ kho)',
+    performedBy: 'Lê Văn Kho',
+    createdDate: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    oldValues: JSON.stringify({
+      stockTakeCode: 'ST-Q1-01',
+      systemStock: 10,
+      actualCount: 9,
+      status: 'InProgress'
+    }),
+    newValues: JSON.stringify({
+      stockTakeCode: 'ST-Q1-01',
+      systemStock: 9,
+      variance: -1,
+      reason: 'Nứt vỡ màn hình OLED iPhone 14 khi test, đã lập biên bản sự cố',
+      status: 'Completed'
+    }),
+  },
+  {
+    id: 'audit-sb-03',
+    entityName: 'RepairTicket',
+    action: 'UPDATE',
+    entityId: 'REP-2609-0089',
+    userFullName: 'Cửa Hàng Trưởng (Manager)',
+    performedBy: 'Cửa Hàng Trưởng',
+    createdDate: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+    oldValues: JSON.stringify({
+      ticketCode: 'REP-2609-0089',
+      partRequested: 'Màn hình iPhone 15 Pro Max Zin bóc máy',
+      partCost: 8500000,
+      approvalStatus: 'PendingApproval'
+    }),
+    newValues: JSON.stringify({
+      ticketCode: 'REP-2609-0089',
+      approvalStatus: 'Approved',
+      approvedBy: 'Cửa Hàng Trưởng',
+      depositVerified: 3000000
+    }),
+  },
+  {
+    id: 'audit-sb-04',
+    entityName: 'SalesOrder',
+    action: 'DELETE',
+    entityId: 'SO-2609-0034',
+    userFullName: 'Cửa Hàng Trưởng (Manager)',
+    performedBy: 'Cửa Hàng Trưởng',
+    createdDate: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+    oldValues: JSON.stringify({
+      orderCode: 'SO-2609-0034',
+      status: 'Completed',
+      totalAmount: 28900000
+    }),
+    newValues: JSON.stringify({
+      orderCode: 'SO-2609-0034',
+      status: 'Cancelled',
+      cancelReason: 'Khách đổi ý, quẹt nhầm POS thẻ tín dụng - Đã hoàn tồn kho',
+      voidedBy: 'Cửa Hàng Trưởng'
+    }),
+  },
+  {
+    id: 'audit-sb-05',
+    entityName: 'ProductVariant',
+    action: 'UPDATE',
+    entityId: 'PV-IP15PM-256-NAT',
+    userFullName: 'Nguyễn Hoàng Nam (Sales)',
+    performedBy: 'Nguyễn Hoàng Nam',
+    createdDate: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
+    oldValues: JSON.stringify({
+      sku: 'IPHONE15PM-256-NAT',
+      imei: '356891092837461',
+      status: 'InStock'
+    }),
+    newValues: JSON.stringify({
+      sku: 'IPHONE15PM-256-NAT',
+      imei: '356891092837999',
+      status: 'InStock',
+      note: 'Cập nhật lại tem IMEI do dán nhầm vỏ hộp'
+    }),
+  },
+];
 
 export const AuditLogPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isSandboxMode = 
+    searchParams.get('mode') === 'training' || 
+    location.search.includes('sandbox=true') ||
+    (typeof window !== 'undefined' && sessionStorage.getItem('psp_sandbox_mode') === 'true');
+
+  const { startTour: startAuditTour } = useAuditLogsTour();
+
+  useEffect(() => {
+    if (searchParams.get('tour') === 'auto') {
+      const timer = setTimeout(() => {
+        startAuditTour();
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('tour');
+        setSearchParams(newParams, { replace: true });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams, startAuditTour]);
+
   const { data, isLoading: loading, refetch: loadLogs } = useQuery({
     queryKey: ['audit-logs'],
-    queryFn: () => auditLogService.getAll()
+    queryFn: () => auditLogService.getAll(),
+    enabled: !isSandboxMode,
   });
-  const logs = Array.isArray(data) ? data : [];
+
+  const logs = useMemo(() => {
+    if (isSandboxMode) return SANDBOX_AUDIT_LOGS;
+    return Array.isArray(data) ? data : [];
+  }, [isSandboxMode, data]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -52,6 +194,7 @@ export const AuditLogPage: React.FC = () => {
     <div className="space-y-5 font-sans text-foreground">
       {/* Top Bar */}
       <div
+        id="tour-audit-header"
         className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl"
         style={{
           backgroundColor: "hsl(var(--card))",
@@ -82,10 +225,54 @@ export const AuditLogPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            id="tour-audit-guide-btn"
+            type="button"
+            onClick={startAuditTour}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:via-blue-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/25 border border-sky-400/40 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+          >
+            <Sparkles className="w-4 h-4 text-sky-200 animate-pulse" />
+            <span>{language === 'vi' ? 'Hướng dẫn sử dụng' : 'User Guide'}</span>
+          </Button>
+        </div>
       </div>
 
+      {/* Sandbox Alert Banner */}
+      {isSandboxMode && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span>
+              {language === 'vi'
+                ? 'Chế độ Thực hành: Nhật ký kiểm toán giả lập để luyện tập phát hiện gian lận'
+                : 'Sandbox Mode: Simulated audit logs for anti-fraud training'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                exitSandboxMode({
+                  searchParams,
+                  setSearchParams,
+                  language,
+                });
+              }}
+              className="h-8 text-xs bg-card border-border hover:bg-rose-500/10 hover:border-rose-500/40 text-muted-foreground hover:text-rose-500 cursor-pointer font-semibold"
+              title={language === 'vi' ? 'Thoát khỏi chế độ thực hành ngay lập tức' : 'Exit sandbox mode immediately'}
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1.5 text-rose-500" />
+              <span>{language === 'vi' ? 'Thoát Thực Hành' : 'Exit Sandbox'}</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Search Input */}
-      <div className="relative">
+      <div id="tour-audit-search" className="relative">
         <Search
           className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
         />
@@ -106,6 +293,7 @@ export const AuditLogPage: React.FC = () => {
 
       {/* Audit Log Table Card */}
       <div
+        id="tour-audit-table"
         className="rounded-3xl overflow-hidden p-4 space-y-3"
         style={{
           backgroundColor: "hsl(var(--card))",
@@ -150,7 +338,7 @@ export const AuditLogPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                paginatedLogs.map((log) => (
+                paginatedLogs.map((log, idx) => (
                   <tr
                     key={log.id}
                     className="transition-colors"
@@ -187,6 +375,7 @@ export const AuditLogPage: React.FC = () => {
                     </td>
                     <td className="p-3.5 text-right">
                       <Button variant="outline"
+                        id={idx === 0 ? "tour-audit-diff-btn" : undefined}
                         onClick={() => setSelectedLog(log)}
                         className="px-3 py-1.5 rounded-xl font-medium transition-all inline-flex items-center gap-1.5 hover:opacity-80"
                         style={{

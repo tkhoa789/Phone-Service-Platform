@@ -26,8 +26,9 @@ export interface UpdateUserCommand {
 
 export const userService = {
   getAll: async (branchId?: string): Promise<UserDto[]> => {
+    const validBranchId = branchId && branchId !== 'all' ? branchId : undefined;
     const response = await axiosClient.get<ApiResponse<UserDto[]>>('/User', {
-      params: { branchId },
+      params: validBranchId ? { branchId: validBranchId } : undefined,
     });
     return response.data.data;
   },

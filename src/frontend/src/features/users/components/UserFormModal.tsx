@@ -13,6 +13,7 @@ import { ControlledInput } from '../../../components/forms/ControlledInput';
 import { SearchableSelect } from '../../../components/common/SearchableSelect';
 import { useBranches } from '../../branches/hooks/useBranches';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../../stores/authStore';
 
 // PC-03 Components
 import { Dialog } from '../../../components/ui/Dialog';
@@ -33,6 +34,9 @@ const USER_ROLES = [
 
 export const UserFormModal: React.FC<UserFormModalProps> = ({ initialUser, onClose, onSuccess }) => {
   const { language } = useThemeStore();
+  const { roles } = useAuthStore();
+  const isOwner = roles.includes('Owner');
+  const availableRoles = isOwner ? USER_ROLES : USER_ROLES.filter((r) => r.id !== 'Owner');
   const t = i18nDictionary[language].users;
   const tCommon = i18nDictionary[language].common;
 
@@ -116,14 +120,14 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({ initialUser, onClo
               {...form.register('role')}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
-              {USER_ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
               ))}
             </select>
             <p className="text-[11px] text-muted-foreground italic">
-              * {USER_ROLES.find((r) => r.id === form.watch('role'))?.desc}
+              * {availableRoles.find((r) => r.id === form.watch('role'))?.desc || USER_ROLES.find((r) => r.id === form.watch('role'))?.desc}
             </p>
           </div>
 

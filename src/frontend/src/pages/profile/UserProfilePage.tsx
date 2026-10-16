@@ -4,6 +4,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { i18nDictionary } from '../../locales/dictionary';
 import { userService } from '../../services/userService';
+import { useBranches } from '../../features/branches/hooks/useBranches';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -56,6 +57,8 @@ export const USER_ROLE_LABELS: Record<string, { label: string; labelEn: string; 
 export const UserProfilePage: React.FC = () => {
   const { user, roles } = useAuthStore();
   const { language } = useThemeStore();
+  const { data: branches = [] } = useBranches();
+  const branchMap = React.useMemo(() => new Map(branches.map(b => [b.id, b.name])), [branches]);
   const tCommon = i18nDictionary[language].common;
   const isVi = language === 'vi';
 
@@ -164,7 +167,11 @@ export const UserProfilePage: React.FC = () => {
               </span>
               <div className="p-2.5 rounded-xl bg-card border border-border/50 shadow-inner border border-border/50 bg-muted/20 flex items-center gap-2 text-foreground font-medium">
                 <Building2 className="w-4 h-4 text-primary shrink-0" />
-                <span>{user?.branchName || (isVi ? 'Trụ sở chính (Tất cả chi nhánh)' : 'HQ (All Branches)')}</span>
+                {(() => {
+                  const isUnassigned = !user?.branchId || user?.branchId === '00000000-0000-0000-0000-000000000000';
+                  const displayBranch = user?.branchName || (!isUnassigned ? branchMap.get(user?.branchId!) : undefined) || (isVi ? 'Trụ sở chính (Tất cả chi nhánh)' : 'HQ (All Branches)');
+                  return <span>{displayBranch}</span>;
+                })()}
               </div>
             </div>
 

@@ -31,7 +31,7 @@ export const SupplierDebtLedgerModal: React.FC<SupplierDebtLedgerModalProps> = (
             <div>
               <span className="text-[11px] text-muted-foreground uppercase tracking-wider block">Dư Nợ Hiện Tại</span>
               <span className="text-lg font-bold text-destructive">
-                {supplier.debtAmount.toLocaleString()} đ
+                {(supplier.debtAmount ?? 0).toLocaleString('vi-VN')} đ
               </span>
             </div>
             <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
@@ -43,7 +43,7 @@ export const SupplierDebtLedgerModal: React.FC<SupplierDebtLedgerModalProps> = (
             <div>
               <span className="text-[11px] text-muted-foreground uppercase tracking-wider block">Hạn Mức Nợ Cho Phép</span>
               <span className="text-lg font-bold text-emerald-500">
-                {totalCreditLimit.toLocaleString()} đ
+                {(totalCreditLimit ?? 0).toLocaleString('vi-VN')} đ
               </span>
             </div>
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
@@ -75,7 +75,7 @@ export const SupplierDebtLedgerModal: React.FC<SupplierDebtLedgerModalProps> = (
           <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-medium flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0" />
             <span>
-              Cảnh báo AP: Nhà cung cấp này đang vượt hạn mức nợ ({supplier.debtAmount.toLocaleString()} đ &gt; {totalCreditLimit.toLocaleString()} đ). Hãy ưu tiên thanh toán trước khi lên phiếu nhập kho mới.
+              Cảnh báo AP: Nhà cung cấp này đang vượt hạn mức nợ ({(supplier.debtAmount ?? 0).toLocaleString('vi-VN')} đ &gt; {(totalCreditLimit ?? 0).toLocaleString('vi-VN')} đ). Hãy ưu tiên thanh toán trước khi lên phiếu nhập kho mới.
             </span>
           </div>
         )}
@@ -134,10 +134,10 @@ export const SupplierDebtLedgerModal: React.FC<SupplierDebtLedgerModalProps> = (
                         {item.referenceNo}
                       </td>
                       <td className={`py-3 px-4 text-right font-semibold ${isInvoice ? 'text-destructive' : 'text-emerald-600'}`}>
-                        {isInvoice ? '+' : '-'}{item.amount.toLocaleString()} đ
+                        {isInvoice ? '+' : '-'}{(item.amount ?? 0).toLocaleString('vi-VN')} đ
                       </td>
                       <td className="py-3 px-4 text-right font-mono font-medium">
-                        {item.balanceAfter.toLocaleString()} đ
+                        {(item.balanceAfter ?? 0).toLocaleString('vi-VN')} đ
                       </td>
                       <td className="py-3 px-4 text-muted-foreground max-w-xs truncate" title={item.note || ''}>
                         {item.note || '—'}

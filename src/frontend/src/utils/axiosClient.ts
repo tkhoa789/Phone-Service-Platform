@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import toast from 'react-hot-toast';
+import { purgeQueryCache } from './queryClient';
 
 // Generate a simple UUID-like string for Correlation ID
 function generateCorrelationId() {
@@ -39,9 +40,22 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request Interceptor: Attach Access Token & Correlation ID
+// Session Epoch Tracker (RBAC-07 In-Flight Safety Guard)
+let currentSessionEpoch = 1;
+
+export const incrementSessionEpoch = (): number => {
+  currentSessionEpoch += 1;
+  return currentSessionEpoch;
+};
+
+export const getSessionEpoch = (): number => {
+  return currentSessionEpoch;
+};
+
+// Request Interceptor: Attach Access Token & Correlation ID & Session Epoch
 axiosClient.interceptors.request.use(
   (config) => {
+    (config as any).__sessionEpoch = currentSessionEpoch;
     const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -57,8 +71,20 @@ axiosClient.interceptors.request.use(
 
 // Response Interceptor: Handle Token Expiration (401) & Architectural Errors
 axiosClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Drop in-flight responses if session was switched or logged out
+    const requestEpoch = (response.config as any)?.__sessionEpoch;
+    if (requestEpoch !== undefined && requestEpoch !== currentSessionEpoch) {
+      return Promise.reject(new Error('SESSION_SWITCHED_IN_FLIGHT_RESPONSE_DROPPED'));
+    }
+    return response;
+  },
   async (error: AxiosError | any) => {
+    // Drop in-flight error responses if session was switched or logged out
+    const requestEpoch = (error?.config as any)?.__sessionEpoch;
+    if (requestEpoch !== undefined && requestEpoch !== currentSessionEpoch) {
+      return Promise.reject(new Error('SESSION_SWITCHED_IN_FLIGHT_RESPONSE_DROPPED'));
+    }
     // 1. Network / Connectivity Failure
     if (!error.response) {
       toast.error('Lỗi kết nối mạng. Vui lòng kiểm tra internet và lịch sử giao dịch trước khi thử lại.', { duration: 5000 });
@@ -94,9 +120,15 @@ axiosClient.interceptors.response.use(
 
       if (!refreshToken || !token) {
         isRefreshing = false;
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          localStorage.removeItem('roles');
+          localStorage.removeItem('permissions');
+          localStorage.removeItem('psp_branch_context');
+          purgeQueryCache();
+        } catch {}
         window.location.href = '/login';
         return Promise.reject(error);
       }
@@ -120,9 +152,15 @@ axiosClient.interceptors.response.use(
         return axiosClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          localStorage.removeItem('roles');
+          localStorage.removeItem('permissions');
+          localStorage.removeItem('psp_branch_context');
+          purgeQueryCache();
+        } catch {}
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {

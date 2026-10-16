@@ -19,9 +19,15 @@ import toast from 'react-hot-toast';
 import { useCustomers, useDeleteCustomer } from '../../features/customers/hooks/useCustomers';
 import { CustomerFormModal } from '../../features/customers/components/CustomerFormModal';
 import type { CustomerDto } from '../../features/customers/types/customer.types';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../constants/permissions';
 
 export const CustomerListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const { can } = useAuthStore();
+  const canCreate = can(PERMISSIONS.Customer_Create);
+  const canEdit = can(PERMISSIONS.Customer_Update);
+  const canDelete = can(PERMISSIONS.Customer_Delete);
   const tCust = i18nDictionary[language].customers;
   const tCommon = i18nDictionary[language].common;
 
@@ -104,10 +110,12 @@ export const CustomerListPage: React.FC = () => {
         description={tCust.customersSubtitle}
         icon={<Users className="w-6 h-6 text-primary" />}
         actions={
-          <Button onClick={handleCreate} className="gap-2" variant="danger">
-            <Plus className="w-4 h-4" />
-            {language === 'vi' ? 'Thêm Khách Hàng' : 'Add Customer'}
-          </Button>
+          canCreate ? (
+            <Button onClick={handleCreate} className="gap-2" variant="danger">
+              <Plus className="w-4 h-4" />
+              {language === 'vi' ? 'Thêm Khách Hàng' : 'Add Customer'}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -157,7 +165,7 @@ export const CustomerListPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-4">{getVipBadge(demoPoints)}</td>
-                    <td className="p-4 font-mono font-medium">{demoPoints.toLocaleString()}</td>
+                    <td className="p-4 font-mono font-medium">{(demoPoints ?? 0).toLocaleString()}</td>
                     <td className="p-4 hidden md:table-cell max-w-[200px] truncate" title={c.address}>
                       {c.address ? (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -169,12 +177,19 @@ export const CustomerListPage: React.FC = () => {
                       )}
                     </td>
                     <td className="p-4 text-right space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} title={tCommon.edit}>
-                        <Edit className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteRequest(c.id, c.fullName)} title={tCommon.delete}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(c)} title={tCommon.edit}>
+                          <Edit className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteRequest(c.id, c.fullName)} title={tCommon.delete}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
+                      {!canEdit && !canDelete && (
+                        <span className="text-xs text-muted-foreground italic">{language === 'vi' ? 'Chỉ xem' : 'Read-only'}</span>
+                      )}
                     </td>
                   </tr>
                 );

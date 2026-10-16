@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { UserDto, AuthResponseDto, LoginCommand } from '../types/api.types';
 import { authService } from '../services/authService';
+import { purgeQueryCache } from '../utils/queryClient';
+import { incrementSessionEpoch } from '../utils/axiosClient';
+import { useBranchStore } from './branchStore';
 
 interface AuthState {
   user: UserDto | null;
@@ -14,7 +17,9 @@ interface AuthState {
 
   login: (command: LoginCommand) => Promise<AuthResponseDto>;
   logout: () => Promise<void>;
+  switchAccount: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
+  can: (permission: string) => boolean;
   hasRole: (role: string) => boolean;
   initialize: () => void;
 }
@@ -54,6 +59,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (command: LoginCommand) => {
     set({ isLoading: true, error: null });
     try {
+      // 1. Session Isolation Precondition: Advance session epoch & purge prior cache
+      incrementSessionEpoch();
+      purgeQueryCache();
+      try {
+        localStorage.removeItem('psp_branch_context');
+      } catch {
+        // Safe fail
+      }
+
       const data = await authService.login(command);
       
       localStorage.setItem('token', data.accessToken);
@@ -61,6 +75,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('roles', JSON.stringify(data.roles));
       localStorage.setItem('permissions', JSON.stringify(data.permissions));
+
+      // 2. Set Branch Context for newly authenticated session
+      if (data.user?.branchId) {
+        useBranchStore.getState().setActiveBranch(
+          data.user.branchId,
+          data.user.branchName || 'Chi nhánh mặc định',
+          data.user.branchAddress,
+          data.user.branchPhone
+        );
+      } else {
+        useBranchStore.getState().resetBranch();
+      }
 
       set({
         token: data.accessToken,
@@ -85,7 +111,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await authService.logout();
+    } catch (e) {
+      console.warn('Logout notification to backend was not successful or user was already unauthenticated', e);
     } finally {
+      // RBAC-07 Session Isolation & Cache Purge Protocol
+      incrementSessionEpoch();
+      purgeQueryCache();
+      useBranchStore.getState().resetBranch();
+
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('roles');
+        localStorage.removeItem('permissions');
+        localStorage.removeItem('psp_branch_context');
+        sessionStorage.removeItem('psp_sandbox_mode');
+        sessionStorage.removeItem('psp_training_mode');
+      } catch {
+        // Safe fail
+      }
+
       set({
         user: null,
         token: null,
@@ -99,14 +145,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  switchAccount: async () => {
+    await get().logout();
+  },
+
   hasPermission: (permission: string) => {
-    const { roles, permissions } = get();
-    if (roles.includes('Admin')) return true;
-    return permissions.includes(permission);
+    const { permissions } = get();
+    return permissions.some((p) => p.toLowerCase() === permission.toLowerCase());
+  },
+
+  can: (permission: string) => {
+    return get().hasPermission(permission);
   },
 
   hasRole: (role: string) => {
     const { roles } = get();
-    return roles.includes(role);
+    return roles.some((r) => r.toLowerCase() === role.toLowerCase());
   },
 }));

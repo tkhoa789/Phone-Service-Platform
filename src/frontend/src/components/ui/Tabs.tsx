@@ -13,15 +13,23 @@ export interface TabsProps {
   onChange: (id: string) => void;
   className?: string;
   fullWidth?: boolean;
+  variant?: 'primary' | 'tactile';
 }
 
-export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className, fullWidth = false }) => {
+export const Tabs: React.FC<TabsProps> = ({
+  tabs,
+  activeTab,
+  onChange,
+  className,
+  fullWidth = false,
+  variant = 'primary'
+}) => {
   return (
     <div
       role="tablist"
       aria-orientation="horizontal"
       className={cn(
-        'inline-flex h-12 items-center justify-center rounded-2xl bg-card p-1 text-muted-foreground shadow-inner',
+        'inline-flex h-12 items-center justify-center rounded-2xl bg-card border border-border/40 p-1 text-muted-foreground shadow-inset select-none',
         fullWidth && 'w-full flex',
         className
       )}
@@ -38,11 +46,14 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
             id={`tab-${tab.id}`}
             onClick={() => onChange(tab.id)}
             className={cn(
-              'inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50',
+              'inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 cursor-pointer',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
               fullWidth && 'flex-1',
               isActive
-                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-sm'
-                : 'hover:text-foreground hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
+                ? variant === 'primary'
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md shadow-primary/20 font-semibold'
+                  : 'bg-surface-elevated text-foreground neu-raised shadow-sm font-semibold border border-border/40'
+                : 'hover:text-foreground hover:bg-muted/30'
             )}
           >
             {tab.icon && <span className="mr-2 shrink-0">{tab.icon}</span>}

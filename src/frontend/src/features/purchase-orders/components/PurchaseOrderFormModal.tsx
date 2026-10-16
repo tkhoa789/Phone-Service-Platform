@@ -105,7 +105,14 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
   const onSubmit = async (data: CreatePurchaseOrderFormValues) => {
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: poId!, data: { ...data, id: poId } as import("../types").UpdatePurchaseOrderCommand });
+        await updateMutation.mutateAsync({
+          id: poId!,
+          data: {
+            ...data,
+            id: poId!,
+            rowVersion: poDetail?.rowVersion || ''
+          } as import("../types").UpdatePurchaseOrderCommand
+        });
         toast.success('Cập nhật phiếu nhập kho thành công!');
       } else {
         await createMutation.mutateAsync(data);
@@ -113,7 +120,9 @@ export const PurchaseOrderFormModal: React.FC<PurchaseOrderFormModalProps> = ({
       }
       onClose();
     } catch (error: any) {
-      if (error?.response?.data?.message) {
+      if (error?.response?.status === 409) {
+        toast.error('Lỗi Concurrency (409): Phiếu nhập đã bị thay đổi bởi người khác!');
+      } else if (error?.response?.data?.message) {
         toast.error(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
       } else {
         toast.error(isEdit ? 'Lỗi cập nhật phiếu nhập' : 'Lỗi tạo phiếu nhập');

@@ -8,6 +8,7 @@ interface Warehouse {
 }
 
 interface Inventory {
+  warehouseId: string;
   productVariantId: string;
   quantity: number;
 }
@@ -18,23 +19,24 @@ export function usePosStock(branchId?: string) {
     queryFn: async () => {
       if (!branchId) return {};
 
-      // 1. Get warehouse for this branch
+      // 1. Get warehouses for this branch
       const whRes = await axiosClient.get<{data: Warehouse[]}>(`/Warehouse/branch/${branchId}`);
       const warehouses = whRes.data.data || [];
       if (warehouses.length === 0) return {};
 
-      const warehouseId = warehouses[0].id;
+      const branchWarehouseIds = new Set(warehouses.map(w => w.id));
 
-      // 2. Get inventory for this warehouse
-      const invRes = await axiosClient.get<{data: Inventory[]}>('/Inventory', {
-        params: { warehouseId }
-      });
-      const inventoryList = invRes.data.data || [];
+      // 2. Get inventory for this branch (backend auto-filters by user branch scope)
+      const invRes = await axiosClient.get<any>('/Inventory');
+      const rawData = invRes.data?.data;
+      const inventoryList: Inventory[] = Array.isArray(rawData) ? rawData : (rawData?.items || []);
 
-      // 3. Map to variantId -> stockQuantity
+      // 3. Map to variantId -> stockQuantity (aggregated across branch warehouses)
       const stockMap: Record<string, number> = {};
       inventoryList.forEach(inv => {
-        stockMap[inv.productVariantId] = inv.quantity;
+        if (branchWarehouseIds.has(inv.warehouseId)) {
+          stockMap[inv.productVariantId] = (stockMap[inv.productVariantId] || 0) + inv.quantity;
+        }
       });
 
       return stockMap;

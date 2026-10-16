@@ -27,6 +27,20 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error in UI Component:', error, errorInfo);
     this.setState({ error, errorInfo });
+
+    // Tự động tải lại trang nếu gặp lỗi HMR / dynamic import module tạm thời (do thay đổi file server)
+    if (
+      error?.message?.includes('dynamically imported module') ||
+      error?.message?.includes('Failed to fetch')
+    ) {
+      const storageKey = 'last_dynamic_import_retry';
+      const lastRetry = sessionStorage.getItem(storageKey);
+      const now = Date.now();
+      if (!lastRetry || now - parseInt(lastRetry, 10) > 8000) {
+        sessionStorage.setItem(storageKey, now.toString());
+        window.location.reload();
+      }
+    }
   }
 
   private handleReset = () => {
@@ -66,12 +80,16 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               <RefreshCw className="w-4 h-4" /> Tải Lại Trang Web
             </Button>
-            <a
-              href="/dashboard"
-              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all flex items-center gap-2"
+            <button
+              type="button"
+              onClick={() => {
+                this.setState({ hasError: false, error: null, errorInfo: null });
+                window.location.href = '/dashboard';
+              }}
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" /> Quay Về Trang Chủ Dashboard
-            </a>
+            </button>
           </div>
         </div>
       );

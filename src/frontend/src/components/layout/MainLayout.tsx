@@ -4,11 +4,15 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AIFloatingButton } from '../ai/AIFloatingButton';
 import { Breadcrumb } from '../ui/Breadcrumb';
+import { useSandboxGuard } from '../../hooks/useSandboxGuard';
 
 export const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+
+  // Enterprise Sandbox & Training Route Guard (Auto-sanitize invalid params)
+  useSandboxGuard();
 
   // Automatically close mobile menu when route changes
   useEffect(() => {
@@ -16,7 +20,7 @@ export const MainLayout: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-card text-muted-foreground flex font-sans transition-colors duration-300 antialiased selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-background text-foreground flex font-sans transition-colors duration-200 antialiased selection:bg-primary/20">
       {/* Sidebar Navigation */}
       <Sidebar 
         collapsed={collapsed} 
@@ -29,6 +33,7 @@ export const MainLayout: React.FC = () => {
       <Header 
         collapsed={collapsed} 
         onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
+        mobileMenuOpen={mobileMenuOpen}
       />
 
       {/* Main Content Viewport */}

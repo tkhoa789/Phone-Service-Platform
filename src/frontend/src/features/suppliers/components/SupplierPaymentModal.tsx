@@ -70,8 +70,8 @@ export const SupplierPaymentModal: React.FC<SupplierPaymentModalProps> = ({
     }
   };
 
-  const formatCurrency = (val: number) => {
-    return `${val.toLocaleString('vi-VN')} đ`;
+  const formatCurrency = (val?: number | null) => {
+    return `${(val ?? 0).toLocaleString('vi-VN')} đ`;
   };
 
   return (
@@ -86,7 +86,7 @@ export const SupplierPaymentModal: React.FC<SupplierPaymentModalProps> = ({
             </div>
             <p className="text-xs text-amber-700/50 mt-1">{supplier.name}</p>
           </div>
-          {supplier.debtAmount > 0 && (
+          {(supplier.debtAmount ?? 0) > 0 && (
             <Button
               variant="outline"
               size="sm"

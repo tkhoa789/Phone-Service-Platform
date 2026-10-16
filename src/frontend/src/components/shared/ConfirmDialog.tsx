@@ -54,17 +54,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()} hideCloseButton={isLoading}>
       <div className="flex flex-col items-center text-center pt-2">
-        <div className="w-16 h-16 rounded-full bg-card shadow-inner border border-border/50 bg-muted/20 flex items-center justify-center mb-4">
+        <div className="w-16 h-16 rounded-2xl bg-card shadow-inset border border-border/40 flex items-center justify-center mb-4">
           {getIcon()}
         </div>
-        <h2 className="text-xl font-heading font-bold text-foreground">{title}</h2>
-        <p className="mt-2 text-sm text-muted-foreground mb-6">{description}</p>
+        <h2 className="text-xl font-heading font-semibold text-foreground tracking-tight">{title}</h2>
+        <p className="mt-2 text-sm text-muted-foreground mb-6 max-w-sm">{description}</p>
         
         <div className="flex w-full gap-3 mt-2">
-          <Button variant="ghost" onClick={onClose} className="flex-1">
+          <Button variant="secondary" onClick={onClose} disabled={isLoading} className="flex-1">
             {cancelText}
           </Button>
-          <Button variant={getConfirmVariant()} onClick={onConfirm} className="flex-1">
+          <Button variant={getConfirmVariant()} onClick={onConfirm} loading={isLoading} className="flex-1">
             {isLoading ? 'Đang xử lý...' : confirmText}
           </Button>
         </div>

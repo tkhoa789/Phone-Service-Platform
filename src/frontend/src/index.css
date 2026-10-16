@@ -1,111 +1,451 @@
 @import "tailwindcss";
 
 /* ========================================================= */
-/* 🎨 TYPEUI DYNAMIC THEME SYSTEM (PURE CSS VARIABLES ONLY)  */
+/* 🎨 PSP PREMIUM NEUMORPHIC SYSTEM — FOUNDATION TOKENS     */
+/* Authoritative Art Direction: DESIGN_VISION_v1.0.md        */
 /* ========================================================= */
 
+/* --------------------------------------------------------- */
+/* 1. TAILWIND V4 SEMANTIC THEME EXTENSIONS                  */
+/* --------------------------------------------------------- */
+@theme {
+  --color-background: var(--surface-base);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-inset: var(--surface-inset);
+  --color-cyber-mint: var(--cyber-mint);
+  --color-cyber-glow: var(--cyber-glow);
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-neu-l1: var(--neu-shadow-l1);
+  --shadow-neu-l2: var(--neu-shadow-l2);
+  --shadow-neu-l3: var(--neu-shadow-l3);
+  --shadow-neu-inset: var(--neu-shadow-inset);
+  --shadow-neu-pressed: var(--neu-shadow-pressed);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-inset: var(--shadow-inset);
+}
+
+/* --------------------------------------------------------- */
+/* 2. APPROVED LIGHT THEME (HERO THEME)                      */
+/* --------------------------------------------------------- */
 :root, html.theme-light, html.light {
-  --neu-bg-base: #e2e8f0;
-  --neu-text-title: #2d3748;
-  --neu-text-sub: #4a5568;
-  --neu-accent-mint: #059669;
-  --neu-accent-mint-glow: #10b981;
-  --neu-shadow-outer: 8px 8px 18px #b8c4d4, -8px -8px 18px #ffffff;
+  /* Surfaces */
+  --surface-base: #e2e8f0;       /* Base Canvas */
+  --surface-raised: #e2e8f0;     /* Level 1 Raised Content */
+  --surface-elevated: #eaeff6;   /* Level 2 Floating / Menus */
+  --surface-overlay: #eaeff6;    /* Level 2 Floating / Menus */
+  --surface-inset: #d8e2ed;      /* Recessed / Form Controls */
+
+  /* Text Typography (WCAG AA Compliant) */
+  --foreground: #0f172a;         /* High Contrast Slate 900 (15.8:1) */
+  --muted-foreground: #475569;   /* Slate 600 (5.5:1 on #e2e8f0 - WCAG AA Pass) */
+  --muted: #cbd5e1;
+
+  /* Card Containers */
+  --card: #e2e8f0;
+  --card-foreground: #0f172a;
+
+  /* Primary Accent: Emerald 600 */
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --cyber-mint: #059669;
+  --cyber-glow: #10b981;
+
+  /* Secondary & Accents */
+  --secondary: #e2e8f0;
+  --secondary-foreground: #1e293b;
+  --accent: #059669;
+  --accent-foreground: #ffffff;
+
+  /* Semantic Feedback */
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --info: #0284c7;
+  --info-foreground: #ffffff;
+
+  /* Structural Borders & Focus Ring (Delicate Light Rim) */
+  --border: rgba(255, 255, 255, 0.65);
+  --border-dark: rgba(184, 196, 212, 0.6);
+  --input: rgba(184, 196, 212, 0.8);
+  --ring: #059669;
+
+  /* Neumorphic Depth Math (Top-Left 135° Lighting - TypeUI Calibration) */
+  --neu-shadow-l1: 6px 6px 14px #b8c4d4, -6px -6px 14px #ffffff;
+  --neu-shadow-l2: 10px 10px 22px #a8b6c8, -10px -10px 22px #ffffff;
+  --neu-shadow-l3: 0 6px 18px rgba(5, 150, 105, 0.35), 4px 4px 12px #b8c4d4;
+  --neu-shadow-inset: inset 3px 3px 6px #b8c4d4, inset -3px -3px 6px #ffffff;
+  --neu-shadow-pressed: inset 4px 4px 9px #a8b6c8, inset -4px -4px 9px #ffffff;
+
+  /* TypeUI Exact Calibration Tokens */
+  --shadow-sm: 3px 3px 6px #b8b9be, -3px -3px 6px #ffffff;
+  --shadow-md: 6px 6px 12px #b8b9be, -6px -6px 12px #ffffff;
+  --shadow-lg: 8px 8px 16px #b8b9be, -8px -8px 16px #ffffff;
+  --shadow-inset: inset 2px 2px 5px #b8b9be, inset -3px -3px 7px #ffffff;
+
+  /* TypeUI Tactile Surface Curvature */
+  --neu-convex: linear-gradient(145deg, #f0f5fc, #d6e0ec);
+  --neu-concave: linear-gradient(145deg, #d6e0ec, #f0f5fc);
+
+  /* Liquid Glass (Secondary 10-20%) */
+  --glass-bg: rgba(226, 232, 240, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-header-bg: rgba(226, 232, 240, 0.85);
+
+  /* Legacy Backward-Compatibility Variables */
+  --neu-bg-base: var(--surface-base);
+  --neu-text-title: var(--foreground);
+  --neu-text-sub: var(--muted-foreground);
+  --neu-accent-mint: var(--primary);
+  --neu-accent-mint-glow: var(--cyber-glow);
+  --neu-shadow-outer: var(--neu-shadow-l2);
   --neu-shadow-hover: 10px 10px 22px #9aaabf, -10px -10px 22px #ffffff;
-  --neu-shadow-inset: inset 4px 4px 9px #b8c4d4, inset -4px -4px 9px #ffffff;
   --neu-shadow-button: 6px 6px 14px #b8c4d4, -6px -6px 14px #ffffff;
   --neu-border: rgba(255, 255, 255, 0.8);
+  --neu-border-light: rgba(255, 255, 255, 0.8);
+  --neu-border-dark: rgba(203, 213, 225, 0.8);
 }
 
+/* --------------------------------------------------------- */
+/* 3. APPROVED DARK THEME (DARK NEUMORPHISM)                 */
+/* --------------------------------------------------------- */
 html.theme-dark, html.dark {
-  --neu-bg-base: #0f172a;
-  --neu-text-title: #f8fafc;
-  --neu-text-sub: #94a3b8;
-  --neu-accent-mint: #00ff9d;
-  --neu-accent-mint-glow: #00ff9d;
-  --neu-shadow-outer: 8px 8px 18px #080d1a, -8px -8px 18px #1e293b;
+  /* Surfaces */
+  --surface-base: #0b1120;       /* Base Canvas (Cyber Navy) */
+  --surface-raised: #0b1120;     /* Level 1 Same-Material Surface */
+  --surface-elevated: #10192d;   /* Level 2 Floating / Menus */
+  --surface-overlay: #10192d;    /* Level 2 Floating / Menus */
+  --surface-inset: #070c17;      /* Recessed / Form Controls */
+
+  /* Text Typography (WCAG AA Compliant) */
+  --foreground: #f8fafc;         /* Slate 50 (15.8:1) */
+  --muted-foreground: #94a3b8;   /* Slate 400 (7.1:1 - WCAG AA Pass) */
+  --muted: #1e293b;
+
+  /* Card Containers */
+  --card: #0b1120;
+  --card-foreground: #f8fafc;
+
+  /* Primary Accent: Emerald 500 & Cyber Mint Glow */
+  --primary: #10b981;
+  --primary-foreground: #0b1120;
+  --cyber-mint: #10b981;
+  --cyber-glow: #00ff9d;         /* Selective neon highlight */
+
+  /* Secondary & Accents */
+  --secondary: #10192d;
+  --secondary-foreground: #f8fafc;
+  --accent: #10b981;
+  --accent-foreground: #0b1120;
+
+  /* Semantic Feedback */
+  --success: #10b981;
+  --success-foreground: #0b1120;
+  --warning: #f59e0b;
+  --warning-foreground: #0b1120;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --info: #38bdf8;
+  --info-foreground: #0b1120;
+
+  /* Structural Borders & Focus Ring (Delicate Rim) */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-dark: rgba(4, 7, 13, 0.9);
+  --input: rgba(255, 255, 255, 0.10);
+  --ring: #10b981;
+
+  /* Neumorphic Depth Math in Dark (Top-Left 135° Lighting - TypeUI Calibration) */
+  --neu-shadow-l1: 6px 6px 16px #04070d, -6px -6px 16px rgba(255, 255, 255, 0.04);
+  --neu-shadow-l2: 10px 10px 24px #03050a, -10px -10px 24px rgba(255, 255, 255, 0.06);
+  --neu-shadow-l3: 0 6px 20px rgba(16, 185, 129, 0.35), 4px 4px 14px #04070d;
+  --neu-shadow-inset: inset 3px 3px 7px #04070d, inset -3px -3px 7px rgba(255, 255, 255, 0.04);
+  --neu-shadow-pressed: inset 5px 5px 10px #04070d, inset -5px -5px 10px rgba(255, 255, 255, 0.05);
+
+  /* TypeUI Exact Calibration Tokens in Dark */
+  --shadow-sm: 3px 3px 7px #04070d, -3px -3px 7px rgba(255, 255, 255, 0.035);
+  --shadow-md: 6px 6px 14px #04070d, -6px -6px 14px rgba(255, 255, 255, 0.045);
+  --shadow-lg: 8px 8px 18px #04070d, -8px -8px 18px rgba(255, 255, 255, 0.06);
+  --shadow-inset: inset 2px 2px 5px #04070d, inset -3px -3px 7px rgba(255, 255, 255, 0.04);
+
+  /* TypeUI Tactile Surface Curvature in Dark */
+  --neu-convex: linear-gradient(145deg, #0e1628, #080d1a);
+  --neu-concave: linear-gradient(145deg, #080d1a, #0e1628);
+
+  /* Liquid Glass (Secondary 10-20%) */
+  --glass-bg: rgba(11, 17, 32, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-header-bg: rgba(11, 17, 32, 0.85);
+
+  /* Legacy Backward-Compatibility Variables */
+  --neu-bg-base: var(--surface-base);
+  --neu-text-title: var(--foreground);
+  --neu-text-sub: var(--muted-foreground);
+  --neu-accent-mint: var(--cyber-glow);
+  --neu-accent-mint-glow: var(--cyber-glow);
+  --neu-shadow-outer: var(--neu-shadow-l2);
   --neu-shadow-hover: 10px 10px 22px #050810, -10px -10px 22px #26334d;
-  --neu-shadow-inset: inset 4px 4px 9px #080d1a, inset -4px -4px 9px #1e293b;
-  --neu-shadow-button: 6px 6px 14px #080d1a, -6px -6px 14px #1e293b;
-  --neu-border: rgba(255, 255, 255, 0.1);
+  --neu-shadow-button: 6px 6px 14px #060913, -6px -6px 14px #16223d;
+  --neu-border: rgba(255, 255, 255, 0.08);
+  --neu-border-light: rgba(22, 34, 61, 0.8);
+  --neu-border-dark: rgba(6, 9, 19, 0.8);
 }
 
+/* --------------------------------------------------------- */
+/* 4. BASE STYLES & TYPOGRAPHY RESTORATION                   */
+/* --------------------------------------------------------- */
 @layer base {
   *, ::before, ::after {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   html, body {
-    background-color: var(--neu-bg-base) !important;
-    color: var(--neu-text-sub) !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    background-color: var(--surface-base);
+    color: var(--foreground);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-font-smoothing: antialiased;
-    font-weight: 400 !important;
-  }
-
-  h1, h2, h3, h4, h5, h6, .font-heading {
-    color: var(--neu-text-title) !important;
-    font-weight: 500 !important;
-    letter-spacing: -0.01em;
-  }
-
-  p, span, label, td, th {
-    color: var(--neu-text-sub);
     font-weight: 400;
+  }
+
+  /* Meaningful Typographic Hierarchy Restored */
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    color: var(--foreground);
+    letter-spacing: -0.015em;
+  }
+
+  h1 {
+    font-weight: 700;
+  }
+
+  h2 {
+    font-weight: 700;
+  }
+
+  h3 {
+    font-weight: 600;
+  }
+
+  h4 {
+    font-weight: 600;
+  }
+
+  /* Form Elements inherit font cleanly without wildcard !important */
+  input, select, textarea, button {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 }
 
-/* ========================================================= */
-/* ⚡ HIGH-CONTRAST PURE WHITE BUTTON TEXT OVERRIDES          */
-/* ========================================================= */
+/* --------------------------------------------------------- */
+/* 5. TACTILE NEUMORPHIC ELEVATION & DEPTH UTILITIES        */
+/* --------------------------------------------------------- */
+.neu-l1 {
+  background-color: var(--surface-base);
+  box-shadow: var(--neu-shadow-l1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.neu-l2 {
+  background-color: var(--surface-overlay);
+  box-shadow: var(--neu-shadow-l2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.neu-l3 {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--neu-shadow-l3);
+  border-radius: 12px;
+}
+
+.neu-inset {
+  background-color: var(--surface-inset);
+  box-shadow: var(--neu-shadow-inset);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.neu-pressed {
+  box-shadow: var(--neu-shadow-pressed) !important;
+}
+
+/* TypeUI Tactile Curvature Utilities */
+.neu-convex {
+  background: var(--neu-convex);
+  box-shadow: var(--neu-shadow-l1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.neu-concave {
+  background: var(--neu-concave);
+  box-shadow: var(--neu-shadow-inset);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* Tactile Interactive Control Class (Seamless Raised -> Inset Press) */
+.neu-interactive {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--surface-base);
+  box-shadow: var(--neu-shadow-l1);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.neu-interactive:hover {
+  box-shadow: var(--neu-shadow-l2);
+  transform: translateY(-1px);
+}
+
+.neu-interactive:active {
+  background: var(--neu-concave);
+  box-shadow: var(--neu-shadow-pressed) !important;
+  transform: translateY(0);
+}
+
+.neu-interactive:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--surface-base), 0 0 0 4px var(--ring);
+}
+
+/* TypeUI Direct Class Names & Tactile Interaction */
+.neu-flat {
+  background-color: var(--surface-base);
+  box-shadow: none;
+}
+
+.neu-raised {
+  background-color: var(--surface-base);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neu-raised:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.neu-raised:active {
+  box-shadow: var(--shadow-inset) !important;
+}
+
+.neu-raised-md {
+  background-color: var(--surface-base);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.neu-raised-lg {
+  background-color: var(--surface-base);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.shadow-inset {
+  box-shadow: var(--shadow-inset) !important;
+}
+
+/* --------------------------------------------------------- */
+/* 6. LIQUID GLASS & SUBTLE GRADIENTS (SECONDARY 10-20%)     */
+/* --------------------------------------------------------- */
+.glass-surface {
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--neu-shadow-l1);
+}
+
+.glass-header {
+  background: var(--glass-header-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.gradient-subtle-mint {
+  background: linear-gradient(135deg, var(--surface-raised) 0%, rgba(5, 150, 105, 0.08) 100%);
+}
+
+html.dark .gradient-subtle-mint,
+html.theme-dark .gradient-subtle-mint {
+  background: linear-gradient(135deg, var(--surface-raised) 0%, rgba(16, 185, 129, 0.12) 100%);
+}
+
+/* --------------------------------------------------------- */
+/* 7. HIGH-CONTRAST BUTTON & BADGE POLISH                    */
+/* --------------------------------------------------------- */
 .text-white,
 .text-white *,
 button.text-white,
-button.text-white *,
-button[class*="from-emerald"],
-button[class*="from-emerald"] *,
-button[class*="bg-emerald"],
-button[class*="bg-emerald"] * {
-  color: #ffffff !important;
+button.text-white * {
+  color: #ffffff;
 }
 
-.font-bold, .font-extrabold, .font-semibold, [class*="font-bold"], [class*="font-extrabold"] {
-  font-weight: 500 !important;
-}
-
-/* ========================================================= */
-/* 🌑 CLEAN DARK CYBER OVERRIDES (ZERO SCREEN OVERLAY)       */
-/* ========================================================= */
-
-html.dark, html.theme-dark {
-  background-color: #0f172a !important;
-  color: #94a3b8 !important;
-}
-
-html.dark body, html.theme-dark body,
-html.dark main, html.theme-dark main,
-html.dark #root, html.theme-dark #root {
-  background-color: #0f172a !important;
-  box-shadow: none !important;
-}
-
-/* Scrollbar Integration */
+/* --------------------------------------------------------- */
+/* 8. SCROLLBAR INTEGRATION                                  */
+/* --------------------------------------------------------- */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--neu-bg-base);
+  background: var(--surface-base);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--muted);
   border-radius: 9999px;
-  box-shadow: inset 2px 2px 4px #94a3b8;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--neu-accent-mint);
+  background: var(--primary);
 }

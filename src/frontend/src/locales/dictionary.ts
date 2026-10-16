@@ -25,7 +25,7 @@ export const i18nDictionary = {
       close: 'Đóng'
     },
     nav: {
-      dashboard: 'Tổng quan',
+      dashboard: 'Dashboard',
       pos: 'Bán hàng (POS)',
       sales: 'Đơn hàng & Hóa đơn',
       vouchers: 'Mã giảm giá (Vouchers)',
@@ -486,7 +486,7 @@ export const i18nDictionary = {
       close: 'Close'
     },
     nav: {
-      dashboard: 'Dashboard Overview',
+      dashboard: 'Dashboard',
       pos: 'POS Terminal',
       sales: 'Orders & Invoices',
       vouchers: 'Discount Vouchers',

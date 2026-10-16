@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Warehouse, Search, Plus, MapPin, Building2, Trash2, Edit, Calendar } from 'lucide-react';
+import { Warehouse, Search, Plus, MapPin, Building2, Trash2, Edit, Calendar, Sparkles } from 'lucide-react';
 import { useThemeStore } from '../../stores/themeStore';
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../constants/permissions';
 import { i18nDictionary } from '../../locales/dictionary';
 import { Pagination } from '../../components/common/Pagination';
 import { PageSkeleton } from '../../components/common/PageSkeleton';
 
 import { useWarehouses, useDeleteWarehouse } from '../../features/warehouses/hooks/useWarehouses';
+import { useWarehousesInventoryTour } from '../../features/warehouses/hooks/useWarehousesInventoryTour';
 import { WarehouseFormModal } from '../../features/warehouses/components/WarehouseFormModal';
 import { useBranches } from '../../features/branches/hooks/useBranches';
 import type { WarehouseDto } from '../../features/warehouses/types/warehouse.types';
@@ -15,10 +18,18 @@ import { Input } from '@/components/ui/Input';
 
 export const WarehouseListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const { can, hasPermission, roles } = useAuthStore();
+  const checkPermission = typeof can === 'function' ? can : (typeof hasPermission === 'function' ? hasPermission : () => true);
+  const canCreate = checkPermission(PERMISSIONS.Warehouse_Create);
+  const canEdit = checkPermission(PERMISSIONS.Warehouse_Update);
+  const canDelete = checkPermission(PERMISSIONS.Warehouse_Delete);
+
   const tCommon = i18nDictionary[language].common;
 
   // URL State Management
   const [searchParams, setSearchParams] = useSearchParams();
+  const isInventoryRole = (roles || []).includes('Inventory') || searchParams.get('role')?.toLowerCase() === 'inventory';
+  const { startTour: startInventoryTour } = useWarehousesInventoryTour();
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = parseInt(searchParams.get('size') || '8', 10);
   const searchTerm = searchParams.get('search') || '';
@@ -77,7 +88,7 @@ export const WarehouseListPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 font-sans text-muted-foreground">
+    <div id="tour-wh-header" className="space-y-6 font-sans text-muted-foreground">
       {/* Top Banner */}
       <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -89,16 +100,32 @@ export const WarehouseListPage: React.FC = () => {
               {language === 'vi' ? 'Quản Lý Kho Hàng' : 'Warehouse Management'}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5 font-normal">
-              {language === 'vi' ? 'Quản lý danh sách kho bãi của các chi nhánh' : 'Manage branch warehouses'}
+              {language === 'vi' ? 'Quản lý danh sách kho bãi và các ngăn tủ vật lý của chi nhánh' : 'Manage branch warehouses and storage cabinets'}
             </p>
           </div>
         </div>
-        <Button variant="danger"
-          onClick={handleCreate}
-          className="px-5 py-2.5 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> {language === 'vi' ? 'Thêm Kho Mới' : 'Add Warehouse'}
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {isInventoryRole && (
+            <Button
+              id="tour-warehouses-guide-btn"
+              type="button"
+              onClick={startInventoryTour}
+              className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:via-blue-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/25 border border-sky-400/40 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+            >
+              <Sparkles className="w-4 h-4 text-sky-200 animate-pulse" />
+              <span>{language === 'vi' ? 'Hướng dẫn sử dụng (Thủ kho)' : 'User Guide (Inventory)'}</span>
+            </Button>
+          )}
+          {canCreate && (
+            <Button variant="danger"
+              onClick={handleCreate}
+              className="px-5 py-2.5 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> {language === 'vi' ? 'Thêm Kho Mới' : 'Add Warehouse'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -154,7 +181,7 @@ export const WarehouseListPage: React.FC = () => {
       </div>
 
       {/* Grid List */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div id="tour-wh-map" className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {isLoading ? (
           <div className="xl:col-span-2 p-8 text-center text-slate-400 border border-dashed border-slate-400/30 rounded-3xl">
             {tCommon.loading}
@@ -164,10 +191,10 @@ export const WarehouseListPage: React.FC = () => {
             {language === 'vi' ? 'Không tìm thấy kho hàng nào.' : 'No warehouses found.'}
           </div>
         ) : (
-          paginatedWarehouses.map((w) => (
+          paginatedWarehouses.map((w, index) => (
             <div key={w.id} className="p-5 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col gap-4">
               <div className="flex justify-between items-start gap-4">
-                <div className="flex items-center gap-3">
+                <div id={index === 0 ? 'tour-wh-keeper' : undefined} className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-card shadow-inner border border-border/50 bg-muted/20 text-indigo-500 flex items-center justify-center font-bold text-lg border border-indigo-500/30 shrink-0">
                     {w.name.charAt(0).toUpperCase()}
                   </div>
@@ -179,25 +206,29 @@ export const WarehouseListPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <Button variant="outline"
-                    onClick={() => handleEdit(w)}
-                    className="p-2 rounded-xl bg-card text-indigo-500 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
-                    title={tCommon.edit}
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="outline"
-                    onClick={() => handleDelete(w.id, w.name)}
-                    className="p-2 rounded-xl bg-card text-rose-500 hover:text-rose-600 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
-                    title={tCommon.delete}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {canEdit && (
+                    <Button variant="outline"
+                      onClick={() => handleEdit(w)}
+                      className="p-2 rounded-xl bg-card text-indigo-500 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
+                      title={tCommon.edit}
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button variant="outline"
+                      onClick={() => handleDelete(w.id, w.name)}
+                      className="p-2 rounded-xl bg-card text-rose-500 hover:text-rose-600 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
+                      title={tCommon.delete}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-slate-500/5 rounded-xl p-3 border border-slate-400/20 shadow-inner border border-border/50 bg-muted/20">
+                <div id={index === 0 ? 'tour-wh-default' : undefined} className="bg-slate-500/5 rounded-xl p-3 border border-slate-400/20 shadow-inner border border-border/50 bg-muted/20">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[10px] uppercase font-bold text-slate-500">
                       {language === 'vi' ? 'Chi Nhánh' : 'Branch'}

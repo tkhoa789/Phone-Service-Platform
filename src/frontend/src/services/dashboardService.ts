@@ -7,13 +7,29 @@ export interface BranchRevenueDto {
   revenue: number;
 }
 
+export interface DailyRevenueDto {
+  date: string;
+  revenue: number;
+}
+
+export interface DeadStockDto {
+  productVariantId: string;
+  productName: string;
+  sku: string;
+  quantity: number;
+  lastSoldDate: string | null;
+  warehouseName: string;
+  daysSinceLastSale: number;
+}
+
 export interface ManagerDashboardDto {
   totalRevenue: number;
-  totalProfit: number;
+  totalProfit?: number | null;
   unitsSold: number;
   openRepairs: number;
   openWarranties: number;
   branchRevenue: BranchRevenueDto[];
+  thirtyDaysRevenue?: DailyRevenueDto[];
   topProducts: {
     productVariantId: string;
     productName: string;
@@ -21,6 +37,7 @@ export interface ManagerDashboardDto {
     quantitySold: number;
     revenue: number;
   }[];
+  deadStock?: DeadStockDto[];
 }
 
 export const dashboardService = {

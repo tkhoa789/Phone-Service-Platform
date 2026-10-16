@@ -1,24 +1,37 @@
-import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { FileText, Search, Plus, Filter, Package, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import { FileText, Search, Plus, Filter, Package, AlertCircle, GraduationCap, Sparkles, RotateCcw, LogOut } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { exitSandboxMode } from '../../../utils/sandboxUtils';
 import { useThemeStore } from '../../../stores/themeStore';
 import { i18nDictionary } from '../../../locales/dictionary';
 import { Pagination } from '../../../components/common/Pagination';
 import { PageSkeleton } from '../../../components/common/PageSkeleton';
 
 import { usePurchaseOrders } from '../api/queries';
+import { usePurchaseOrdersTour } from '../hooks/usePurchaseOrdersTour';
+import { inventorySandboxService } from '../../inventory/services/inventorySandboxService';
+import { operationalNotificationService } from '../../../services/operationalNotificationService';
 import { PurchaseOrderFormModal } from '../components/PurchaseOrderFormModal';
 import { PurchaseOrderDetailModal } from '../components/PurchaseOrderDetailModal';
 import type { PurchaseOrderDto } from '../types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 export const PurchaseOrderListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const navigate = useNavigate();
   const tCommon = i18nDictionary[language].common;
 
   // URL State Management
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const isSandboxMode = searchParams.get('mode') === 'training' || location.search.includes('sandbox=true');
+  const [sandboxTick, setSandboxTick] = useState(0);
+
+  const { startTour } = usePurchaseOrdersTour();
+
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = parseInt(searchParams.get('size') || '10', 10);
   const searchTerm = searchParams.get('search') || '';
@@ -37,9 +50,22 @@ export const PurchaseOrderListPage: React.FC = () => {
   };
 
   // Queries
-  const { data: allPOs = [], isLoading } = usePurchaseOrders(
+  const { data: apiPOs = [], isLoading: apiLoading } = usePurchaseOrders(
     statusFilter ? { status: statusFilter } : undefined
   );
+
+  const allPOs: PurchaseOrderDto[] = useMemo(() => {
+    if (isSandboxMode) {
+      let pos = inventorySandboxService.getPurchaseOrders();
+      if (statusFilter) {
+        pos = pos.filter(p => p.status === statusFilter);
+      }
+      return pos;
+    }
+    return apiPOs;
+  }, [isSandboxMode, apiPOs, statusFilter, sandboxTick]);
+
+  const isLoading = isSandboxMode ? false : apiLoading;
 
   // Client-side filtering by search term (since backend GetList only supports Supplier/Warehouse/Status)
   const filteredPOs = allPOs.filter(po => 
@@ -76,10 +102,6 @@ export const PurchaseOrderListPage: React.FC = () => {
     setShowDetailModal(true);
   };
 
-  const formatCurrency = (val?: number) => {
-    if (val === undefined || val === null || isNaN(val)) return '0 ₫';
-    return `${val.toLocaleString('vi-VN')} ₫`;
-  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -96,7 +118,7 @@ export const PurchaseOrderListPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 font-sans text-muted-foreground">
+    <div id="tour-po-header" className="space-y-6 font-sans text-muted-foreground">
       {/* Top Banner */}
       <div className="p-6 rounded-3xl bg-card border border-border/50 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -108,17 +130,117 @@ export const PurchaseOrderListPage: React.FC = () => {
               {language === 'vi' ? 'Phiếu Nhập Kho' : 'Purchase Orders'}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5 font-normal">
-              {language === 'vi' ? 'Quản lý đơn đặt hàng và nhập kho từ nhà cung cấp' : 'Manage supplier purchase orders and stock receiving'}
+              {language === 'vi' ? 'Quản lý đơn đặt hàng và tiếp nhận linh kiện tại dock từ nhà cung cấp' : 'Manage supplier purchase orders and stock receiving'}
             </p>
           </div>
         </div>
-        <Button variant="outline"
-          onClick={handleCreate}
-          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> {language === 'vi' ? 'Tạo Phiếu Nhập' : 'Create PO'}
-        </Button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            id="tour-po-guide-btn"
+            type="button"
+            onClick={() => {
+              if (!isSandboxMode) {
+                const newParams = new URLSearchParams(searchParams);
+                newParams.set('mode', 'training');
+                setSearchParams(newParams);
+                toast.success(
+                  language === 'vi'
+                    ? 'Đã bật Chế độ Thực hành & Khởi động Hướng dẫn!'
+                    : 'Sandbox Mode & Guided Tour activated!',
+                  { icon: '🌊' }
+                );
+              }
+              setTimeout(() => {
+                startTour();
+              }, 250);
+            }}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:via-blue-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/25 border border-sky-400/40 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+          >
+            <Sparkles className="w-4 h-4 text-sky-200 animate-pulse" />
+            <span>{language === 'vi' ? 'Hướng dẫn sử dụng' : 'User Guide'}</span>
+          </Button>
+
+          <Button
+            id="tour-po-create-btn"
+            variant="outline"
+            onClick={handleCreate}
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> {language === 'vi' ? 'Tạo Phiếu Nhập' : 'Create PO'}
+          </Button>
+        </div>
       </div>
+
+      {/* Amber Sandbox Banner */}
+      {isSandboxMode && (
+        <div
+          id="tour-sandbox-banner"
+          className="p-5 rounded-3xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-500 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3 duration-300"
+        >
+          <div className="flex items-start md:items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/40 shadow-inner">
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-heading font-bold text-sm text-foreground flex items-center gap-1.5">
+                  {language === 'vi' ? 'CHẾ ĐỘ THỰC HÀNH NHẬP KHO (SANDBOX)' : 'PURCHASE ORDER SANDBOX MODE'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  ZERO-DB FOOTPRINT
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {language === 'vi'
+                  ? 'Toàn bộ đơn mua hàng mẫu lưu trong Shadow Store. Bạn có thể tự do bấm nút "Nhập kho" để thực hành đón shipper tiếp nhận hàng mà không ảnh hưởng đơn thật.'
+                  : 'Sample purchase orders running in isolated Shadow Store with zero writes to live database.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              onClick={startTour}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all hover:scale-102"
+            >
+              <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+              <span>{language === 'vi' ? 'Bắt đầu Hướng dẫn' : 'Start Tour'}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                inventorySandboxService.reset();
+                operationalNotificationService.clearSandboxNotifications();
+                setSandboxTick(t => t + 1);
+                toast.success(language === 'vi' ? 'Đã khôi phục dữ liệu đơn mua hàng mẫu!' : 'Reset demo purchase orders successfully!', { icon: '🔄' });
+              }}
+              className="px-3.5 py-2 rounded-xl bg-card border border-amber-500/30 hover:bg-amber-500/10 text-amber-400 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{language === 'vi' ? 'Khôi phục mẫu' : 'Reset Demo'}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                exitSandboxMode({
+                  searchParams,
+                  setSearchParams,
+                  navigate,
+                  language,
+                });
+              }}
+              className="px-3.5 py-2 rounded-xl bg-card border border-rose-500/30 hover:bg-rose-500/10 text-rose-500 hover:text-rose-400 text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{language === 'vi' ? 'Thoát Sandbox' : 'Exit Sandbox'}</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Filters & Search */}
       <div className="flex flex-col md:flex-row gap-4">
@@ -176,7 +298,7 @@ export const PurchaseOrderListPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                paginatedPOs.map((po) => (
+                paginatedPOs.map((po, index) => (
                   <tr 
                     key={po.id} 
                     onClick={() => handleView(po)}
@@ -198,9 +320,31 @@ export const PurchaseOrderListPage: React.FC = () => {
                       <span className="font-mono font-bold text-foreground">{formatCurrency(po.totalAmount)}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(po.status)}`}>
-                        {po.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          id={index === 0 ? 'tour-po-status-badge' : undefined}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${getStatusColor(po.status)}`}
+                        >
+                          {po.status}
+                        </span>
+                        {isSandboxMode && po.status === 'Confirmed' && (
+                          <Button
+                            id="tour-po-receive-action"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const res = inventorySandboxService.receivePurchaseOrder(po.id);
+                              if (res.success) {
+                                setSandboxTick(t => t + 1);
+                                toast.success(res.message, { icon: '📦' });
+                              }
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm cursor-pointer"
+                          >
+                            {language === 'vi' ? 'Nhập kho' : 'Receive'}
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -10,11 +10,12 @@ export const userKeys = {
   detail: (id: string) => [...userKeys.details(), id] as const,
 };
 
-export const useUsers = (branchId?: string) => {
+export const useUsers = (branchId?: string, enabled: boolean = true) => {
   return useQuery({
     queryKey: userKeys.list(branchId),
     queryFn: () => userService.getAll(branchId),
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
 };
 

@@ -81,8 +81,10 @@ export const salesService = {
   },
 
   // Vouchers
-  validateVoucher: async (code: string): Promise<VoucherDto> => {
-    const response = await axiosClient.get<ApiResponse<VoucherDto>>(`/Voucher/validate/${code}`);
+  validateVoucher: async (code: string, orderValue: number = 0): Promise<VoucherDto> => {
+    const response = await axiosClient.get<ApiResponse<VoucherDto>>('/Voucher/validate', {
+      params: { code, orderValue },
+    });
     return response.data.data;
   },
 };

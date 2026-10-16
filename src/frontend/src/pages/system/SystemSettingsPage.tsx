@@ -15,15 +15,19 @@ import { useSystemStore, type SystemSettings } from '../../stores/systemStore';
 import { axiosClient } from '../../utils/axiosClient';
 import toast from 'react-hot-toast';
 import { useThemeStore } from '../../stores/themeStore';
+import { useAuthStore } from '../../stores/authStore';
 import { i18nDictionary } from '../../locales/dictionary';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 export const SystemSettingsPage: React.FC = () => {
   const { settings, updateSettings } = useSystemStore();
+  const { roles } = useAuthStore();
+  const isOwner = roles.includes('Owner');
   const [formData, setFormData] = useState<SystemSettings>({ ...settings });
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const { language } = useThemeStore();
   const t = i18nDictionary[language].settings;
@@ -72,7 +76,8 @@ export const SystemSettingsPage: React.FC = () => {
       const response = await axiosClient.post('/FileAttachment', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const fileUrl = response.data?.data?.filePath || URL.createObjectURL(file);
+      const fileId = response.data?.data;
+      const fileUrl = typeof fileId === 'string' ? `/api/FileAttachment/${fileId}/download` : (fileId?.filePath || URL.createObjectURL(file));
       setFormData((prev) => ({ ...prev, systemLogoUrl: fileUrl }));
       toast.success('Đã tải ảnh logo lên thành công!');
     } catch {
@@ -119,20 +124,39 @@ export const SystemSettingsPage: React.FC = () => {
           </div>
         </div>
 
-        <Button variant="outline"
-          onClick={handleSubmit}
-          disabled={loading}
-          className="px-5 py-3 rounded-2xl text-white font-medium text-xs flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-60"
-          style={{
-            background: 'linear-gradient(to right, #059669, #0d9488, #047857)',
-          }}
-        >
-          <Save className="w-4 h-4" />
-          {loading ? t.saving : t.btnSaveHeader}
-        </Button>
+        {isOwner ? (
+          <Button variant="outline"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-5 py-3 rounded-2xl text-white font-medium text-xs flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-60"
+            style={{
+              background: 'linear-gradient(to right, #059669, #0d9488, #047857)',
+            }}
+          >
+            <Save className="w-4 h-4" />
+            {loading ? t.saving : t.btnSaveHeader}
+          </Button>
+        ) : (
+          <div className="text-xs px-3.5 py-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/30">
+            {language === 'vi' ? 'Chế độ xem (Admin)' : 'Read-only mode (Admin)'}
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {!isOwner && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-semibold">{language === 'vi' ? 'Chế độ chỉ xem dành cho Quản trị viên (Admin)' : 'Read-only mode for Admin'}</p>
+              <p className="mt-0.5 opacity-90">
+                {language === 'vi'
+                  ? 'Theo phân quyền hệ thống (⭐ Owner / 🔸 Admin), chỉ Chủ sở hữu (Owner) mới có quyền chỉnh sửa Cấu hình thương hiệu và Tài khoản thụ hưởng VietQR. Tài khoản Admin chỉ được xem thông tin để kiểm soát vận hành.'
+                  : 'Per RBAC matrix (⭐ Owner / 🔸 Admin), only the Owner has permission to edit System Branding and VietQR account settings.'}
+              </p>
+            </div>
+          </div>
+        )}
         {/* Section 1: System & Store Branding */}
         <div
           className="p-6 rounded-3xl space-y-5"
@@ -254,8 +278,17 @@ export const SystemSettingsPage: React.FC = () => {
             </label>
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative w-16 h-16 aspect-square rounded-2xl overflow-hidden shrink-0 flex items-center justify-center bg-card">
-                {formData.systemLogoUrl ? (
-                  <img src={formData.systemLogoUrl} alt="Logo Preview" className="w-full h-full aspect-square object-cover" />
+                {formData.systemLogoUrl && !logoError ? (
+                  <img
+                    src={formData.systemLogoUrl}
+                    alt="Logo Preview"
+                    className="w-full h-full aspect-square object-cover"
+                    onError={() => {
+                      setLogoError(true);
+                      setFormData((prev) => ({ ...prev, systemLogoUrl: '' }));
+                      updateSettings({ systemLogoUrl: '' });
+                    }}
+                  />
                 ) : (
                   <Building className="w-8 h-8 text-muted-foreground" />
                 )}
@@ -432,19 +465,21 @@ export const SystemSettingsPage: React.FC = () => {
         </div>
 
         {/* Submit Action */}
-        <div className="flex justify-end pt-2">
-          <Button variant="outline"
-            type="submit"
-            disabled={loading}
-            className="px-8 py-3.5 rounded-2xl text-white font-medium text-sm flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-60"
-            style={{
-              background: 'linear-gradient(to right, #059669, #0d9488, #047857)',
-            }}
-          >
-            <Save className="w-5 h-5" />
-            {loading ? t.savingAll : t.btnSaveAll}
-          </Button>
-        </div>
+        {isOwner && (
+          <div className="flex justify-end pt-2">
+            <Button variant="outline"
+              type="submit"
+              disabled={loading}
+              className="px-8 py-3.5 rounded-2xl text-white font-medium text-sm flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-60"
+              style={{
+                background: 'linear-gradient(to right, #059669, #0d9488, #047857)',
+              }}
+            >
+              <Save className="w-5 h-5" />
+              {loading ? t.savingAll : t.btnSaveAll}
+            </Button>
+          </div>
+        )}
       </form>
     </div>
   );

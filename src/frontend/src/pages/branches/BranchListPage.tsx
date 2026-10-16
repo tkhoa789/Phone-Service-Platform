@@ -17,9 +17,12 @@ import toast from 'react-hot-toast';
 
 import { useBranches, useDeleteBranch } from '../../features/branches/hooks/useBranches';
 import { BranchFormModal } from '../../features/branches/components/BranchFormModal';
+import { useAuthStore } from '../../stores/authStore';
 
 export const BranchListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const { roles } = useAuthStore();
+  const isOwner = roles.includes('Owner');
   const tBr = i18nDictionary[language].branches;
   const tCommon = i18nDictionary[language].common;
 
@@ -76,9 +79,15 @@ export const BranchListPage: React.FC = () => {
         description={tBr.branchesSubtitle}
         icon={<Building2 className="w-6 h-6 text-emerald-500" />}
         actions={
-          <Button onClick={() => handleOpenModal()} className="gap-2">
-            <Plus className="w-4 h-4" /> {tBr.btnAddBranch}
-          </Button>
+          isOwner ? (
+            <Button onClick={() => handleOpenModal()} className="gap-2">
+              <Plus className="w-4 h-4" /> {tBr.btnAddBranch}
+            </Button>
+          ) : (
+            <div className="text-xs px-3 py-1.5 rounded-lg neu-inset text-muted-foreground border border-border/50">
+              {language === 'vi' ? 'Chỉ xem & cập nhật (Chỉ Owner mới có quyền tạo mới)' : 'View & update only (Owner required to create)'}
+            </div>
+          )
         }
       />
 
@@ -131,9 +140,11 @@ export const BranchListPage: React.FC = () => {
                     <Button variant="ghost" size="icon" onClick={() => handleOpenModal(branch)} title={tCommon.edit}>
                       <Edit className="w-4 h-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ isOpen: true, id: branch.id, name: branch.name })} title={tCommon.delete}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    {isOwner && (
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ isOpen: true, id: branch.id, name: branch.name })} title={tCommon.delete}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

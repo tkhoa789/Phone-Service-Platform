@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, pe
 
   // 1. Permission-based check
   if (permission && !hasPermission(permission)) {
-    return <AccessDeniedScreen allowedRoles={allowedRoles} reason={permission} />;
+    return <AccessDeniedScreen allowedRoles={allowedRoles} userRoles={roles} requiredPermission={permission} reason={permission} />;
   }
 
   // 2. Role-based check
@@ -41,12 +41,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, pe
 interface AccessDeniedProps {
   allowedRoles?: string[];
   userRoles?: string[];
+  requiredPermission?: string;
   reason?: string;
 }
 
-const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRoles, reason }) => {
+const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRoles, requiredPermission, reason }) => {
   const navigate = useNavigate();
   const { language } = useThemeStore();
+  const displayPermission = requiredPermission || reason;
 
   return (
     <div className="min-h-[75vh] flex items-center justify-center p-6 font-sans">
@@ -80,9 +82,16 @@ const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRol
             <Badge variant="warning">{userRoles?.join(', ') || 'Standard Member'}</Badge>
           </div>
 
+          {displayPermission && (
+            <div className="flex items-center justify-between pt-3 border-t border-border/50">
+              <span className="text-muted-foreground">{language === 'vi' ? 'Yêu cầu quyền (Permission):' : 'Required Permission:'}</span>
+              <Badge variant="outline" className="text-rose-500 border-rose-500/30 font-bold">{displayPermission}</Badge>
+            </div>
+          )}
+
           {allowedRoles && (
             <div className="flex items-center justify-between pt-3 border-t border-border/50">
-              <span className="text-muted-foreground">{language === 'vi' ? 'Yêu cầu tối thiểu:' : 'Required Roles:'}</span>
+              <span className="text-muted-foreground">{language === 'vi' ? 'Yêu cầu vai trò (Role):' : 'Required Roles:'}</span>
               <Badge variant="success">{allowedRoles.join(' / ')}</Badge>
             </div>
           )}
@@ -92,11 +101,11 @@ const AccessDeniedScreen: React.FC<AccessDeniedProps> = ({ allowedRoles, userRol
         <div className="pt-2">
           <Button
             variant="primary"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/')}
             className="w-full font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>{language === 'vi' ? 'Quay về Màn hình Chính (Dashboard)' : 'Return to Main Dashboard'}</span>
+            <span>{language === 'vi' ? 'Quay về Trang Chủ' : 'Return to Home'}</span>
           </Button>
         </div>
       </Card>

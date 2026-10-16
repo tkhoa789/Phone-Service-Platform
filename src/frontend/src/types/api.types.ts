@@ -32,6 +32,8 @@ export interface UserDto {
   id: string;
   branchId: string;
   branchName?: string;
+  branchAddress?: string;
+  branchPhone?: string;
   username: string;
   fullName: string;
   email: string;
@@ -101,6 +103,9 @@ export interface CustomerDto {
   phone: string;
   email?: string;
   address?: string;
+  rewardPoints?: number;
+  totalSpent?: number | null;
+  memberTier?: string;
   createdAt: string;
 }
 
@@ -137,6 +142,9 @@ export interface SupplierDto {
   phone?: string;
   email?: string;
   address?: string;
+  taxCode?: string | null;
+  debtAmount?: number | null;
+  creditLimit?: number;
   createdAt: string;
 }
 
@@ -149,7 +157,7 @@ export interface ProductVariantDto {
   variantName: string;
   color?: string;
   capacity?: string;
-  costPrice: number;
+  costPrice?: number | null;
   salePrice: number;
 
   createdAt: string;
@@ -260,6 +268,9 @@ export interface SalesOrderDto {
   total: number;
   createdAt: string;
   updatedAt: string;
+  hasInvoice?: boolean;
+  invoiceId?: string;
+  invoiceCode?: string;
   items: SalesOrderItemDto[];
 }
 
@@ -316,6 +327,7 @@ export interface CreateInvoiceCommand {
 export interface CreatePaymentCommand {
   invoiceId: string;
   paymentMethodId: string;
+  code: string;
   amount: number;
 }
 
@@ -353,6 +365,10 @@ export interface RepairPartDto {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  status?: string;
+  addedBy?: string;
+  addedAt?: string;
+  rowVersion?: string;
 }
 
 export interface RepairStatusHistoryDto {
@@ -364,7 +380,7 @@ export interface RepairStatusHistoryDto {
   createdBy?: string;
 }
 
-export type RepairTicketStatus = 'Received' | 'Diagnosing' | 'WaitingApproval' | 'WaitingForParts' | 'Repairing' | 'WaitingQC' | 'Completed' | 'WaitingPickup' | 'Delivered' | 'Cancelled';
+export type RepairTicketStatus = 'PendingAssignment' | 'Received' | 'Diagnosing' | 'WaitingApproval' | 'WaitingForParts' | 'Repairing' | 'WaitingQC' | 'Completed' | 'WaitingPickup' | 'Delivered' | 'Cancelled';
 
 export interface RepairTicketDto {
   id: string;
@@ -384,6 +400,9 @@ export interface RepairTicketDto {
   ticketCode: string;
   status: RepairTicketStatus;
   problemDescription: string;
+  exteriorCondition?: string;
+  customModelName?: string;
+  isTest?: boolean;
   estimatedCost?: number;
   actualCost?: number;
   laborCost: number;
@@ -397,6 +416,72 @@ export interface RepairTicketDto {
   statusHistories: RepairStatusHistoryDto[];
   checklists?: RepairChecklistDto[];
   deposits?: RepairDepositDto[];
+
+  // Diagnosis fields (Section 5)
+  diagnosisRootCause?: string;
+  diagnosisProposedSolution?: string;
+  estimatedDays?: number;
+  technicalNotes?: string;
+  diagnosedAt?: string;
+  diagnosedById?: string;
+  diagnosedByName?: string;
+
+  // Customer Approval fields (Section 6)
+  customerApprovalStatus?: string;
+  customerApprovedAt?: string;
+  customerApprovedById?: string;
+  customerApprovedByName?: string;
+  customerApprovalMethod?: string;
+  customerApprovedAmount?: number;
+  customerApprovalNote?: string;
+}
+
+export interface SubmitDiagnosisCommand {
+  repairTicketId: string;
+  rootCause: string;
+  proposedSolution: string;
+  estimatedCost?: number;
+  estimatedDays?: number;
+  technicalNotes?: string;
+  requiresCustomerApproval: boolean;
+  waitingForParts?: boolean;
+}
+
+export interface ApproveRepairCommand {
+  repairTicketId: string;
+  approvedAmount: number;
+  approvalMethod: string;
+  note?: string;
+}
+
+export interface RejectRepairCommand {
+  repairTicketId: string;
+  reason?: string;
+}
+
+export interface UseRepairPartCommand {
+  repairTicketId: string;
+  repairPartId: string;
+  rowVersion?: string;
+}
+
+export interface ReturnRepairPartCommand {
+  repairTicketId: string;
+  repairPartId: string;
+  rowVersion?: any;
+}
+
+export interface CompleteRepairCommand {
+  repairTicketId: string;
+  completionNotes?: string;
+}
+
+export interface DeliverRepairCommand {
+  repairTicketId: string;
+  receiverName: string;
+  receiverPhone?: string;
+  notes?: string;
+  customerSignatureUrl?: string;
 }
 
 export interface RepairChecklistItemDto {
@@ -440,6 +525,9 @@ export interface CreateRepairTicketCommand {
   problemDescription: string;
   estimatedCost?: number;
   imei?: string;
+  technicianId?: string;
+  exteriorCondition?: string;
+  customModelName?: string;
 }
 
 export interface CreateRepairDepositCommand {
@@ -462,6 +550,20 @@ export interface RepairDepositDto {
   paidAt: string;
 }
 
+export interface RepairQueueStatsDto {
+  unassignedCount: number;
+  myTasksCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  deliveredCount?: number;
+  totalCount: number;
+  waitingForPartsCount?: number;
+  waitingApprovalCount?: number;
+  diagnosingCount?: number;
+  repairingCount?: number;
+  waitingQcCount?: number;
+}
+
 export interface AddRepairPartCommand {
   repairTicketId: string;
   productVariantId: string;
@@ -471,38 +573,55 @@ export interface AddRepairPartCommand {
 
 export type WarrantyTicketStatus = 'Received' | 'Processing' | 'Completed' | 'Rejected' | 'Cancelled';
 
+export type RejectReason = 'WaterDamage' | 'Dropped' | 'ThirdPartyIntervention' | 'Expired' | 'Other';
+export type VendorSubStatus = 'AtVendor' | 'Returned';
+
 export interface WarrantyHistoryDto {
   id: string;
   warrantyTicketId: string;
   action: string;
   status: string;
   description?: string;
+  actorId?: string;
+  actorName?: string;
+  notes?: string;
   createdAt: string;
   createdBy?: string;
 }
 
-  export interface WarrantyTicketDto {
-    id: string;
-    customerId: string;
-    customerName: string;
-    customerPhone: string;
-    salesOrderId?: string;
-    salesOrderCode?: string;
-    productVariantId: string;
-    productName: string;
-    productSku: string;
-    imei?: string;
-    code: string;
-    ticketCode: string;
-    status: WarrantyTicketStatus;
-    startDate?: string;
-    endDate?: string;
-    note?: string;
-    issueDescription?: string;
-    createdAt: string;
-    histories: WarrantyHistoryDto[];
-    rowVersion: string;
-  }
+export interface WarrantyTicketDto {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  salesOrderId?: string;
+  salesOrderCode?: string;
+  productVariantId: string;
+  productName: string;
+  productSku: string;
+  imei?: string;
+  code: string;
+  ticketCode?: string;
+  status: WarrantyTicketStatus;
+  startDate?: string;
+  endDate?: string;
+  note?: string;
+  issueDescription?: string;
+  rejectReason?: RejectReason | string;
+  rejectNotes?: string;
+  evidencePhotoUrls?: string;
+  transferToPaidRepair?: boolean;
+  repairTicketId?: string;
+  repairTicketCode?: string;
+  vendorName?: string;
+  vendorTicketNumber?: string;
+  trackingNumber?: string;
+  vendorSubStatus?: VendorSubStatus | string;
+  createdAt: string;
+  createdBy?: string;
+  histories: WarrantyHistoryDto[];
+  rowVersion: string;
+}
 
 export interface CreateWarrantyTicketCommand {
   branchId: string;
@@ -512,8 +631,50 @@ export interface CreateWarrantyTicketCommand {
   note?: string;
 }
 
+export interface RejectWarrantyCommand {
+  warrantyTicketId: string;
+  reason: RejectReason;
+  rejectNotes: string;
+  evidencePhotoUrls?: string;
+  transferToPaidRepair: boolean;
+  rowVersion: string;
+}
+
+export interface TransferToInHouseRepairCommand {
+  warrantyTicketId: string;
+  componentDiagnosis: string;
+  technicianId?: string;
+  rowVersion: string;
+}
+
+export interface ReplaceDeviceCommand {
+  warrantyTicketId: string;
+  newImei: string;
+  reason?: string;
+  rowVersion: string;
+}
+
+export interface SendToVendorCommand {
+  warrantyTicketId: string;
+  vendorName: string;
+  vendorTicketNumber: string;
+  trackingNumber: string;
+  notes?: string;
+  rowVersion: string;
+}
+
+export interface DeliverToCustomerCommand {
+  warrantyTicketId: string;
+  receiverName?: string;
+  notes?: string;
+  rowVersion: string;
+}
+
+
 export interface WarrantyCheckResultDto {
   isUnderWarranty: boolean;
+  warrantyStatus?: 'Active' | 'Expired' | 'NotFound' | string;
+  remainingDays?: number;
   purchaseDate?: string;
   warrantyExpirationDate?: string;
   productVariantId?: string;
@@ -521,7 +682,7 @@ export interface WarrantyCheckResultDto {
   productSku: string;
   customerId?: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone?: string;
   salesOrderId?: string;
   salesOrderCode?: string;
   currentImeiStatus: string;
@@ -539,3 +700,84 @@ export interface CreateStockTakeCommand {
   code?: string;
   items: CreateStockTakeItemCommand[];
 }
+
+export interface CompleteStockTakeCommand {
+  id: string;
+  variantImeis?: {
+    productVariantId: string;
+    imeis: string[];
+  }[];
+}
+
+export interface StockTakeItemDto {
+  id: string;
+  productVariantId: string;
+  variantName: string;
+  sku: string;
+  systemQuantity: number;
+  actualQuantity: number;
+  difference: number;
+  note?: string;
+  isImeiControlled?: boolean;
+}
+
+export interface StockTakeDto {
+  id: string;
+  warehouseId: string;
+  warehouseName: string;
+  code: string;
+  status: 'Draft' | 'InProgress' | 'Completed' | 'Cancelled';
+  createdAt: string;
+  items: StockTakeItemDto[];
+}
+
+// ============================================
+// WAREHOUSE TRANSFER MODULE
+// ============================================
+export interface WarehouseTransferItemDto {
+  id: string;
+  productVariantId: string;
+  variantName: string;
+  sku: string;
+  quantity: number;
+}
+
+export interface WarehouseTransferDto {
+  id: string;
+  fromWarehouseId: string;
+  fromWarehouseName: string;
+  toWarehouseId: string;
+  toWarehouseName: string;
+  code: string;
+  status: string; // 'Pending' | 'InTransit' | 'Received' | 'Cancelled'
+  createdAt: string;
+  items: WarehouseTransferItemDto[];
+}
+
+export interface CreateWarehouseTransferItemCommand {
+  productVariantId: string;
+  quantity: number;
+}
+
+export interface CreateWarehouseTransferCommand {
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  code: string;
+  items: CreateWarehouseTransferItemCommand[];
+}
+
+export interface ProductVariantImeisDto {
+  productVariantId: string;
+  imeis: string[];
+}
+
+export interface ShipWarehouseTransferCommand {
+  id: string;
+  variantImeis?: ProductVariantImeisDto[];
+}
+
+export interface ReceiveWarehouseTransferCommand {
+  id: string;
+  variantImeis?: ProductVariantImeisDto[];
+}
+

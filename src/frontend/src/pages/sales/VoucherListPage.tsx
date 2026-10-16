@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { voucherService } from '../../services/voucherService';
 import { useThemeStore } from '../../stores/themeStore';
+import { useAuthStore } from '../../stores/authStore';
 import { i18nDictionary } from '../../locales/dictionary';
 import type { VoucherDto } from '../../types/api.types';
 import { Tag, Plus, Search, Calendar, CheckCircle2, Clock, Trash2, Ban } from 'lucide-react';
@@ -13,6 +14,8 @@ import { Input } from '@/components/ui/Input';
 
 export const VoucherListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const { hasRole, roles } = useAuthStore();
+  const isAdminOrOwner = hasRole('Admin') || hasRole('Owner') || roles.includes('Admin') || roles.includes('Owner');
   const tVoucher = i18nDictionary[language].vouchers;
   const tCommon = i18nDictionary[language].common;
 
@@ -79,12 +82,14 @@ export const VoucherListPage: React.FC = () => {
           </div>
         </div>
 
-        <Button variant="danger"
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center gap-2 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> {tVoucher.btnCreateVoucher}
-        </Button>
+        {isAdminOrOwner && (
+          <Button variant="danger"
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-medium text-xs shadow-sm hover:scale-[1.02] active:scale-95 flex items-center gap-2 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> {tVoucher.btnCreateVoucher}
+          </Button>
+        )}
       </div>
 
       {/* Search Input */}
@@ -146,13 +151,15 @@ export const VoucherListPage: React.FC = () => {
                     </td>
                     <td className="p-3.5">{getStatusBadge(v.status, v.expiryDate, v.usageCount, v.usageLimit)}</td>
                     <td className="p-3.5 text-right space-x-1">
-                      <Button variant="outline"
-                        onClick={() => handleDelete(v.id)}
-                        className="p-2 rounded-xl bg-card text-rose-500 hover:text-rose-600 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
-                        title="Thu hồi / Xóa Voucher"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      {isAdminOrOwner && (
+                        <Button variant="outline"
+                          onClick={() => handleDelete(v.id)}
+                          className="p-2 rounded-xl bg-card text-rose-500 hover:text-rose-600 shadow-sm active:shadow-inner border border-border/50 bg-muted/20 transition-colors cursor-pointer"
+                          title="Thu hồi / Xóa Voucher"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))

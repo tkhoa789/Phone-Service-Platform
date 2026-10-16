@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Wrench, PlusCircle } from 'lucide-react';
+import { Wrench, PlusCircle, Package } from 'lucide-react';
 import { productService } from '@/services/productService';
-import type { ProductVariantDto } from '@/types/api.types';
 import { SearchableSelect } from '@/components/common/SearchableSelect';
 import toast from 'react-hot-toast';
 import { Dialog } from '@/components/ui/Dialog';
@@ -10,6 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAddRepairPart } from '../api/useRepairs';
 import { useThemeStore } from '@/stores/themeStore';
+import { formatCurrency } from '@/utils/formatCurrency';
+import { operationalNotificationService } from '@/services/operationalNotificationService';
 
 interface AddRepairPartModalProps {
   repairTicketId: string;
@@ -23,6 +24,7 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
   onSuccess,
 }) => {
   const { language } = useThemeStore();
+  const isVi = language === 'vi';
   
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -36,8 +38,6 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
   });
 
   const variants = variantsData || [];
-
-  
 
   const handleSelectVariant = (id: string) => {
     setSelectedVariantId(id);
@@ -58,82 +58,115 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
       unitPrice,
     }, {
       onSuccess: () => {
-        toast.success(language === 'vi' ? 'Thêm linh kiện thành công!' : 'Part added successfully!');
+        toast.success(isVi ? 'Thêm linh kiện thành công!' : 'Part added successfully!');
+        const selected = variants.find(v => v.id === selectedVariantId);
+        const partName = selected ? `${selected.name} (${selected.sku})` : 'Linh kiện thay thế';
+
+        operationalNotificationService.dispatchNotification({
+          title: `📋 Yêu cầu cấp linh kiện sửa chữa: ${partName}`,
+          content: `KTV đã đăng ký sử dụng ${quantity}x ${partName} cho phiếu sửa chữa. Thủ kho chuẩn bị linh kiện chuyển tới bàn kỹ thuật.`,
+          type: 'PART_REQUESTED',
+          targetRoles: ['Inventory'],
+          link: '/inventory',
+        });
+
         onSuccess();
         onClose();
       },
       onError: (err: any) => {
-        toast.error(err.response?.data?.message || (language === 'vi' ? 'Không thể thêm linh kiện!' : 'Failed to add part!'));
+        toast.error(err.response?.data?.message || (isVi ? 'Không thể thêm linh kiện!' : 'Failed to add part!'));
       }
     });
   };
 
-  return (
-    <Dialog open onOpenChange={onClose} title={language === 'vi' ? 'Th�m Linh Ki?n S?a Ch?a' : 'Add Repair Part'}>
-      
-        
-          
-        
+  const totalCost = quantity * unitPrice;
 
-        {isLoading ? (
-        <div className="py-8 flex flex-col items-center justify-center text-slate-500">
-          <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-primary animate-spin mb-4" />
-          <p>{language === 'vi' ? 'Đang tải danh sách linh kiện...' : 'Loading parts list...'}</p>
+  return (
+    <Dialog 
+      open 
+      onOpenChange={onClose} 
+      title={isVi ? 'Thêm Linh Kiện Sửa Chữa' : 'Add Replacement Part'}
+    >
+      {isLoading ? (
+        <div className="py-8 flex flex-col items-center justify-center text-muted-foreground space-y-3">
+          <div className="w-8 h-8 rounded-full border-3 border-primary/20 border-t-primary animate-spin" />
+          <p className="text-xs">{isVi ? 'Đang tải danh mục linh kiện...' : 'Loading parts catalog...'}</p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              {language === 'vi' ? 'Chọn Linh Kiện' : 'Select Part'}
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              {isVi ? 'Chọn Linh Kiện Thay Thế *' : 'Select Replacement Part *'}
             </label>
             <SearchableSelect
-              options={variants.map(v => ({ value: v.id, label: `${v.name} (${v.sku})` }))}
+              options={variants.map(v => ({ 
+                value: v.id, 
+                label: `${v.name} (${v.sku}) - ${formatCurrency(v.salePrice || 0)}` 
+              }))}
               value={selectedVariantId}
               onChange={handleSelectVariant}
-              placeholder={language === 'vi' ? 'Tìm theo tên hoặc SKU...' : 'Search by name or SKU...'}
+              placeholder={isVi ? 'Tìm linh kiện theo tên, SKU...' : 'Search by part name or SKU...'}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                {language === 'vi' ? 'Số Lượng' : 'Quantity'}
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                {isVi ? 'Số Lượng' : 'Quantity'}
               </label>
               <Input
                 type="number"
                 min="1"
                 value={quantity.toString()}
-                onChange={e => setQuantity(Number(e.target.value))}
+                onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                {language === 'vi' ? 'Đơn Giá' : 'Unit Price'}
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                {isVi ? 'Đơn Giá Linh Kiện (₫)' : 'Unit Price (₫)'}
               </label>
               <Input
                 type="number"
                 min="0"
                 value={unitPrice.toString()}
-                onChange={e => setUnitPrice(Number(e.target.value))}
+                onChange={e => setUnitPrice(Math.max(0, parseInt(e.target.value) || 0))}
                 required
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-200">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {language === 'vi' ? 'Hủy' : 'Cancel'}
+
+          {selectedVariantId && (
+            <div className="p-3 rounded-xl neu-inset bg-card flex justify-between items-center text-xs">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5 text-primary" />
+                {isVi ? 'Tổng tiền linh kiện dự kiến:' : 'Subtotal:'}
+              </span>
+              <span className="font-mono font-bold text-primary text-sm">
+                {formatCurrency(totalCost)}
+              </span>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+            <Button type="button" variant="secondary" onClick={onClose} className="neu-raised">
+              {isVi ? 'Hủy' : 'Cancel'}
             </Button>
-            <Button type="submit" variant="primary" disabled={!selectedVariantId || addPartMutation.isPending}>
+            <Button 
+              type="submit" 
+              variant="primary" 
+              disabled={!selectedVariantId || addPartMutation.isPending}
+              className="shadow-md"
+            >
               {addPartMutation.isPending ? (
-                 <span className="flex items-center gap-2">
-                   <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                   {language === 'vi' ? 'Đang thêm...' : 'Adding...'}
-                 </span>
-              ) : (
                 <span className="flex items-center gap-2">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  {isVi ? 'Đang xuất...' : 'Issuing...'}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
                   <PlusCircle className="w-4 h-4" />
-                  {language === 'vi' ? 'Thêm Linh Kiện' : 'Add Part'}
+                  {isVi ? 'Xuất Linh Kiện' : 'Add Part'}
                 </span>
               )}
             </Button>
@@ -143,10 +176,3 @@ export const AddRepairPartModal: React.FC<AddRepairPartModalProps> = ({
     </Dialog>
   );
 };
-
-
-
-
-
-
-

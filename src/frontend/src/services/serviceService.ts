@@ -1,4 +1,5 @@
 import { axiosClient } from '../utils/axiosClient';
+import { generateUUID } from '../utils/uuid';
 import type {
   ApiResponse,
   RepairTicketDto,
@@ -7,17 +8,62 @@ import type {
   WarrantyTicketDto,
   CreateWarrantyTicketCommand,
   WarrantyCheckResultDto,
-  CreateRepairChecklistCommand
+  CreateRepairChecklistCommand,
+  SubmitDiagnosisCommand,
+  ApproveRepairCommand,
+  RejectRepairCommand,
+  UseRepairPartCommand,
+  ReturnRepairPartCommand,
+  CompleteRepairCommand,
+  DeliverRepairCommand,
+  RepairQueueStatsDto,
+  RejectWarrantyCommand,
+  TransferToInHouseRepairCommand,
+  ReplaceDeviceCommand,
+  SendToVendorCommand,
+  DeliverToCustomerCommand
 } from '../types/api.types';
+
+interface AnonymousPagedResponse<T> {
+  success: boolean;
+  message: string;
+  data: T[];
+  items?: T[];
+  pagination?: {
+    totalCount: number;
+    pageIndex: number;
+    pageSize: number;
+    totalPages: number;
+  };
+  stats?: RepairQueueStatsDto;
+}
 
 export const serviceService = {
   // Repairs
-  getRepairs: async (params?: { pageIndex?: number; pageSize?: number; search?: string; status?: string }): Promise<{ items: RepairTicketDto[]; totalCount: number }> => {
-    const response = await axiosClient.get<any>('/RepairTicket', { params });
-    // Backend returns anonymous object: { success, message, data, pagination }
+  getRepairs: async (params?: { pageIndex?: number; pageSize?: number; search?: string; code?: string; status?: string; queue?: string; includeTest?: boolean }): Promise<{ items: RepairTicketDto[]; totalCount: number; stats?: RepairQueueStatsDto }> => {
+    const code = params?.code || params?.search;
+    const response = await axiosClient.get<AnonymousPagedResponse<RepairTicketDto>>('/RepairTicket', {
+      params: {
+        pageIndex: params?.pageIndex,
+        pageSize: params?.pageSize,
+        code,
+        search: params?.search,
+        status: params?.status,
+        queue: params?.queue,
+        includeTest: params?.includeTest,
+      }
+    });
+    // Backend returns anonymous object: { success, message, data, pagination, stats }
     const items = response.data?.data || response.data?.items || [];
     const totalCount = response.data?.pagination?.totalCount || items.length;
-    return { items, totalCount };
+    return { items, totalCount, stats: response.data?.stats };
+  },
+
+  getRepairStats: async (includeTest?: boolean): Promise<RepairQueueStatsDto> => {
+    const response = await axiosClient.get<ApiResponse<RepairQueueStatsDto>>('/RepairTicket/stats', {
+      params: { includeTest }
+    });
+    return response.data.data;
   },
 
   getRepairById: async (id: string): Promise<RepairTicketDto> => {
@@ -27,23 +73,76 @@ export const serviceService = {
 
   createRepairTicket: async (command: CreateRepairTicketCommand, idempotencyKey?: string): Promise<string> => {
     // Backend returns ApiResponse<Guid>
-    const headers = idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined;
+    const headers = { 'Idempotency-Key': idempotencyKey || generateUUID() };
     const response = await axiosClient.post<ApiResponse<string>>('/RepairTicket', command, { headers });
     return response.data.data;
   },
 
-  updateRepairStatus: async (id: string, status: string, note?: string): Promise<boolean> => {
+  updateRepairStatus: async (id: string, status: string, note?: string, technicianId?: string, idempotencyKey?: string): Promise<boolean> => {
     // Backend UpdateRepairStatusCommand requires 'repairTicketId' inside request body
+    const headers = { 'Idempotency-Key': idempotencyKey || generateUUID() };
     const response = await axiosClient.put<ApiResponse<boolean>>(`/RepairTicket/${id}/status`, {
       repairTicketId: id,
       status,
       note,
-    });
+      technicianId,
+    }, { headers });
     return response.data.data;
   },
 
-  addRepairPart: async (command: AddRepairPartCommand): Promise<string> => {
-    const response = await axiosClient.post<ApiResponse<string>>(`/RepairTicket/${command.repairTicketId}/parts`, command);
+  assignTechnician: async (id: string, technicianId: string, idempotencyKey?: string): Promise<boolean> => {
+    const headers = { 'Idempotency-Key': idempotencyKey || generateUUID() };
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${id}/assign-technician`, {
+      repairTicketId: id,
+      technicianId,
+    }, { headers });
+    return response.data.data;
+  },
+
+  addRepairPart: async (command: AddRepairPartCommand & { issueImmediately?: boolean }, idempotencyKey?: string): Promise<string> => {
+    const headers = { 'Idempotency-Key': idempotencyKey || generateUUID() };
+    const payload = { ...command, issueImmediately: command.issueImmediately ?? true };
+    const response = await axiosClient.post<ApiResponse<string>>(`/RepairTicket/${command.repairTicketId}/parts`, payload, { headers });
+    return response.data.data;
+  },
+
+  startDiagnosis: async (id: string): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${id}/start-diagnosis`);
+    return response.data.data;
+  },
+
+  submitDiagnosis: async (command: SubmitDiagnosisCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/submit-diagnosis`, command);
+    return response.data.data;
+  },
+
+  approveRepair: async (command: ApproveRepairCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/approve`, command);
+    return response.data.data;
+  },
+
+  rejectRepair: async (command: RejectRepairCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/reject`, command);
+    return response.data.data;
+  },
+
+  useRepairPart: async (command: UseRepairPartCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/parts/${command.repairPartId}/use`, command);
+    return response.data.data;
+  },
+
+  returnRepairPart: async (command: ReturnRepairPartCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/part/${command.repairPartId}/return`, command);
+    return response.data.data;
+  },
+
+  completeRepair: async (command: CompleteRepairCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/complete`, command);
+    return response.data.data;
+  },
+
+  deliverRepair: async (command: DeliverRepairCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/RepairTicket/${command.repairTicketId}/deliver`, command);
     return response.data.data;
   },
 
@@ -59,13 +158,15 @@ export const serviceService = {
 
   collectRepairDeposit: async (id: string, command: Omit<import('../types/api.types').CreateRepairDepositCommand, 'repairTicketId'>, idempotencyKey?: string): Promise<string> => {
     const payload = { repairTicketId: id, ...command };
-    const response = await axiosClient.post<ApiResponse<string>>(`/RepairTicket/${id}/deposit`, payload);
+    const key = idempotencyKey || (command as { idempotencyKey?: string })?.idempotencyKey;
+    const headers = key ? { 'Idempotency-Key': key } : undefined;
+    const response = await axiosClient.post<ApiResponse<string>>(`/RepairTicket/${id}/deposits`, payload, { headers });
     return response.data.data;
   },
 
   // Warranties
   getWarranties: async (params?: { pageIndex?: number; pageSize?: number; search?: string }): Promise<{ items: WarrantyTicketDto[]; totalCount: number }> => {
-    const response = await axiosClient.get<any>('/WarrantyTicket', { params });
+    const response = await axiosClient.get<AnonymousPagedResponse<WarrantyTicketDto>>('/WarrantyTicket', { params });
     const items = response.data?.data || response.data?.items || [];
     const totalCount = response.data?.pagination?.totalCount || items.length;
     return { items, totalCount };
@@ -100,8 +201,34 @@ export const serviceService = {
     return response.data.data;
   },
 
-  deleteWarrantyTicket: async (id: string): Promise<boolean> => {
-    const response = await axiosClient.delete<ApiResponse<boolean>>(`/WarrantyTicket/${id}`);
+  deleteWarrantyTicket: async (id: string, rowVersion?: string): Promise<boolean> => {
+    const config = rowVersion ? { data: { id, rowVersion } } : undefined;
+    const response = await axiosClient.delete<ApiResponse<boolean>>(`/WarrantyTicket/${id}`, config);
+    return response.data.data;
+  },
+
+  rejectWarranty: async (command: RejectWarrantyCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/WarrantyTicket/${command.warrantyTicketId}/reject`, command);
+    return response.data.data;
+  },
+
+  transferToInHouseRepair: async (command: TransferToInHouseRepairCommand): Promise<string> => {
+    const response = await axiosClient.post<ApiResponse<string>>(`/WarrantyTicket/${command.warrantyTicketId}/transfer-repair`, command);
+    return response.data.data;
+  },
+
+  replaceWarrantyDevice: async (command: ReplaceDeviceCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/WarrantyTicket/${command.warrantyTicketId}/replace-device`, command);
+    return response.data.data;
+  },
+
+  sendWarrantyToVendor: async (command: SendToVendorCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/WarrantyTicket/${command.warrantyTicketId}/send-vendor`, command);
+    return response.data.data;
+  },
+
+  deliverWarrantyToCustomer: async (command: DeliverToCustomerCommand): Promise<boolean> => {
+    const response = await axiosClient.post<ApiResponse<boolean>>(`/WarrantyTicket/${command.warrantyTicketId}/deliver`, command);
     return response.data.data;
   },
 };

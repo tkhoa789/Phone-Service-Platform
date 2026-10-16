@@ -24,6 +24,7 @@ export type {
 export interface ProductListFilterParams {
   page: number;
   pageSize: number;
+  keyword?: string;
   search?: string;
   categoryId?: string;
   brandId?: string;

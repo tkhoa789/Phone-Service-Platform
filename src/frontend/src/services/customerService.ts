@@ -5,7 +5,7 @@ import type { ApiResponse,
 export const customerService = {
   getAll: async (search?: string): Promise<CustomerDto[]> => {
     const response = await axiosClient.get<ApiResponse<PagedResult<CustomerDto> | CustomerDto[]>>('/Customer', {
-      params: { search },
+      params: { keyword: search, search },
     });
     const data = response.data.data;
     return 'items' in data ? data.items : data;

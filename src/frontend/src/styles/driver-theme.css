@@ -1,0 +1,152 @@
+/* Driver.js Custom PSP Theme */
+@import 'driver.js/dist/driver.css';
+
+.driver-popover.psp-driver-theme {
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  max-width: 360px;
+  padding: 20px;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  z-index: 1000000000;
+  backdrop-filter: blur(12px);
+  animation: psp-popover-smooth-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transition: top 0.26s cubic-bezier(0.16, 1, 0.3, 1), 
+              left 0.26s cubic-bezier(0.16, 1, 0.3, 1), 
+              opacity 0.2s ease !important;
+  will-change: top, left, transform, opacity;
+}
+
+@keyframes psp-popover-smooth-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes psp-text-fade-in {
+  0% {
+    opacity: 0.6;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.driver-popover.psp-driver-theme .driver-popover-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+  animation: psp-text-fade-in 0.22s ease-out;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-description {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin-bottom: 14px;
+  animation: psp-text-fade-in 0.22s ease-out;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-close-btn {
+  color: #64748b;
+  font-size: 20px;
+  top: 14px;
+  right: 14px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-close-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.driver-popover.psp-driver-theme .driver-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.driver-popover.psp-driver-theme .driver-popover-progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.driver-popover.psp-driver-theme .driver-popover-navigation-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-prev-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-prev-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-next-btn {
+  background: #3b82f6;
+  color: #ffffff;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 10px;
+  padding: 5px 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s;
+}
+
+.driver-popover.psp-driver-theme .driver-popover-next-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.driver-popover.psp-driver-theme .driver-popover-arrow-side-left {
+  border-left-color: #0f172a !important;
+}
+.driver-popover.psp-driver-theme .driver-popover-arrow-side-right {
+  border-right-color: #0f172a !important;
+}
+.driver-popover.psp-driver-theme .driver-popover-arrow-side-top {
+  border-top-color: #0f172a !important;
+}
+.driver-popover.psp-driver-theme .driver-popover-arrow-side-bottom {
+  border-bottom-color: #0f172a !important;
+}

@@ -72,9 +72,9 @@ export const useCancelPurchaseOrder = () => {
 
   return useMutation({
     mutationFn: cancelPurchaseOrder,
-    onSuccess: (_, id) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.detail(variables.id) });
     },
   });
 };

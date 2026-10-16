@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { useSystemStore } from '../../../stores/systemStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { useBranchStore } from '../../../stores/branchStore';
+import { useBranches } from '../../branches/hooks/useBranches';
 
 interface PosK80ReceiptProps {
   orderId: string;
@@ -34,7 +35,15 @@ export const PosK80Receipt: React.FC<PosK80ReceiptProps> = ({
 }) => {
   const { settings } = useSystemStore();
   const { user, roles } = useAuthStore();
-  const { activeBranchName, activeBranchAddress, activeBranchPhone } = useBranchStore();
+  const { activeBranchId, activeBranchName, activeBranchAddress, activeBranchPhone } = useBranchStore();
+
+  const targetBranchId = user?.branchId || (activeBranchId !== 'all' ? activeBranchId : undefined);
+  const { data: branches = [] } = useBranches(Boolean((!activeBranchAddress || !activeBranchPhone) && targetBranchId));
+  const matchedBranch = branches.find(b => b.id === targetBranchId);
+
+  const displayBranchName = activeBranchName || matchedBranch?.name || user?.branchName || 'Chi nhánh mặc định';
+  const displayAddress = activeBranchAddress || user?.branchAddress || matchedBranch?.address || settings.storeAddress || 'Trụ sở chính';
+  const displayPhone = activeBranchPhone || user?.branchPhone || matchedBranch?.phone || settings.storePhone || '0901 234 567';
 
   const handlePrint = () => {
     window.print();
@@ -56,17 +65,17 @@ export const PosK80Receipt: React.FC<PosK80ReceiptProps> = ({
             <h3 className="font-heading font-bold text-sm text-white">Thanh Toán Hoàn Tất</h3>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-white h-8 w-8">
-              <X className="w-5 h-5" />
-            </Button>
+            <X className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* K80 Thermal Receipt Container */}
         <div id="k80-receipt" className="bg-white text-black p-5 rounded-xl font-mono text-xs space-y-4 shadow-lg border border-slate-300">
           <div className="text-center space-y-1">
             <h2 className="font-extrabold text-sm tracking-wider uppercase">{settings.systemName || 'PSP PLATFORM ENTERPRISE'}</h2>
-            <h3 className="font-bold text-xs uppercase">{activeBranchName}</h3>
-            <p className="text-[10px] text-slate-700">ĐC: {activeBranchAddress || settings.storeAddress || 'Trụ sở chính'}</p>
-            <p className="text-[10px] text-slate-700">Hotline: {activeBranchPhone || settings.storePhone || '0901 234 567'} | Website: www.phoneserviceplatform.vn</p>
+            <h3 className="font-bold text-xs uppercase">{displayBranchName}</h3>
+            <p className="text-[10px] text-slate-700">ĐC: {displayAddress}</p>
+            <p className="text-[10px] text-slate-700">Hotline: {displayPhone} | Website: www.phoneserviceplatform.vn</p>
             <div className="border-b border-dashed border-black my-2" />
             <h3 className="font-bold text-sm uppercase">HÓA ĐƠN BÁN HÀNG (K80)</h3>
             <p className="text-[10px]">Mã đơn: #{orderId.substring(0, 8).toUpperCase()}</p>
@@ -144,18 +153,18 @@ export const PosK80Receipt: React.FC<PosK80ReceiptProps> = ({
         {/* Action Buttons */}
         <div className="flex gap-3 no-print">
           <Button
-              onClick={handlePrint}
-              className="flex-1 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
-            >
-              <Printer className="w-4 h-4" /> In Hóa Đơn (K80)
-            </Button>
+            onClick={handlePrint}
+            className="flex-1 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg"
+          >
+            <Printer className="w-4 h-4" /> In Hóa Đơn (K80)
+          </Button>
           <Button
-              variant="secondary"
-              onClick={onClose}
-              className="px-5 py-3 rounded-2xl font-semibold text-xs transition-all"
-            >
-              Hoàn tất
-            </Button>
+            variant="secondary"
+            onClick={onClose}
+            className="px-5 py-3 rounded-2xl font-semibold text-xs transition-all"
+          >
+            Hoàn tất
+          </Button>
         </div>
       </div>
     </div>

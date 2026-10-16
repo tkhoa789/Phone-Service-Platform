@@ -11,6 +11,11 @@ import { Input } from '@/components/ui/Input';
 interface PosPaymentModalProps {
   totalAmount: number;
   customerName: string;
+  customerTier?: string;
+  subtotal?: number;
+  tierDiscountAmount?: number;
+  tierDiscountPercent?: number;
+  voucherDiscountAmount?: number;
   onConfirmPayment: (method: 'CASH' | 'BANK_TRANSFER', cashGiven?: number) => Promise<void>;
   onClose: () => void;
   isSubmitting?: boolean;
@@ -23,6 +28,11 @@ interface PaymentFormValues {
 export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
   totalAmount,
   customerName,
+  customerTier,
+  subtotal,
+  tierDiscountAmount = 0,
+  tierDiscountPercent = 0,
+  voucherDiscountAmount = 0,
   onConfirmPayment,
   onClose,
   isSubmitting = false,
@@ -53,6 +63,51 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
     await onConfirmPayment(method, method === 'CASH' ? cashGiven : undefined);
   };
 
+  // Keyboard navigation inside Payment Modal
+  React.useEffect(() => {
+    const handleModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F9') {
+        e.preventDefault();
+        if (method !== 'CASH' || isCashEnough) {
+          handleSubmit(onSubmit)();
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.altKey && e.key === '0') {
+        e.preventDefault();
+        setMethod('CASH');
+        setValue('cashGivenText', totalAmount.toString(), { shouldValidate: true });
+        return;
+      }
+      if (e.altKey && e.key === '1') {
+        e.preventDefault();
+        setMethod('CASH');
+        setValue('cashGivenText', '100000', { shouldValidate: true });
+        return;
+      }
+      if (e.altKey && e.key === '2') {
+        e.preventDefault();
+        setMethod('CASH');
+        setValue('cashGivenText', '200000', { shouldValidate: true });
+        return;
+      }
+      if (e.altKey && e.key === '5') {
+        e.preventDefault();
+        setMethod('CASH');
+        setValue('cashGivenText', '500000', { shouldValidate: true });
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleModalKeyDown);
+    return () => window.removeEventListener('keydown', handleModalKeyDown);
+  }, [method, isCashEnough, cashGiven, totalAmount, handleSubmit, onSubmit, onClose, setValue]);
+
   return (
     <Dialog 
       open={true} 
@@ -62,12 +117,44 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
       className="max-w-md"
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pt-4">
-        {/* Total Amount Summary */}
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
-          <span className="text-sm text-emerald-700/70 font-medium">{language === 'vi' ? 'Tổng tiền cần thanh toán:' : 'Total amount due:'}</span>
-          <span className="font-heading font-bold text-2xl text-emerald-600">
-            {totalAmount.toLocaleString('vi-VN')} đ
-          </span>
+        {/* Price & Tier Discount Breakdown */}
+        <div className="p-4 rounded-xl bg-card border border-border space-y-2 text-xs shadow-sm">
+          {subtotal && subtotal !== totalAmount ? (
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>{language === 'vi' ? 'Tạm tính (chưa giảm):' : 'Subtotal:'}</span>
+              <span className="font-semibold font-mono text-foreground">{subtotal.toLocaleString('vi-VN')} ₫</span>
+            </div>
+          ) : null}
+
+          {customerTier && tierDiscountPercent > 0 ? (
+            <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 font-medium">
+              <span>
+                {language === 'vi' 
+                  ? `Hạng ${customerTier} (Khấu trừ ${tierDiscountPercent}%):` 
+                  : `Tier ${customerTier} (-${tierDiscountPercent}%):`}
+              </span>
+              <span className="font-mono font-bold">-{tierDiscountAmount.toLocaleString('vi-VN')} ₫</span>
+            </div>
+          ) : customerTier && customerTier !== 'BRONZE' ? (
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>{language === 'vi' ? `Hạng khách hàng:` : `Member Tier:`}</span>
+              <span className="font-semibold text-foreground">{customerTier}</span>
+            </div>
+          ) : null}
+
+          {voucherDiscountAmount > 0 ? (
+            <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+              <span>{language === 'vi' ? 'Voucher giảm giá:' : 'Voucher Discount:'}</span>
+              <span className="font-mono font-bold">-{voucherDiscountAmount.toLocaleString('vi-VN')} ₫</span>
+            </div>
+          ) : null}
+
+          <div className="pt-2 border-t border-border/60 flex items-center justify-between">
+            <span className="text-sm font-bold text-foreground">{language === 'vi' ? 'Tổng tiền thanh toán:' : 'Total due:'}</span>
+            <span className="font-heading font-extrabold text-2xl text-emerald-600 dark:text-emerald-400 font-mono">
+              {totalAmount.toLocaleString('vi-VN')} ₫
+            </span>
+          </div>
         </div>
 
         {/* Payment Method Selector */}
@@ -114,6 +201,8 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">{tPos.amountTenderedLabel}</label>
               <Input
+                key="cash-given-input"
+                id="cash-given-input"
                 {...register('cashGivenText')}
                 type="number"
                 placeholder="0"
@@ -172,14 +261,30 @@ export const PosPaymentModal: React.FC<PosPaymentModalProps> = ({
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
+            className="flex items-center gap-1.5"
           >
-            {tCommon.cancel}
+            <span>{tCommon.cancel}</span>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-muted border border-border text-muted-foreground">
+              Esc
+            </kbd>
           </Button>
           <Button
             type="submit"
+            data-pos-confirm-payment="true"
             disabled={(method === 'CASH' && !isCashEnough) || isSubmitting}
+            className="flex items-center gap-1.5"
           >
-            {isSubmitting ? tCommon.loading : <><CheckCircle2 className="w-4 h-4 mr-2" /> {tPos.confirmPrintBtn}</>}
+            {isSubmitting ? (
+              tCommon.loading
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                <span>{tPos.confirmPrintBtn}</span>
+                <kbd className="ml-1 px-1.5 py-0.5 text-[10px] font-mono rounded bg-emerald-700/80 text-white font-bold border border-emerald-500/40">
+                  F9
+                </kbd>
+              </>
+            )}
           </Button>
         </div>
       </form>

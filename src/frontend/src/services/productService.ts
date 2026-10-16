@@ -13,13 +13,30 @@ import type {
 
 export const productService = {
   // Products
-  getAll: async (params?: { categoryId?: string; brandId?: string; search?: string }): Promise<ProductDto[]> => {
-    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto> | ProductDto[]>>('/Product', { params });
+  getAll: async (params?: { categoryId?: string; brandId?: string; search?: string; keyword?: string; pageSize?: number; page?: number }): Promise<ProductDto[]> => {
+    const keyword = params?.keyword || params?.search;
+    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto> | ProductDto[]>>('/Product', {
+      params: {
+        categoryId: params?.categoryId,
+        brandId: params?.brandId,
+        keyword,
+        pageSize: params?.pageSize ?? 1000,
+        page: params?.page ?? 1,
+      }
+    });
     const data = response.data.data;
     return 'items' in data ? data.items : data;
   },
-  getProducts: async (params?: { categoryId?: string; brandId?: string; search?: string }): Promise<ProductDto[]> => {
-    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto> | ProductDto[]>>('/Product', { params });
+
+  getProducts: async (params?: { categoryId?: string; brandId?: string; search?: string; keyword?: string }): Promise<ProductDto[]> => {
+    const keyword = params?.keyword || params?.search;
+    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto> | ProductDto[]>>('/Product', {
+      params: {
+        categoryId: params?.categoryId,
+        brandId: params?.brandId,
+        keyword,
+      }
+    });
     const data = response.data.data;
     return 'items' in data ? data.items : data;
   },
@@ -34,7 +51,7 @@ export const productService = {
     return response.data.data;
   },
 
-  update: async (id: string, command: any): Promise<boolean> => {
+  update: async (id: string, command: Partial<CreateProductCommand>): Promise<boolean> => {
     const response = await axiosClient.put<ApiResponse<boolean>>(`/Product/${id}`, {
       id,
       ...command,
@@ -52,9 +69,9 @@ export const productService = {
     const response = await axiosClient.get<ApiResponse<ProductVariantDto[]>>('/Product/Variant');
     return response.data.data;
   },
+
   getVariants: async (): Promise<ProductVariantDto[]> => {
-    const response = await axiosClient.get<ApiResponse<ProductVariantDto[]>>('/Product/Variant');
-    return response.data.data;
+    return productService.getAllVariants();
   },
 
   getVariantsByProductId: async (productId: string): Promise<ProductVariantDto[]> => {
@@ -67,7 +84,7 @@ export const productService = {
     return response.data.data;
   },
 
-  updateVariant: async (id: string, command: any): Promise<boolean> => {
+  updateVariant: async (id: string, command: Partial<CreateProductVariantCommand>): Promise<boolean> => {
     const response = await axiosClient.put<ApiResponse<boolean>>(`/Product/Variant/${id}`, {
       id,
       ...command,

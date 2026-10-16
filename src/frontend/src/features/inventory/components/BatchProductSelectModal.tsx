@@ -11,10 +11,11 @@ export interface BatchSelectedItem {
   sku: string;
   variantName: string;
   transferQuantity: number;
+  productVariantId?: string;
 }
 
 interface BatchProductSelectModalProps {
-  inventoryList: Array<{ variantName: string; sku: string; quantity: number }>;
+  inventoryList: Array<{ variantName: string; sku: string; quantity: number; productVariantId?: string }>;
   initialSelectedItems: BatchSelectedItem[];
   onClose: () => void;
   onConfirm: (items: BatchSelectedItem[]) => void;
@@ -72,6 +73,7 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
           sku: item.sku,
           variantName: item.variantName,
           transferQuantity: state.qty,
+          productVariantId: item.productVariantId,
         });
       }
     });
@@ -109,8 +111,8 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
               return (
                 <Card
                   key={`${item.sku}-${idx}`}
-                  className={`p-3 transition-colors cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                    state.selected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-slate-50'
+                  className={`p-3 transition-colors cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-border/40 bg-card ${
+                    state.selected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-muted/20'
                   }`}
                   onClick={() => toggleSelect(item.sku)}
                 >
@@ -128,7 +130,7 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
                           {language === 'vi' ? 'Tồn kho:' : 'Stock:'} {item.quantity}
                         </Badge>
                       </div>
-                      <h4 className="font-medium text-sm truncate">{item.variantName}</h4>
+                      <h4 className="font-medium text-sm text-foreground truncate">{item.variantName}</h4>
                     </div>
                   </div>
 
@@ -137,12 +139,12 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
                       className="flex items-center gap-2 shrink-0 ml-7 sm:ml-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="text-xs text-slate-500">{language === 'vi' ? 'Số lượng:' : 'Qty:'}</span>
-                      <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-md p-0.5">
+                      <span className="text-xs text-muted-foreground">{language === 'vi' ? 'Số lượng:' : 'Qty:'}</span>
+                      <div className="flex items-center gap-1 bg-card border border-border/40 shadow-inset rounded-lg p-0.5">
                         <Button variant="outline"
                           type="button"
                           onClick={() => updateQuantity(item.sku, state.qty - 1, item.quantity)}
-                          className="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center font-bold"
+                          className="w-7 h-7 rounded hover:bg-muted/20 flex items-center justify-center font-bold"
                         >
                           -
                         </Button>
@@ -152,12 +154,12 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
                           max={item.quantity}
                           value={state.qty}
                           onChange={(e) => updateQuantity(item.sku, Number(e.target.value), item.quantity)}
-                          className="w-12 text-center text-sm font-mono font-medium focus:outline-none"
+                          className="w-12 text-center text-sm font-mono font-medium focus:outline-none bg-transparent"
                         />
                         <Button variant="outline"
                           type="button"
                           onClick={() => updateQuantity(item.sku, state.qty + 1, item.quantity)}
-                          className="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center font-bold"
+                          className="w-7 h-7 rounded hover:bg-muted/20 flex items-center justify-center font-bold"
                         >
                           +
                         </Button>
@@ -170,8 +172,8 @@ export const BatchProductSelectModal: React.FC<BatchProductSelectModalProps> = (
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-slate-200 shrink-0">
-          <span className="text-sm font-medium text-slate-600">
+        <div className="flex items-center justify-between pt-4 border-t border-border/40 shrink-0">
+          <span className="text-sm font-medium text-muted-foreground">
             {language === 'vi' ? 'Đã chọn: ' : 'Selected: '}
             <strong className="text-primary">{selectedCount} mặt hàng</strong>
           </span>

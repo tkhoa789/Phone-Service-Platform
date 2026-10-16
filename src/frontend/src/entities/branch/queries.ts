@@ -9,9 +9,10 @@ export const branchKeys = {
   detail: (id: string) => [...branchKeys.details(), id] as const,
 };
 
-export function useBranches() {
+export function useBranches(enabled: boolean = true) {
   return useQuery({
     queryKey: branchKeys.lists(),
     queryFn: () => branchService.getAll(),
+    enabled,
   });
 }

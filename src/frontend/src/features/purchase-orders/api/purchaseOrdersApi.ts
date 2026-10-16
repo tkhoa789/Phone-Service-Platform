@@ -4,7 +4,9 @@ import type {
   PurchaseOrderDto, 
   CreatePurchaseOrderCommand, 
   UpdatePurchaseOrderCommand, 
-  CompletePurchaseOrderCommand 
+  CompletePurchaseOrderCommand,
+  CancelPurchaseOrderCommand,
+  DeletePurchaseOrderCommand
 } from '../types';
 
 export const getPurchaseOrders = async (params?: { supplierId?: string; warehouseId?: string; status?: string }): Promise<PurchaseOrderDto[]> => {
@@ -39,12 +41,12 @@ export const completePurchaseOrder = async ({ id, data }: { id: string; data: Co
   return response.data.data;
 };
 
-export const cancelPurchaseOrder = async (id: string): Promise<boolean> => {
-  const response = await apiClient.put<ApiResponse<boolean>>(`/PurchaseOrder/${id}/cancel`);
+export const cancelPurchaseOrder = async ({ id, rowVersion }: { id: string; rowVersion: string }): Promise<boolean> => {
+  const response = await apiClient.put<ApiResponse<boolean>>(`/PurchaseOrder/${id}/cancel`, { id, rowVersion });
   return response.data.data;
 };
 
-export const deletePurchaseOrder = async (id: string): Promise<boolean> => {
-  const response = await apiClient.delete<ApiResponse<boolean>>(`/PurchaseOrder/${id}`);
+export const deletePurchaseOrder = async ({ id, rowVersion }: { id: string; rowVersion: string }): Promise<boolean> => {
+  const response = await apiClient.delete<ApiResponse<boolean>>(`/PurchaseOrder/${id}`, { data: { id, rowVersion } });
   return response.data.data;
 };

@@ -17,7 +17,7 @@ export type CreatePurchaseOrderFormValues = z.infer<typeof createPurchaseOrderSc
 
 export const productVariantImeisSchema = z.object({
   productVariantId: z.string(),
-  imeis: z.array(z.string().min(1, 'IMEI không được để trống')).min(1, 'Cần ít nhất 1 IMEI'),
+  imeis: z.array(z.string().min(1, 'IMEI không được để trống')),
 });
 
 export const completePurchaseOrderSchema = z.object({

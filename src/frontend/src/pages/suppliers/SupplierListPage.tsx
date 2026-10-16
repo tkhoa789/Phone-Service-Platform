@@ -12,10 +12,13 @@ import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 
-import { Building2, Plus, Edit, Trash2, Phone, Mail, MapPin, ShieldAlert, BookOpen, CreditCard } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Phone, Mail, MapPin, ShieldAlert, BookOpen, CreditCard, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { useAuthStore } from '../../stores/authStore';
+import { PERMISSIONS } from '../../constants/permissions';
 import { useSuppliers, useDeleteSupplier } from '../../features/suppliers/hooks/useSuppliers';
+import { useSuppliersInventoryTour } from '../../features/suppliers/hooks/useSuppliersInventoryTour';
 import { SupplierFormModal } from '../../features/suppliers/components/SupplierFormModal';
 import { SupplierPaymentModal } from '../../features/suppliers/components/SupplierPaymentModal';
 import { SupplierDebtLedgerModal } from '../../features/suppliers/components/SupplierDebtLedgerModal';
@@ -23,11 +26,20 @@ import type { SupplierDto } from '../../features/suppliers/types/supplier.types'
 
 export const SupplierListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const { can, hasPermission, roles } = useAuthStore();
+  const checkPermission = typeof can === 'function' ? can : (typeof hasPermission === 'function' ? hasPermission : () => true);
+  const canCreate = checkPermission(PERMISSIONS.Supplier_Create);
+  const canEdit = checkPermission(PERMISSIONS.Supplier_Update);
+  const canDelete = checkPermission(PERMISSIONS.Supplier_Delete);
+  const canPayDebt = checkPermission(PERMISSIONS.Supplier_PayDebt);
+
   const tSup = i18nDictionary[language].suppliers;
   const tCommon = i18nDictionary[language].common;
 
   // URL State Management
   const [searchParams, setSearchParams] = useSearchParams();
+  const isInventoryRole = (roles || []).includes('Inventory') || searchParams.get('role')?.toLowerCase() === 'inventory';
+  const { startTour: startInventoryTour } = useSuppliersInventoryTour();
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = parseInt(searchParams.get('size') || '8', 10);
   const searchTerm = searchParams.get('search') || '';
@@ -71,8 +83,8 @@ export const SupplierListPage: React.FC = () => {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string; name: string }>({ isOpen: false, id: '', name: '' });
 
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString('vi-VN') + ' đ';
+  const formatCurrency = (val?: number | null) => {
+    return (val ?? 0).toLocaleString('vi-VN') + ' đ';
   };
 
   const handleConfirmDelete = async () => {
@@ -88,21 +100,36 @@ export const SupplierListPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div id="tour-sup-header" className="space-y-6">
       <PageHeader
         title={tSup.suppliersTitle}
         description={tSup.suppliersSubtitle}
         icon={<Building2 className="w-6 h-6 text-primary" />}
         actions={
-          <Button onClick={() => { setEditingSupplier(null); setShowFormModal(true); }} className="gap-2">
-            <Plus className="w-4 h-4" />
-            {tSup.btnAddSupplier}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            {isInventoryRole && (
+              <Button
+                id="tour-suppliers-guide-btn"
+                type="button"
+                onClick={startInventoryTour}
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:via-blue-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/25 border border-sky-400/40 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shrink-0"
+              >
+                <Sparkles className="w-4 h-4 text-sky-200 animate-pulse" />
+                <span>{language === 'vi' ? 'Hướng dẫn sử dụng (Thủ kho)' : 'User Guide (Inventory)'}</span>
+              </Button>
+            )}
+            {canCreate && (
+              <Button onClick={() => { setEditingSupplier(null); setShowFormModal(true); }} className="gap-2">
+                <Plus className="w-4 h-4" />
+                {tSup.btnAddSupplier}
+              </Button>
+            )}
+          </div>
         }
       />
 
       <div className="bg-card rounded-xl border shadow-sm p-4 space-y-4">
-        <div className="w-full md:max-w-md">
+        <div id="tour-sup-search" className="w-full md:max-w-md">
           <SearchInput
             value={searchTerm}
             onChange={(e) => handleSearch(e.target.value)}
@@ -126,8 +153,8 @@ export const SupplierListPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {paginatedSuppliers.map((s) => {
-                const isOverLimit = s.debtAmount > (s.creditLimit || 500000000);
+              {paginatedSuppliers.map((s, index) => {
+                const isOverLimit = (s.debtAmount ?? 0) > (s.creditLimit || 500000000);
                 return (
                   <tr key={s.id} className="hover:bg-muted/50 transition-colors">
                     <td className="p-4 align-top">
@@ -142,7 +169,7 @@ export const SupplierListPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-4 align-top">
-                      <div className="space-y-1 text-muted-foreground">
+                      <div id={index === 0 ? 'tour-sup-contact' : undefined} className="space-y-1 text-muted-foreground">
                         <div className="flex items-center gap-1.5 text-xs truncate max-w-[200px]" title={s.phone}>
                           <Phone className="w-3 h-3 shrink-0" />
                           <span className="font-mono">{s.phone}</span>
@@ -165,28 +192,34 @@ export const SupplierListPage: React.FC = () => {
                       <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-1.5">
                           {isOverLimit && <div title="Vượt hạn mức nợ"><ShieldAlert className="w-3.5 h-3.5 text-amber-500" /></div>}
-                          <span className={`font-mono font-bold ${s.debtAmount > 0 ? (isOverLimit ? 'text-amber-500' : 'text-rose-500') : 'text-emerald-500'}`}>
+                          <span className={`font-mono font-bold ${(s.debtAmount ?? 0) > 0 ? (isOverLimit ? 'text-amber-500' : 'text-rose-500') : 'text-emerald-500'}`}>
                             {formatCurrency(s.debtAmount)}
                           </span>
                         </div>
                         <Badge variant="default">Hạn {s.paymentTermsDays || 30} ngày</Badge>
                       </div>
                     </td>
-                    <td className="p-4 text-right align-top space-x-2 whitespace-nowrap">
+                    <td id={index === 0 ? 'tour-sup-debt-notice' : undefined} className="p-4 text-right align-top space-x-2 whitespace-nowrap">
                       <Button variant="outline" size="sm" onClick={() => setLedgerSupplier(s)} title="Sổ Giao Dịch">
                         <BookOpen className="w-3.5 h-3.5 mr-1" />
                         Sổ Nợ
                       </Button>
-                      <Button variant="primary" size="sm" onClick={() => setPaymentSupplier(s)} title={language === 'vi' ? 'Trả Nợ' : 'Pay Debt'}>
-                        <CreditCard className="w-3.5 h-3.5 mr-1" />
-                        {language === 'vi' ? 'Trả Nợ' : 'Pay'}
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingSupplier(s); setShowFormModal(true); }} title={tCommon.edit}>
-                        <Edit className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ isOpen: true, id: s.id, name: s.name })} title={tCommon.delete}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      {canPayDebt && (
+                        <Button variant="primary" size="sm" onClick={() => setPaymentSupplier(s)} title={language === 'vi' ? 'Trả Nợ' : 'Pay Debt'}>
+                          <CreditCard className="w-3.5 h-3.5 mr-1" />
+                          {language === 'vi' ? 'Trả Nợ' : 'Pay'}
+                        </Button>
+                      )}
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingSupplier(s); setShowFormModal(true); }} title={tCommon.edit}>
+                          <Edit className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ isOpen: true, id: s.id, name: s.name })} title={tCommon.delete}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );

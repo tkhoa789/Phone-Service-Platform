@@ -14,7 +14,15 @@ import type {
 export const productApi = {
   // PRODUCTS
   getProducts: async (params: ProductListFilterParams): Promise<PagedResult<ProductDto>> => {
-    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto>>>('/Product', { params });
+    const response = await axiosClient.get<ApiResponse<PagedResult<ProductDto>>>('/Product', {
+      params: {
+        page: params.page,
+        pageSize: params.pageSize,
+        keyword: params.keyword || params.search,
+        categoryId: params.categoryId,
+        brandId: params.brandId,
+      }
+    });
     return response.data.data;
   },
 

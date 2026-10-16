@@ -6,6 +6,7 @@ import { i18nDictionary } from '../../../locales/dictionary';
 import { CompletePOModal } from './CompletePOModal';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 interface PurchaseOrderDetailModalProps {
   isOpen: boolean;
@@ -32,30 +33,36 @@ export const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> =
   if (!isOpen) return null;
 
   const handleCancel = async () => {
+    if (!po) return;
     if (!window.confirm('Bạn có chắc muốn hủy phiếu nhập này?')) return;
     try {
-      await cancelMutation.mutateAsync(poId);
+      await cancelMutation.mutateAsync({ id: po.id, rowVersion: po.rowVersion });
       toast.success('Hủy phiếu nhập thành công');
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Lỗi hủy phiếu');
+      if (e?.response?.status === 409) {
+        toast.error('Lỗi Concurrency (409): Phiếu nhập đã bị thay đổi bởi người khác!');
+      } else {
+        toast.error(e.response?.data?.message || 'Lỗi hủy phiếu');
+      }
     }
   };
 
   const handleDelete = async () => {
+    if (!po) return;
     if (!window.confirm('Bạn có chắc muốn xóa vĩnh viễn phiếu này? (Chỉ áp dụng cho phiếu Nháp)')) return;
     try {
-      await deleteMutation.mutateAsync(poId);
+      await deleteMutation.mutateAsync({ id: po.id, rowVersion: po.rowVersion });
       toast.success('Xóa phiếu thành công');
       onClose();
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Lỗi xóa phiếu');
+      if (e?.response?.status === 409) {
+        toast.error('Lỗi Concurrency (409): Phiếu nhập đã bị thay đổi bởi người khác!');
+      } else {
+        toast.error(e.response?.data?.message || 'Lỗi xóa phiếu');
+      }
     }
   };
 
-  const formatCurrency = (val?: number) => {
-    if (val === undefined || val === null || isNaN(val)) return '0 ₫';
-    return `${val.toLocaleString('vi-VN')} ₫`;
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">

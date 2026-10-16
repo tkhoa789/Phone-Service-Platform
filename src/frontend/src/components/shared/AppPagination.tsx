@@ -21,10 +21,10 @@ export const AppPagination: React.FC<AppPaginationProps> = ({
   if (totalPages <= 1 && totalItems === 0) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between pt-4 pb-2 gap-4 text-xs text-muted-foreground">
+    <div className="flex flex-col sm:flex-row items-center justify-between pt-4 pb-2 gap-4 text-xs text-muted-foreground select-none">
       <div className="font-medium">
-        Hiển thị từ <span className="font-bold text-foreground">{(currentPage - 1) * pageSize + 1}</span> đến{' '}
-        <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalItems)}</span> trong tổng số{' '}
+        Hiển thị từ <span className="font-semibold text-foreground">{(currentPage - 1) * pageSize + 1}</span> đến{' '}
+        <span className="font-semibold text-foreground">{Math.min(currentPage * pageSize, totalItems)}</span> trong tổng số{' '}
         <span className="font-bold text-primary">{totalItems}</span> bản ghi
       </div>
 
@@ -34,21 +34,21 @@ export const AppPagination: React.FC<AppPaginationProps> = ({
           size="sm"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 font-medium"
         >
           <ChevronLeft className="w-4 h-4" /> Trước
         </Button>
 
-        <Badge variant="default" className="px-3 py-1.5 font-bold">
+        <span className="px-3.5 py-1.5 rounded-xl bg-card border border-border/40 shadow-inset text-foreground font-semibold text-xs">
           Trang {currentPage} / {totalPages || 1}
-        </Badge>
+        </span>
 
         <Button
           variant="secondary"
           size="sm"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 font-medium"
         >
           Sau <ChevronRight className="w-4 h-4" />
         </Button>

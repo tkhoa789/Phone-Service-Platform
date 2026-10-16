@@ -20,6 +20,9 @@ export const useThemeStore = create<ThemeState>()(
 
       toggleTheme: () => {
         const nextTheme = get().theme === 'light' ? 'dark' : 'light';
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('theme', nextTheme);
+        }
         set({ theme: nextTheme });
         if (typeof document !== 'undefined') {
           document.documentElement.classList.remove('theme-light', 'theme-dark', 'light', 'dark');
@@ -28,6 +31,9 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       setTheme: (theme: ThemeMode) => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('theme', theme);
+        }
         set({ theme });
         if (typeof document !== 'undefined') {
           document.documentElement.classList.remove('theme-light', 'theme-dark', 'light', 'dark');
@@ -41,6 +47,12 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'psp-theme-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state?.theme && typeof document !== 'undefined') {
+          document.documentElement.classList.remove('theme-light', 'theme-dark', 'light', 'dark');
+          document.documentElement.classList.add(`theme-${state.theme}`, state.theme);
+        }
+      },
     }
   )
 );

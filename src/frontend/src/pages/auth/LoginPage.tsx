@@ -30,7 +30,6 @@ export const LoginPage: React.FC = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -56,7 +55,8 @@ export const LoginPage: React.FC = () => {
           border: "1px solid hsl(var(--border) / 0.5)",
         },
       });
-      navigate(from, { replace: true });
+      // Always automatically navigate to /dashboard upon login
+      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       toast.error(err.message || (language === 'vi' ? 'Đăng nhập thất bại!' : 'Login failed!'));
     }
@@ -260,7 +260,7 @@ export const LoginPage: React.FC = () => {
               className="p-2 rounded-xl bg-card border border-slate-400/20 hover:border-emerald-500/50 text-left transition-all group shadow-sm active:shadow-inner border border-border/50 bg-muted/20 cursor-pointer"
             >
               <div className="font-medium text-foreground group-hover:text-primary truncate">🛠️ Technician</div>
-              <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">technician / Tech@123</div>
+              <div className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">technician / Technician@123</div>
             </Button>
 
             <Button variant="outline"

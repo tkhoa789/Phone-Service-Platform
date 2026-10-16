@@ -3,6 +3,7 @@ import { Smartphone, CheckCircle2, Camera, Sparkles, Bot, Cpu } from 'lucide-rea
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useThemeStore } from '../../../stores/themeStore';
+import toast from 'react-hot-toast';
 import { i18nDictionary } from '../../../locales/dictionary';
 import { ControlledInput } from '../../../components/forms/ControlledInput';
 import { FormField } from '../../../components/forms/FormField';
@@ -86,13 +87,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!barcodeInput) return;
-    setTimeout(() => {
-      setValue('name', `iPhone 15 Pro Max (${barcodeInput.slice(-4)})`);
-      setValue('description', 'AI Auto-filled from external database.');
-      setAiSourceBadge('AI_KNOWLEDGE');
-      setBarcodeInput('');
-    }, 600);
+    if (!barcodeInput.trim()) return;
+    toast(
+      language === 'vi'
+        ? `Mã vạch [${barcodeInput}]: Cơ sở dữ liệu GS1/Barcode ngoài chưa cấu hình. Vui lòng điền thông tin sản phẩm.`
+        : `Barcode [${barcodeInput}]: External barcode database not configured. Please fill details manually.`,
+      { icon: 'ℹ️' }
+    );
+    setBarcodeInput('');
   };
 
   const title = product 

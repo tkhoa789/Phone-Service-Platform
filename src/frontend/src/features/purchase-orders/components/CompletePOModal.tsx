@@ -33,32 +33,56 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
   });
 
   const onSubmit = async (data: CompletePurchaseOrderFormValues) => {
-    // Validate quantities
-    let valid = true;
-    po?.items.forEach((item, idx) => {
-      const enteredImeis = data.variantImeis[idx]?.imeis || [];
-      if (enteredImeis.length !== item.quantity) {
-        toast.error(`Sản phẩm ${item.variantName} yêu cầu ${item.quantity} IMEI, nhưng mới nhập ${enteredImeis.length}`);
-        valid = false;
-      }
-      
-      // Check duplicates within the same item
-      const uniqueImeis = new Set(enteredImeis);
-      if (uniqueImeis.size !== enteredImeis.length) {
-        toast.error(`Có IMEI trùng lặp trong sản phẩm ${item.variantName}`);
-        valid = false;
-      }
-    });
+    // Validate quantities for IMEI-controlled items
+    const variantImeis: import('../types').ProductVariantImeisDto[] = [];
+    const allImeis: string[] = [];
 
-    if (!valid) return;
+    for (let idx = 0; idx < (po?.items.length || 0); idx++) {
+      const item = po!.items[idx];
+      if (item.isImeiControlled) {
+        const enteredImeis = data.variantImeis[idx]?.imeis || [];
+        if (enteredImeis.length !== item.quantity) {
+          toast.error(`Sản phẩm ${item.variantName} yêu cầu ${item.quantity} IMEI, nhưng mới nhập ${enteredImeis.length}`);
+          return;
+        }
+        
+        // Check duplicates within the same item
+        const uniqueImeis = new Set(enteredImeis);
+        if (uniqueImeis.size !== enteredImeis.length) {
+          toast.error(`Có IMEI trùng lặp trong sản phẩm ${item.variantName}`);
+          return;
+        }
+
+        // Check duplicates across items in the same PO
+        for (const imei of enteredImeis) {
+          if (allImeis.includes(imei)) {
+            toast.error(`Mã IMEI '${imei}' bị trùng lặp giữa các sản phẩm trong phiếu nhập!`);
+            return;
+          }
+          allImeis.push(imei);
+        }
+
+        variantImeis.push({
+          productVariantId: item.productVariantId,
+          imeis: enteredImeis
+        });
+      }
+    }
 
     try {
-      await completeMutation.mutateAsync({ id: poId, data: { ...data, id: poId } as import("../types").CompletePurchaseOrderCommand });
+      await completeMutation.mutateAsync({ 
+        id: poId, 
+        data: { 
+          id: poId,
+          variantImeis,
+          rowVersion: po!.rowVersion
+        } 
+      });
       toast.success('Hoàn tất nhập kho thành công!');
       onSuccess();
     } catch (error: any) {
       if (error?.response?.status === 409) {
-        toast.error('Lỗi Concurrency: Phiếu nhập đã được người khác xử lý!');
+        toast.error('Lỗi Concurrency (409): Phiếu nhập đã bị thay đổi bởi người khác hoặc đã được hoàn tất!');
       } else if (error?.response?.data?.message) {
         toast.error(error.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại');
       } else {
@@ -99,61 +123,73 @@ export const CompletePOModal: React.FC<CompletePOModalProps> = ({ poId, onClose,
               <div key={item.id} className="border border-slate-200 rounded-2xl p-4 bg-white shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-bold text-slate-800">{item.variantName}</h4>
-                  <span className="px-3 py-1 bg-primary/10 text-blue-700 rounded-full text-xs font-bold">
-                    Cần nhập: {item.quantity} IMEI
-                  </span>
+                  {item.isImeiControlled ? (
+                    <span className="px-3 py-1 bg-primary/10 text-blue-700 rounded-full text-xs font-bold">
+                      Cần nhập: {item.quantity} IMEI
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+                      Không cần IMEI (SL: {item.quantity})
+                    </span>
+                  )}
                 </div>
 
-                <Controller
-                  control={control}
-                  name={`variantImeis.${idx}.imeis`}
-                  render={({ field: { value, onChange } }) => (
-                    <div className="space-y-3">
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            type="text"
-                            placeholder="Quét mã IMEI và nhấn Enter..."
-                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const val = e.currentTarget.value.trim();
-                                if (!val) return;
-                                if (value.includes(val)) {
-                                  toast.error('IMEI này đã được quét!');
-                                  return;
+                {item.isImeiControlled ? (
+                  <Controller
+                    control={control}
+                    name={`variantImeis.${idx}.imeis`}
+                    render={({ field: { value = [], onChange } }) => (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Input
+                              type="text"
+                              placeholder="Quét mã IMEI và nhấn Enter..."
+                              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const val = e.currentTarget.value.trim();
+                                  if (!val) return;
+                                  if (value.includes(val)) {
+                                    toast.error('IMEI này đã được quét!');
+                                    return;
+                                  }
+                                  onChange([...value, val]);
+                                  e.currentTarget.value = '';
                                 }
-                                onChange([...value, val]);
-                                e.currentTarget.value = '';
-                              }
-                            }}
-                          />
+                              }}
+                            />
+                          </div>
                         </div>
+                        
+                        {value.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {value.map((imei, iIdx) => (
+                              <span key={iIdx} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono">
+                                {imei}
+                                <Button variant="outline"
+                                  type="button"
+                                  onClick={() => onChange(value.filter((_, i) => i !== iIdx))}
+                                  className="text-slate-400 hover:text-rose-500"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <p className="text-xs text-slate-500">Đã nhập: {value.length}/{item.quantity}</p>
                       </div>
-                      
-                      {value.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {value.map((imei, iIdx) => (
-                            <span key={iIdx} className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono">
-                              {imei}
-                              <Button variant="outline"
-                                type="button"
-                                onClick={() => onChange(value.filter((_, i) => i !== iIdx))}
-                                className="text-slate-400 hover:text-rose-500"
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <p className="text-xs text-slate-500">Đã nhập: {value.length}/{item.quantity}</p>
-                    </div>
-                  )}
-                />
+                    )}
+                  />
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-500">
+                    Sản phẩm linh kiện / phụ kiện này không yêu cầu quản lý theo số IMEI.
+                  </div>
+                )}
               </div>
             ))}
           </form>

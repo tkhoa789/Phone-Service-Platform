@@ -18,6 +18,8 @@ const FOCUSABLE_ELEMENTS_SELECTOR = 'button, [href], input, select, textarea, [t
 export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, description, children, className, hideCloseButton }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
 
   // Handle body scroll locking
   useEffect(() => {
@@ -53,7 +55,7 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, descr
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onOpenChange(false);
+        onOpenChangeRef.current(false);
         return;
       }
 
@@ -94,12 +96,12 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, descr
         }
       }
     };
-  }, [open, onOpenChange]);
+  }, [open]);
 
   if (!open) return null;
 
   const content = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <div
         ref={dialogRef}
         role="dialog"
@@ -108,24 +110,25 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, descr
         aria-labelledby={title ? 'dialog-title' : undefined}
         aria-describedby={description ? 'dialog-description' : undefined}
         className={cn(
-          'relative w-full max-w-lg bg-card border border-border/50 rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 focus:outline-none',
+          'relative w-full max-w-lg bg-card border border-border/40 rounded-3xl p-6 sm:p-7 neu-raised-lg shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 focus:outline-none',
           className
         )}
       >
         {!hideCloseButton && (
           <button
+            type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+            className="absolute top-4.5 right-4.5 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all neu-raised active:shadow-inset cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         )}
         
         {(title || description) && (
-          <div className="mb-6 pr-8">
+          <div className="mb-5 pr-8">
             {title && (
-              <h2 id="dialog-title" className="text-xl font-heading font-bold text-foreground">
+              <h2 id="dialog-title" className="text-xl font-heading font-semibold text-foreground tracking-tight">
                 {title}
               </h2>
             )}
@@ -144,3 +147,19 @@ export const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, title, descr
 
   return createPortal(content, document.body);
 };
+
+export const DialogHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
+  <div className={cn('flex flex-col space-y-1.5 text-center sm:text-left mb-4', className)} {...props} />
+);
+
+export const DialogFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
+  <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 gap-2 mt-6', className)} {...props} />
+);
+
+export const DialogTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, ...props }) => (
+  <h2 className={cn('text-lg font-heading font-semibold leading-none tracking-tight text-foreground', className)} {...props} />
+);
+
+export const DialogDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({ className, ...props }) => (
+  <p className={cn('text-sm text-muted-foreground', className)} {...props} />
+);

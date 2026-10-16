@@ -17,10 +17,14 @@ import { Users, UserPlus, Building2, Phone, Mail, Edit, Trash2 } from 'lucide-re
 import toast from 'react-hot-toast';
 
 import { useUsers, useDeleteUser } from '../../features/users/hooks/useUsers';
+import { useBranches } from '../../features/branches/hooks/useBranches';
 import { UserFormModal } from '../../features/users/components/UserFormModal';
+import { useAuthStore } from '../../stores/authStore';
 
 export const UserListPage: React.FC = () => {
   const { language } = useThemeStore();
+  const { roles } = useAuthStore();
+  const isOwner = roles.includes('Owner');
   const t = i18nDictionary[language].users;
   const tCommon = i18nDictionary[language].common;
 
@@ -48,6 +52,8 @@ export const UserListPage: React.FC = () => {
 
   // TanStack Query
   const { data: allUsers = [], isLoading, isError } = useUsers();
+  const { data: branches = [] } = useBranches();
+  const branchMap = React.useMemo(() => new Map(branches.map(b => [b.id, b.name])), [branches]);
   const deleteMutation = useDeleteUser();
 
   // Local UI State
@@ -153,7 +159,11 @@ export const UserListPage: React.FC = () => {
                   <td className="p-4 align-top">
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Building2 className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{u.branchName || t.allBranches}</span>
+                      {(() => {
+                        const isUnassigned = !u.branchId || u.branchId === '00000000-0000-0000-0000-000000000000';
+                        const displayBranch = u.branchName || (!isUnassigned ? branchMap.get(u.branchId) : undefined) || (isUnassigned ? t.allBranches : (language === 'vi' ? 'Chi nhánh' : 'Branch'));
+                        return <span className="truncate">{displayBranch}</span>;
+                      })()}
                     </div>
                   </td>
                   <td className="p-4 align-top">
@@ -172,12 +182,28 @@ export const UserListPage: React.FC = () => {
                     {getStatusBadge(u.status)}
                   </td>
                   <td className="p-4 text-right align-top space-x-2 whitespace-nowrap">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenModal(u)} title={tCommon.edit}>
-                      <Edit className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ isOpen: true, id: u.id, name: u.fullName })} title={tCommon.delete}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    {(() => {
+                      const isRowOwner = u.roles?.includes('Owner') || u.username?.toLowerCase() === 'owner';
+                      if (!isOwner && isRowOwner) {
+                        return (
+                          <span className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            Bảo vệ Owner
+                          </span>
+                        );
+                      }
+                      return (
+                        <>
+                          <Button variant="ghost" size="icon" onClick={() => handleOpenModal(u)} title={tCommon.edit}>
+                            <Edit className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                          {isOwner && !isRowOwner && (
+                            <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ isOpen: true, id: u.id, name: u.fullName })} title={tCommon.delete}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

@@ -7,6 +7,7 @@ export interface PurchaseOrderItemDto {
   sku: string;
   quantity: number;
   unitPrice: number;
+  isImeiControlled?: boolean;
   amount: number;
 }
 
@@ -20,6 +21,7 @@ export interface PurchaseOrderDto {
   status: PurchaseOrderStatus;
   totalAmount: number;
   createdAt: string;
+  rowVersion: string;
   items: PurchaseOrderItemDto[];
 }
 
@@ -41,6 +43,7 @@ export interface UpdatePurchaseOrderCommand {
   supplierId: string;
   warehouseId: string;
   items: CreatePurchaseOrderItemCommand[];
+  rowVersion: string;
 }
 
 export interface ProductVariantImeisDto {
@@ -51,4 +54,15 @@ export interface ProductVariantImeisDto {
 export interface CompletePurchaseOrderCommand {
   id: string;
   variantImeis: ProductVariantImeisDto[];
+  rowVersion: string;
+}
+
+export interface CancelPurchaseOrderCommand {
+  id: string;
+  rowVersion: string;
+}
+
+export interface DeletePurchaseOrderCommand {
+  id: string;
+  rowVersion: string;
 }

@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './stores/authStore';
+import { queryClient } from './utils/queryClient';
+import { PERMISSIONS } from './constants/permissions';
 
 // Error Boundary Guard
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -41,17 +43,17 @@ const SupplierListPage = React.lazy(() => import('./pages/suppliers/SupplierList
 const AiChatPage = React.lazy(() => import('./pages/ai/AiChatPage').then(m => ({ default: m.AiChatPage })));
 const SystemSettingsPage = React.lazy(() => import('./pages/system/SystemSettingsPage').then(m => ({ default: m.SystemSettingsPage })));
 const UserProfilePage = React.lazy(() => import('./pages/profile/UserProfilePage').then(m => ({ default: m.UserProfilePage })));
+const DesignSystemPreviewPage = React.lazy(() => import('./pages/preview/DesignSystemPreviewPage').then(m => ({ default: m.DesignSystemPreviewPage })));
+const NotificationTrashPage = React.lazy(() => import('./features/notifications/pages/NotificationTrashPage').then(m => ({ default: m.NotificationTrashPage })));
 
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
-      retry: 1, // Only retry once before failing
-    },
-  },
-});
+const RootRedirect: React.FC = () => {
+  const { roles } = useAuthStore();
+  const canonicalDashboardRoles = ['Owner', 'Admin', 'Manager', 'Sales', 'Technician', 'Warranty', 'Inventory'];
+  if (roles.some((r) => canonicalDashboardRoles.includes(r))) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Navigate to="/profile" replace />;
+};
 
 export function App() {
   const { initialize } = useAuthStore();
@@ -69,11 +71,13 @@ export function App() {
             position="top-right"
             toastOptions={{
               duration: 4000,
+              className: 'neu-raised border border-border/40 text-foreground bg-card shadow-xl font-sans text-xs font-medium rounded-2xl px-4 py-3',
               style: {
-                background: '#0f172a',
-                color: '#f8fafc',
-                border: '1px solid #1e293b',
-                borderRadius: '12px',
+                background: 'var(--card)',
+                color: 'var(--foreground)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-lg)',
+                borderRadius: '16px',
                 fontSize: '13px',
               },
             }}
@@ -85,67 +89,87 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/warranty-check" element={<PublicWarrantyCheckPage />} />
             <Route path="/order-tracking" element={<OrderTrackingPage />} />
+            <Route path="/design-system-preview" element={<DesignSystemPreviewPage />} />
 
             {/* Protected Dashboard & App Routes */}
             <Route element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<RootRedirect />} />
                 
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Sales', 'Technician', 'Warranty', 'Inventory']} />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                 </Route>
 
                 {/* Admin / Owner Exclusive System Pages */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Branch_View} allowedRoles={['Owner', 'Admin']} />}>
                   <Route path="/branches" element={<BranchListPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.User_View} allowedRoles={['Owner', 'Admin']} />}>
                   <Route path="/users" element={<UserListPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.SystemSettings_View} allowedRoles={['Owner', 'Admin']} />}>
                   <Route path="/settings" element={<SystemSettingsPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.AuditLog_View} allowedRoles={['Owner', 'Admin']} />}>
                   <Route path="/audit-logs" element={<AuditLogPage />} />
                 </Route>
 
                 {/* Branch Operations & Sales Pages */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Sales']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.POS_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Sales']} />}>
                   <Route path="/pos" element={<PosPage />} />
-                  <Route path="/sales" element={<SalesOrderListPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Voucher_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Sales']} />}>
                   <Route path="/vouchers" element={<VoucherListPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.SalesOrder_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Sales']} />}>
+                  <Route path="/sales" element={<SalesOrderListPage />} />
                 </Route>
 
                 {/* Product & Catalog Management */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Sales', 'Inventory', 'Technician']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Product_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Sales', 'Inventory', 'Technician', 'Warranty']} />}>
                   <Route path="/products" element={<ProductListPage />} />
                 </Route>
 
                 {/* Inventory & Stock Control */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory', 'Technician', 'Warranty']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Warehouse_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory']} />}>
                   <Route path="/warehouses" element={<WarehouseListPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.PurchaseOrder_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory']} />}>
                   <Route path="/purchase-orders" element={<PurchaseOrderListPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Inventory_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory']} />}>
                   <Route path="/inventory" element={<InventoryPage />} />
+                </Route>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.StockTake_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory']} />}>
                   <Route path="/stock-take" element={<StockTakePage />} />
                 </Route>
-
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Supplier_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Inventory']} />}>
                   <Route path="/suppliers" element={<SupplierListPage />} />
                 </Route>
 
                 {/* Repair Workshop Service */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Technician']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Repair_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Technician', 'Sales']} />}>
                   <Route path="/repairs" element={<RepairListPage />} />
                   <Route path="/repairs/intake" element={<RepairIntakePage />} />
                 </Route>
 
                 {/* Warranty & Replacement Control */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Warranty', 'Sales']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Warranty_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Warranty', 'Sales']} />}>
                   <Route path="/warranties" element={<WarrantyListPage />} />
                 </Route>
 
                 {/* Customers Directory */}
-                <Route element={<ProtectedRoute allowedRoles={['Owner', 'Admin', 'Manager', 'Sales', 'Warranty']} />}>
+                <Route element={<ProtectedRoute permission={PERMISSIONS.Customer_View} allowedRoles={['Owner', 'Admin', 'Manager', 'Sales', 'Warranty', 'Technician']} />}>
                   <Route path="/customers" element={<CustomerListPage />} />
                 </Route>
 
                 {/* General Allowed Routes */}
-                <Route path="/ai-chat" element={<AiChatPage />} />
+                <Route element={<ProtectedRoute permission={PERMISSIONS.AI_Chat} />}>
+                  <Route path="/ai-chat" element={<AiChatPage />} />
+                </Route>
                 <Route path="/profile" element={<UserProfilePage />} />
+                <Route path="/notifications" element={<NotificationTrashPage />} />
+                <Route path="/notifications/trash" element={<NotificationTrashPage />} />
                 <Route path="*" element={<NotFoundScreen />} />
               </Route>
             </Route>
