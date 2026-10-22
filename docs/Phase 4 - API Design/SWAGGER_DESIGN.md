@@ -1,150 +1,118 @@
-# SWAGGER INTEGRATION & UI DESIGN
+# SWAGGER INTEGRATION & API DOCUMENTATION DESIGN
 
 ## Hệ thống quản lý chuỗi cửa hàng điện thoại tích hợp AI Assistant
 
-**Version:** 1.0
-**Framework:** Springdoc OpenAPI v2 (Spring Boot 3)
+**Version:** 1.1 (Chuẩn hóa theo ASP.NET Core 10 & OpenAPI)
+**Framework:** Swashbuckle.AspNetCore & ASP.NET Core 10 OpenAPI
 **Phase:** 4 - API Design
 
 ---
 
 ## 1. Giới thiệu
-Tài liệu này hướng dẫn cách tích hợp và thiết lập Swagger UI / OpenAPI 3.0 trong dự án Spring Boot 3. Thiết lập Swagger giúp đội ngũ phát triển Frontend và kiểm thử viên có tài liệu API trực quan, chạy thử nghiệm trực tiếp trên giao diện web (Interactive API console) mà không cần phụ thuộc vào Postman.
+Tài liệu này hướng dẫn cách tích hợp và cấu hình Swagger UI / OpenAPI trong dự án ASP.NET Core 10 (`PSP.API`). Thiết lập Swagger giúp đội ngũ phát triển Frontend và QA có tài liệu API trực quan, cho phép kiểm thử trực tiếp 166 RESTful Endpoints trên 25 Controllers cùng cơ chế xác thực JWT Bearer Token tích hợp.
+
+* **Đường dẫn Swagger UI:** `http://localhost:5000/swagger`
+* **Đường dẫn OpenAPI Spec JSON:** `http://localhost:5000/swagger/v1/swagger.json`
+* **Cổng dịch vụ API Backend:** `5000` (HTTP)
 
 ---
 
-## 2. Thư viện tích hợp (Dependencies)
-Dự án sử dụng thư viện **Springdoc OpenAPI Starter** tương thích hoàn toàn với Spring Boot 3 và Jakarta EE:
+## 2. Gói thư viện Sử dụng (.NET 10)
+Dự án sử dụng các gói NuGet tiêu chuẩn công nghiệp trong `PSP.API.csproj`:
 
 ```xml
-<!-- Maven Dependency in pom.xml -->
-<dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-    <version>2.5.0</version>
-</dependency>
+<PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
 ```
 
 ---
 
-## 3. Cấu hình Môi trường (Properties Configuration)
-Cấu hình đường dẫn truy cập và kích hoạt tài liệu trong file `application.yml`:
+## 3. Cấu hình Swagger trong Program.cs
 
-```yaml
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: alpha
-    tagsSorter: alpha
-    doc-expansion: none
-  show-actuator: true
+Trong file `src/backend/PSP.API/Program.cs`, Swagger được đăng ký vào DI Container và kích hoạt Middleware:
+
+```csharp
+// Đăng ký dịch vụ SwaggerGen
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Phone Service Platform API",
+        Version = "v1",
+        Description = "Enterprise RESTful API Platform cho Chuỗi Cửa Hàng Điện Thoại & Trợ Lý AI Cục Bộ (166 Endpoints / 25 Controllers)",
+        Contact = new OpenApiContact
+        {
+            Name = "PSP Engineering Team",
+            Email = "support@phonestore.vn"
+        }
+    });
+
+    // Cấu hình định danh bảo mật JWT Bearer Token
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Nhập JWT Bearer Token theo định dạng: Bearer {token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference
+        {
+            Id = JwtBearerDefaults.AuthenticationScheme,
+            Type = ReferenceType.SecurityScheme
+        }
+    };
+
+    options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, securityScheme);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { securityScheme, Array.Empty<string>() }
+    });
+});
 ```
 
-* **Đường dẫn Swagger UI:** `http://localhost:8080/swagger-ui/index.html`
-* **Đường dẫn API Docs JSON:** `http://localhost:8080/v3/api-docs`
-
----
-
-## 4. Thiết lập Lớp Cấu hình Java (OpenAPI Config)
-Để kích hoạt tính năng xác thực bằng Bearer Token (JWT) trên toàn bộ giao diện Swagger UI, chúng ta khai báo cấu hình Java sau:
-
-```java
-package com.phonestore.shared.infrastructure.config;
-
-import io.swagger.v3.oas.models.Components;
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Contact;
-import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
-import io.swagger.v3.oas.models.security.SecurityScheme;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-public class OpenApiConfig {
-
-    @Bean
-    public OpenAPI customOpenAPI() {
-        final String securitySchemeName = "BearerAuth";
-        return new OpenAPI()
-                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
-                .components(new Components()
-                        .addSecuritySchemes(securitySchemeName,
-                                new SecurityScheme()
-                                        .name(securitySchemeName)
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")
-                                        .description("Nhập token JWT vào đây để xác thực API (Bearer <token>).")
-                        ))
-                .info(new Info()
-                        .title("Phone Store & AI Assistant Management System API")
-                        .version("1.0")
-                        .description("Tài liệu đặc tả toàn bộ API hệ thống chuỗi cửa hàng điện thoại và trợ lý AI.")
-                        .contact(new Contact()
-                                .name("Đội ngũ phát triển")
-                                .email("dev@phonestore.com")
-                        ));
-    }
+### 3.1 Kích hoạt Swagger UI Middleware
+```csharp
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "PSP API v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "Phone Service Platform - Swagger UI";
+        c.DisplayRequestDuration();
+        c.EnableFilter();
+    });
 }
 ```
 
 ---
 
-## 5. Quy chuẩn Thiết kế Phản hồi (Standard Response Envelope)
-Mọi API trong hệ thống đều tuân thủ cấu trúc đóng gói dữ liệu duy nhất (Response Envelope Pattern) để đảm bảo tính đồng bộ và giúp Frontend xử lý dễ dàng:
+## 4. Chuẩn Hóa API Response Envelope
+Toàn bộ 166 RESTful API endpoints trong hệ thống đều tuân thủ cấu trúc phong bì JSON chuẩn mực (`ApiResponse<T>`):
 
-### 5.1 Cấu trúc Phản hồi Thành công (200 OK / 201 Created)
 ```json
 {
   "success": true,
-  "message": "Thực hiện thành công",
-  "data": {
-    "id": "e1d2c3b4-a5f6-7e8d-9c0b-1a2b3c4d5e01",
-    "code": "BR001",
-    "name": "Chi nhánh Quận 1"
-  },
-  "errorCode": null,
-  "timestamp": "2026-07-12T14:03:33.123Z"
+  "code": "SUCCESS",
+  "message": "Thao tác thành công",
+  "data": { ... },
+  "correlationId": "4a2b9f6e-1d3c-4e5f-8a9b-0c1d2e3f4a5b",
+  "timestamp": "2026-10-22T15:00:00Z"
 }
 ```
 
-### 5.2 Cấu trúc Phản hồi Lỗi (4xx / 5xx)
-Khi phát sinh lỗi (lỗi nghiệp vụ, lỗi phân quyền, lỗi hệ thống), API sẽ trả về cấu trúc lỗi chứa mã lỗi nghiệp vụ tương ứng (`errorCode`):
+Khi phát sinh lỗi nghiệp vụ hoặc ngoại lệ, hệ thống trả về mã lỗi HTTP tương ứng (400, 401, 403, 404, 409, 422, 500) thông qua `GlobalExceptionMiddleware` với envelope thống nhất:
+
 ```json
 {
   "success": false,
-  "message": "Không tìm thấy sản phẩm trong kho",
-  "data": null,
-  "errorCode": "INVENTORY_002",
-  "timestamp": "2026-07-12T14:03:33.456Z"
+  "code": "INSUFFICIENT_STOCK",
+  "message": "Số lượng tồn kho của linh kiện không đủ để xuất kho sửa chữa",
+  "errors": [ "Chi nhánh Q1 chỉ còn 2 màn hình iPhone 15 Pro Max (yêu cầu: 3)" ],
+  "correlationId": "4a2b9f6e-1d3c-4e5f-8a9b-0c1d2e3f4a5b",
+  "timestamp": "2026-10-22T15:00:00Z"
 }
 ```
-
----
-
-## 6. Định hướng viết Annotation trên Controller mẫu
-Khi sinh code backend ở Phase 8, các Controller cần được gán các Annotation sau để mô tả dữ liệu trên Swagger:
-
-```java
-@RestController
-@RequestMapping("/api/v1/products")
-@Tag(name = "Product Catalog", description = "Các API quản lý sản phẩm, thương hiệu, danh mục")
-public class ProductController {
-
-    @Operation(summary = "Tạo sản phẩm mới", description = "Cho phép quản lý tạo sản phẩm mới. Yêu cầu quyền PRODUCT_CREATE.")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Sản phẩm được tạo thành công"),
-        @ApiResponse(responseCode = "400", description = "Tham số gửi lên không hợp lệ"),
-        @ApiResponse(responseCode = "403", description = "Không có quyền thực hiện hành động này")
-    })
-    @PostMapping
-    public ResponseEntity<ResponseEnvelope<ProductResponse>> createProduct(
-            @Valid @RequestBody ProductRequest request) {
-        // Implementation
-    }
-}
-```
-Cơ chế này bảo đảm tài liệu Swagger luôn cập nhật tự động (Live Document) song hành cùng mã nguồn thực tế.

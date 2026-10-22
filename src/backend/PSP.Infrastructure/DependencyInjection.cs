@@ -51,6 +51,7 @@ public static class DependencyInjection
 
         // ===== 4. ĐĂNG KÝ CÁC DỊCH VỤ HỖ TRỢ (MODULE 17, 18, 19) =====
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services.AddSingleton<IHmacTokenService, PSP.Infrastructure.Services.Security.HmacTokenService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IStoreAssistant, StoreAssistant>();
         services.AddHostedService<PSP.Infrastructure.BackgroundServices.AIInsightsWorker>();
@@ -58,6 +59,7 @@ public static class DependencyInjection
         // ===== 5. ĐĂNG KÝ HẠ TẦNG AI & RAG (MODULE 20) =====
         var qdrantUri = new Uri(configuration["AiSettings:QdrantEndpoint"] ?? "http://localhost:6333");
         services.AddSingleton(sp => new QdrantClient(qdrantUri.Host, 6334));
+        services.AddScoped<PSP.Infrastructure.Services.AI.AIKnowledgeSeeder>();
 
         services.AddScoped<Kernel>(sp =>
         {
@@ -76,6 +78,11 @@ public static class DependencyInjection
                 modelId: embeddingModelId,
                 endpoint: new Uri(ollamaEndpoint)
             );
+
+            var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
+            kernelBuilder.Plugins.AddFromObject(new PSP.Infrastructure.Services.AI.Plugins.InventoryPlugin(scopeFactory), "InventoryPlugin");
+            kernelBuilder.Plugins.AddFromObject(new PSP.Infrastructure.Services.AI.Plugins.RepairPlugin(scopeFactory), "RepairPlugin");
+            kernelBuilder.Plugins.AddFromObject(new PSP.Infrastructure.Services.AI.Plugins.WarrantyPlugin(scopeFactory), "WarrantyPlugin");
 
             return kernelBuilder.Build();
 #pragma warning restore SKEXP0070, CS0618

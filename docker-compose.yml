@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu quan hệ (Relational Database)
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: psp_sqlserver
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Strong_Password_123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - psp_sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Strong_Password_123!' -C -Q 'SELECT 1' 2>/dev/null || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Strong_Password_123!' -Q 'SELECT 1' 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks:
+      - psp_network
+
+  # 2. Bộ nhớ đệm phân tán & Khóa Idempotency (In-memory Cache & Distributed Lock)
+  redis:
+    image: redis:7-alpine
+    container_name: psp_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - psp_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - psp_network
+
+  # 3. Cơ sở dữ liệu Vector phục vụ Trợ lý AI (Vector Search & Knowledge Base)
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: psp_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333" # REST API & Dashboard
+      - "6334:6334" # gRPC API
+    volumes:
+      - psp_qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - psp_network
+
+volumes:
+  psp_sqlserver_data:
+    name: psp_sqlserver_data
+  psp_redis_data:
+    name: psp_redis_data
+  psp_qdrant_data:
+    name: psp_qdrant_data
+
+networks:
+  psp_network:
+    name: psp_network
+    driver: bridge

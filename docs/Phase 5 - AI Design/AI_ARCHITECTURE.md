@@ -12,15 +12,15 @@ Hệ thống AI Assistant được thiết kế dựa trên kiến trúc **Agent
 
 ## 2. Các Thành phần Cốt lõi (Core Components)
 
-### 2.1 Orchestration Framework: LangChain4j
-LangChain4j đóng vai trò là nhạc trưởng điều phối toàn bộ luồng xử lý AI trong Spring Boot, bao gồm:
+### 2.1 Orchestration Framework: Microsoft Semantic Kernel (.NET 10)
+Microsoft Semantic Kernel & OllamaSharp đóng vai trò là kiến trúc điều phối (AI Orchestration Framework) toàn bộ luồng xử lý AI trong ASP.NET Core 10 (.NET 10), bao gồm:
 * Quản lý hội thoại (Chat Memory).
 * Tích hợp Embedding Model và Vector Database.
 * Định tuyến (Routing) và thực thi Tool Calling.
 * Giao tiếp với Local LLM.
 
 ### 2.2 LLM Provider: Ollama (Qwen)
-Sử dụng **Ollama** triển khai mô hình **Qwen** (ví dụ: `qwen2.5:7b` hoặc `qwen2.5:14b`) tại server cục bộ (On-premise) nhằm:
+Sử dụng **Ollama** triển khai mô hình **Qwen** (ví dụ: Dual-Model: Production Target `krith/qwen2.5-14b-instruct:IQ3_XXS` và Baseline `qwen2.5:7b-instruct:q4_K_M`) tại server cục bộ (On-premise) nhằm:
 * Bảo mật tuyệt đối dữ liệu doanh nghiệp, không rò rỉ thông tin ra internet.
 * Tốc độ phản hồi cao trong mạng nội bộ.
 * Qwen hỗ trợ tiếng Việt xuất sắc và khả năng Tool Calling mạnh mẽ.
@@ -28,8 +28,8 @@ Sử dụng **Ollama** triển khai mô hình **Qwen** (ví dụ: `qwen2.5:7b` h
 ### 2.3 Vector Database: Qdrant
 Lưu trữ các vector nhúng (Embeddings) của tài liệu nội dung nghiệp vụ, chính sách bảo hành, thông số kỹ thuật. Qdrant cung cấp khả năng tìm kiếm ngữ nghĩa cực nhanh (Semantic Search).
 
-### 2.4 Dữ liệu Nghiệp vụ: PostgreSQL
-Lưu trữ lịch sử hội thoại (`ai_conversations`, `ai_messages`), nhật ký dùng tool (`ai_tool_calls`) và toàn bộ dữ liệu nghiệp vụ theo cấu trúc thiết kế ở Phase 2.
+### 2.4 Dữ liệu Nghiệp vụ: Microsoft SQL Server 2022 Enterprise
+Lưu trữ lịch sử hội thoại (`Conversations`, `Messages`), nhật ký dùng tool (`AuditLogs`) và toàn bộ dữ liệu nghiệp vụ theo cấu trúc thiết kế ở Phase 2.
 
 ## 3. Luồng Xử lý Dữ liệu (Data Flow)
 
@@ -37,8 +37,8 @@ Lưu trữ lịch sử hội thoại (`ai_conversations`, `ai_messages`), nhật
 sequenceDiagram
     participant User
     participant UI as Giao diện Chat
-    participant API as Spring Boot API (LangChain4j)
-    participant DB as PostgreSQL (Memory & Logs)
+    participant API as ASP.NET Core 10 API (Semantic Kernel)
+    participant DB as SQL Server 2022 (Conversations & Messages)
     participant VectorDB as Qdrant (RAG)
     participant LLM as Ollama (Qwen)
     participant Tools as Internal Tools/Services
@@ -60,7 +60,7 @@ sequenceDiagram
         LLM-->>API: Sinh câu trả lời dựa trên RAG hoặc Memory
     end
     
-    API->>DB: Lưu tin nhắn mới vào `ai_messages`
+    API->>DB: Lưu tin nhắn mới vào `Messages`
     API-->>UI: Trả về kết quả cho người dùng
     UI-->>User: Hiển thị câu trả lời
 ```

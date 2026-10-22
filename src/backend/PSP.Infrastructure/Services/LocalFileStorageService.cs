@@ -41,12 +41,36 @@ public class LocalFileStorageService : IFileStorageService
 
     public Task DeleteFileAsync(string filePath, CancellationToken cancellationToken)
     {
-        var webRootPath = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        var absolutePath = Path.Combine(webRootPath, filePath.TrimStart('/'));
-        if (File.Exists(absolutePath))
+        if (string.IsNullOrWhiteSpace(filePath))
         {
-            File.Delete(absolutePath);
+            return Task.CompletedTask;
         }
+
+        var webRootPath = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var uploadsFolder = Path.GetFullPath(Path.Combine(webRootPath, "uploads"));
+
+        // 1. Giải quyết đường dẫn chính tắc (Canonical Path)
+        var normalizedSubPath = filePath.TrimStart('/', '\\');
+        var rawFullPath = Path.Combine(webRootPath, normalizedSubPath);
+        var canonicalFullPath = Path.GetFullPath(rawFullPath);
+
+        // 2. Chốt chặn tiền tố: Bắt buộc phải nằm trong thư mục uploads/
+        var uploadsPrefix = uploadsFolder.EndsWith(Path.DirectorySeparatorChar)
+            ? uploadsFolder
+            : uploadsFolder + Path.DirectorySeparatorChar;
+
+        if (!canonicalFullPath.StartsWith(uploadsPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new System.Security.SecurityException(
+                $"[SECURITY ALERT] Phát hiện hành vi leo thang thư mục (Path Traversal)! Đường dẫn '{filePath}' nằm ngoài vùng lưu trữ uploads an toàn.");
+        }
+
+        // 3. Tiến hành xóa an toàn khi đã được kiểm định chính tắc
+        if (File.Exists(canonicalFullPath))
+        {
+            File.Delete(canonicalFullPath);
+        }
+
         return Task.CompletedTask;
     }
 }

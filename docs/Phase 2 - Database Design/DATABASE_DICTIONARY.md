@@ -3,7 +3,7 @@
 ## Hệ thống quản lý chuỗi cửa hàng điện thoại tích hợp AI Assistant
 
 **Version:** 1.0
-**Database System:** PostgreSQL (with `uuid-ossp` and `pgvector` extensions)
+**Database System:** Microsoft SQL Server 2022 (EF Core 10, T-SQL) & Qdrant 1.12.0 (Vector DB)
 **Phase:** 2 - Database Design
 
 ---
@@ -11,7 +11,7 @@
 ## 1. Authentication & Authorization Domain
 
 ### 1.1 Bảng `roles` (Vai trò)
-Lưu thông tin các vai trò trong hệ thống (e.g. ADMIN, MANAGER, SALES, INVENTORY, TECHNICIAN).
+Lưu thông tin các vai trò trong hệ thống (e.g. OWNER, ADMIN, MANAGER, SALES, INVENTORY, TECHNICIAN, WARRANTY - 7 Canonical Roles).
 
 | Tên cột | Kiểu dữ liệu | Nullable | Khóa | Mặc định | Mô tả |
 | :--- | :--- | :--- | :--- | :--- | :--- |

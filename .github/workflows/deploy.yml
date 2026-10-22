@@ -1,0 +1,31 @@
+name: CI/CD Pipeline - PSP Enterprise
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '10.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore src/backend/PSP.API/PSP.API.csproj
+      
+    - name: Build
+      run: dotnet build src/backend/PSP.API/PSP.API.csproj --no-restore -c Release
+      
+    - name: Build Docker Image
+      run: docker build -t psp-backend:latest -f src/backend/Dockerfile src/backend/
+      
+    # Note: For production, you would add steps here to push to Docker Hub/ACR
+    # and trigger a deployment to your server via SSH or Webhook.

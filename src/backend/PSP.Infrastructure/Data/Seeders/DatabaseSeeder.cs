@@ -25,73 +25,8 @@ public static class DatabaseSeeder
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
 
-        // 1. Auto-ensure DB columns exist in physical Customers and Suppliers tables first
         try
         {
-            await context.Database.ExecuteSqlRawAsync(@"
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Customers') AND name = N'RewardPoints')
-                BEGIN
-                    ALTER TABLE [Customers] ADD [RewardPoints] INT NOT NULL DEFAULT 0;
-                END;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Customers') AND name = N'TotalSpent')
-                BEGIN
-                    ALTER TABLE [Customers] ADD [TotalSpent] DECIMAL(18,2) NOT NULL DEFAULT 0;
-                END;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'TaxCode')
-                BEGIN
-                    ALTER TABLE [Suppliers] ADD [TaxCode] NVARCHAR(50) NULL;
-                END;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'DebtAmount')
-                BEGIN
-                    ALTER TABLE [Suppliers] ADD [DebtAmount] DECIMAL(18,2) NOT NULL DEFAULT 0;
-                END;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'CreditLimit')
-                BEGIN
-                    ALTER TABLE [Suppliers] ADD [CreditLimit] DECIMAL(18,2) NOT NULL DEFAULT 500000000;
-                END;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'Suppliers') AND name = N'PaymentTermsDays')
-                BEGIN
-                    ALTER TABLE [Suppliers] ADD [PaymentTermsDays] INT NOT NULL DEFAULT 30;
-                END;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'SupplierDebtTransactions')
-                BEGIN
-                    CREATE TABLE [SupplierDebtTransactions] (
-                        [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
-                        [SupplierId] UNIQUEIDENTIFIER NOT NULL,
-                        [TransactionType] NVARCHAR(30) NOT NULL,
-                        [Amount] DECIMAL(18,2) NOT NULL,
-                        [BalanceAfter] DECIMAL(18,2) NOT NULL,
-                        [ReferenceNo] NVARCHAR(50) NULL,
-                        [PaymentMethod] NVARCHAR(30) NULL,
-                        [Note] NVARCHAR(500) NULL,
-                        [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-                        [CreatedBy] NVARCHAR(100) NULL,
-                        [UpdatedAt] DATETIME2 NULL,
-                        [UpdatedBy] NVARCHAR(100) NULL,
-                        [IsDeleted] BIT NOT NULL DEFAULT 0,
-                        [DeletedAt] DATETIME2 NULL,
-                        [DeletedBy] NVARCHAR(100) NULL,
-                        CONSTRAINT [FK_SupplierDebtTransactions_Suppliers] FOREIGN KEY ([SupplierId]) REFERENCES [Suppliers]([Id]) ON DELETE CASCADE
-                    );
-                END;
-            ");
-        }
-        catch (Exception exRaw)
-        {
-            logger.LogWarning(exRaw, "⚠️ Could not run raw ALTER TABLE script on Customers/Suppliers table.");
-        }
-
-        try
-        {
-            // Removed: await context.Database.MigrateAsync(); (INFRA-OPS-002)
-            // Database migration should be handled explicitly via CI/CD deployment scripts, not at runtime.
-
             await SeedBranchAsync(context, logger);
             await SeedRolesAsync(context, logger);
             await SeedPermissionsAsync(context, logger);

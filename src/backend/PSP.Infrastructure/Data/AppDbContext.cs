@@ -94,6 +94,12 @@ public class AppDbContext : DbContext, IAppDbContext
     // Idempotency
     public DbSet<IdempotencyRecordEntity> IdempotencyRecords => Set<IdempotencyRecordEntity>();
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -110,10 +116,10 @@ public class AppDbContext : DbContext, IAppDbContext
             property.SetScale(2);
         }
 
-        // Tắt Cascade Delete toàn cục
+        // Tắt Cascade Delete toàn cục & chuẩn hóa toàn bộ khóa ngoại về Restrict
         var cascadeFKs = modelBuilder.Model.GetEntityTypes()
             .SelectMany(t => t.GetForeignKeys())
-            .Where(fk => !fk.IsOwnership && fk.DeleteBehavior == DeleteBehavior.Cascade);
+            .Where(fk => !fk.IsOwnership && (fk.DeleteBehavior == DeleteBehavior.Cascade || fk.DeleteBehavior == DeleteBehavior.ClientSetNull));
 
         foreach (var fk in cascadeFKs)
         {

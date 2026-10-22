@@ -77,6 +77,13 @@ public class SalesOrderConfiguration : IEntityTypeConfiguration<SalesOrderEntity
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
 
+        // Đơn hàng có thể liên kết với một Hóa đơn tài chính (InvoiceId nullable)
+        builder.HasOne(e => e.Invoice)
+            .WithMany()
+            .HasForeignKey("InvoiceId")
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         // 7. Quan hệ 1-Nhiều với bảng SalesOrderItems (Chi tiết đơn hàng)
         // Khi xóa đơn hàng vật lý (hoặc xóa cascade), các dòng chi tiết đơn hàng cũng tự động xóa theo (Cascade).
         builder.HasMany(e => e.Items)

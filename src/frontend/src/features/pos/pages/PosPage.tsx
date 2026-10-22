@@ -372,7 +372,12 @@ export const PosPage: React.FC = () => {
   const handleBarcodeSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && barcodeInput.trim()) {
       const code = barcodeInput.trim();
-      const matchedVariant = variants.find(v => v.sku === code || v.sku === code);
+      const searchCode = code.toLowerCase();
+      const matchedVariant = variants.find(v => 
+        (v.sku && v.sku.trim().toLowerCase() === searchCode) ||
+        (v.name && v.name.trim().toLowerCase().includes(searchCode)) ||
+        (v.variantName && v.variantName.trim().toLowerCase().includes(searchCode))
+      );
       
       if (matchedVariant) {
         const product = products.find(p => p.id === matchedVariant.productId);

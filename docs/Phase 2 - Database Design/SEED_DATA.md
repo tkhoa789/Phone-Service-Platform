@@ -14,7 +14,7 @@ Tài liệu này cung cấp danh sách dữ liệu mẫu thiết yếu (Seed Dat
 
 ## 2. Danh sách dữ liệu mẫu chi tiết (Bảng và SQL Insert Script)
 
-Do hệ thống sử dụng kiểu khóa chính UUID, để chạy thử nghiệm các lệnh SQL dưới đây trong PostgreSQL, chúng ta sử dụng các giá trị UUID được sinh tĩnh sẵn nhằm đảm bảo tính liên kết khóa ngoại.
+Do hệ thống sử dụng kiểu khóa chính UUID, để chạy thử nghiệm các lệnh T-SQL dưới đây trong Microsoft SQL Server 2022, chúng ta sử dụng các giá trị UUID được sinh tĩnh sẵn nhằm đảm bảo tính liên kết khóa ngoại.
 
 ### 2.1 Bảng `branches` (Chi nhánh mẫu)
 Tạo chi nhánh trung tâm làm việc chính.

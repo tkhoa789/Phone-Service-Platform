@@ -392,6 +392,9 @@ public class IdempotencyIntegrationTests : IClassFixture<IdempotencyIntegrationT
     [Fact]
     public async Task H_RedisUnavailable_ShouldReturn503()
     {
+        var data = await SetupTestDataAsync(suffix: Guid.NewGuid().ToString("N"));
+        var idempotencyKey = Guid.NewGuid().ToString();
+
         var factory = _factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureServices(services =>
@@ -410,12 +413,48 @@ public class IdempotencyIntegrationTests : IClassFixture<IdempotencyIntegrationT
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "fake-token");
 
-        var request = new HttpRequestMessage(HttpMethod.Post, "/api/SalesOrder");
-        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
-        request.Content = JsonContent.Create(new { });
+        var request1 = new HttpRequestMessage(HttpMethod.Post, "/api/SalesOrder");
+        request1.Headers.Add("Idempotency-Key", idempotencyKey);
+        request1.Content = JsonContent.Create(data.Command);
 
-        var response = await client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        var response1 = await client.SendAsync(request1);
+        response1.EnsureSuccessStatusCode();
+
+        var body1 = await response1.Content.ReadAsStringAsync();
+        var orderId1 = JsonSerializer.Deserialize<JsonElement>(body1).GetProperty("data").GetString();
+        Assert.NotNull(orderId1);
+
+        // Gửi lại cùng idempotency key khi Redis vẫn sập để xác minh Fallback-Path trên SQL Server trả về cache kết quả và không tạo trùng
+        var request2 = new HttpRequestMessage(HttpMethod.Post, "/api/SalesOrder");
+        request2.Headers.Add("Idempotency-Key", idempotencyKey);
+        request2.Content = JsonContent.Create(data.Command);
+
+        var response2 = await client.SendAsync(request2);
+        response2.EnsureSuccessStatusCode();
+
+        var body2 = await response2.Content.ReadAsStringAsync();
+        var orderId2 = JsonSerializer.Deserialize<JsonElement>(body2).GetProperty("data").GetString();
+        Assert.Equal(orderId1, orderId2);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var orderCount = await db.SalesOrders.CountAsync(x => x.CustomerId == data.Customer.Id);
+        Assert.Equal(1, orderCount);
+
+        // Gửi lại cùng idempotency key nhưng payload khác để xác minh Fallback-Path trên SQL Server trả về 409 Conflict
+        var conflictCommand = data.Command with
+        {
+            Items = new List<CreateSalesOrderItemCommand>
+            {
+                new(data.Variant.Id, null, 2)
+            }
+        };
+        var request3 = new HttpRequestMessage(HttpMethod.Post, "/api/SalesOrder");
+        request3.Headers.Add("Idempotency-Key", idempotencyKey);
+        request3.Content = JsonContent.Create(conflictCommand);
+
+        var response3 = await client.SendAsync(request3);
+        Assert.Equal(HttpStatusCode.Conflict, response3.StatusCode);
     }
 
     public class IdempotencyApiFactory : WebApplicationFactory<Program>, IAsyncLifetime

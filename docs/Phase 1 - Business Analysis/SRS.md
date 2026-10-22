@@ -408,7 +408,7 @@ Hỗ trợ:
 
 ## NFR-08 Database
 
-* PostgreSQL.
+* Microsoft SQL Server 2022 Enterprise.
 * Chuẩn hóa dữ liệu.
 * Có Index.
 * Có Migration.
@@ -443,12 +443,12 @@ AI phải:
 
 Hệ thống phải triển khai được bằng Docker Compose, bao gồm:
 
-* Backend
-* Frontend
-* PostgreSQL
-* Redis
+* Backend (.NET 10 Web API)
+* Frontend (React 19 SPA)
+* Microsoft SQL Server 2022
+* Redis 7
 * Ollama
-* Qdrant
+* Qdrant 1.12.0
 
 Chỉ cần thực hiện lệnh:
 

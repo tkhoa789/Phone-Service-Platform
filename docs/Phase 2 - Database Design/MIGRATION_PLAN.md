@@ -2,141 +2,105 @@
 
 ## Hệ thống quản lý chuỗi cửa hàng điện thoại tích hợp AI Assistant
 
-**Version:** 1.0
-**Migration Tool:** Flyway (tích hợp trong Spring Boot 3)
-**Database System:** PostgreSQL 16+
+**Version:** 1.1 (Cập nhật chuẩn hóa theo .NET 10 & EF Core 10)
+**Migration Tool:** Entity Framework Core 10 Code-First Migrations
+**Database System:** Microsoft SQL Server 2022 Enterprise
 **Phase:** 2 - Database Design
 
 ---
 
 ## 1. Tổng quan
-Tài liệu này vạch ra kế hoạch khởi tạo và nâng cấp cơ sở dữ liệu (Database Migration Plan) sử dụng **Flyway** - công cụ di trú dữ liệu tích hợp sâu trong dự án Spring Boot 3 của hệ thống. Nhờ cấu hình di trú tuần tự, dự án sẽ đảm bảo tính đồng bộ dữ liệu giữa các môi trường (Development, Testing, Production) và giảm thiểu rủi ro xung đột cấu trúc bảng khi phát triển đa nhân sự.
+Hệ thống sử dụng cơ chế **Code-First Migrations** của Entity Framework Core 10 (`Microsoft.EntityFrameworkCore.SqlServer` và `Microsoft.EntityFrameworkCore.Design`) để quản lý toàn bộ vòng đời tiến hóa cấu trúc cơ sở dữ liệu. Tất cả 40 bản di trú (Migrations) được lưu trữ phiên bản kiểm soát nghiêm ngặt trong mã nguồn tại thư mục:
+`src/backend/PSP.Infrastructure/Migrations/`
+
+Tiến trình migration đảm bảo tính đồng bộ tuyệt đối giữa mô hình thực thể miền C# (.NET 10) và 49 bảng vật lý trong SQL Server 2022 qua các môi trường: Development (Docker Testcontainers MSSQL), Staging và Production.
 
 ---
 
-## 2. Thứ tự khởi tạo bảng (Schema Dependency Sequence)
-Do các ràng buộc khóa ngoại (Foreign Keys), việc khởi tạo cấu trúc bảng (DDL) phải tuân thủ nghiêm ngặt trình tự phụ thuộc dưới đây để tránh lỗi vi phạm khóa ngoại trong quá trình chạy Migration:
+## 2. Thứ tự Khởi tạo và Phụ thuộc Thực thể (Schema Dependency Sequence)
+
+Do có 72 ràng buộc Khóa ngoại (Foreign Keys) với hành vi `DeleteBehavior.Restrict`, quá trình kiến tạo dữ liệu và migration tuân thủ đồ thị phụ thuộc:
 
 ```mermaid
 graph TD
-    %% Level 0: Bảng độc lập hoàn toàn
-    Branch[branches]
-    Role[roles]
-    Permission[permissions]
-    Category[categories]
-    Brand[brands]
-    Supplier[suppliers]
-    PaymentMethod[payment_methods]
-    Promotion[promotions]
-    AIKnowledge[ai_knowledge_documents]
+    %% Level 0: Bảng độc lập
+    Branch[Branches]
+    Role[Roles]
+    Permission[Permissions]
+    Category[Categories]
+    Brand[Brands]
+    Supplier[Suppliers]
+    Promotion[Promotions]
+    Customer[Customers]
 
-    %% Level 1: Phụ thuộc trực tiếp vào Level 0
-    Branch --> User[users]
-    Role --> UserRole[user_roles]
+    %% Level 1: Phụ thuộc Level 0
+    Branch --> User[Users]
+    Role --> UserRole[UserRoles]
     User --> UserRole
-    Role --> RolePermission[role_permissions]
+    Role --> RolePermission[RolePermissions]
     Permission --> RolePermission
-    User --> RefreshToken[refresh_tokens]
-    User --> LoginHistory[login_histories]
-    User --> AuditLog[audit_logs]
-    User --> AIConvo[ai_conversations]
-    Branch --> Warehouse[warehouses]
-    Category --> Product[products]
+    User --> RefreshToken[RefreshTokens]
+    User --> LoginHistory[LoginHistories]
+    User --> AuditLog[AuditLogs]
+    User --> AIConvo[Conversations]
+    Branch --> Warehouse[Warehouses]
+    Category --> Product[Products]
     Brand --> Product
-    Promotion --> Voucher[vouchers]
-    AIKnowledge --> AIEmbedding[ai_embeddings]
+    Promotion --> Voucher[Vouchers]
 
-    %% Level 2: Phụ thuộc vào Level 1
-    Product --> Variant[product_variants]
-    Warehouse --> Inventory[inventories]
+    %% Level 2: Phụ thuộc Level 1
+    Product --> Variant[ProductVariants]
+    Warehouse --> Inventory[Inventories]
     Variant --> Inventory
-    Warehouse --> IMEI[imeis]
-    Variant --> IMEI
-    Supplier --> PurchaseOrder[purchase_orders]
-    Warehouse --> PurchaseOrder
-    Voucher --> SalesOrder[sales_orders]
-    User --> SalesOrder
-    Branch --> SalesOrder
-    Customer[customers] --> SalesOrder
+    Warehouse --> StockTake[StockTakes]
+    Warehouse --> WhTransfer[WarehouseTransfers]
+    User --> SalesOrder[SalesOrders]
+    Customer --> SalesOrder
 
-    %% Level 3: Phụ thuộc vào Level 2
-    PurchaseOrder --> PurchaseItem[purchase_order_items]
-    Variant --> PurchaseItem
-    SalesOrder --> SalesItem[sales_order_items]
-    Variant --> SalesItem
-    IMEI --> SalesItem
-    SalesOrder --> Invoice[invoices]
-    SalesOrder --> Warranty[warranty_tickets]
-    IMEI --> Warranty
-    Customer --> Repair[repair_tickets]
-    User --> Repair
-    IMEI --> Repair
-
-    %% Level 4: Phụ thuộc vào Level 3
-    Invoice --> InvoiceItem[invoice_items]
-    Invoice --> Payment[payments]
-    PaymentMethod --> Payment
-    Warranty --> WarrantyHistory[warranty_histories]
-    Repair --> RepairPart[repair_parts]
-    Repair --> RepairHistory[repair_status_histories]
-    AIConvo --> AIMessage[ai_messages]
-    AIConvo --> AITool[ai_tool_calls]
+    %% Level 3: Giao dịch chi tiết & IMEI
+    Variant --> Imei[Imeis]
+    Warehouse --> Imei
+    SalesOrder --> OrderItem[SalesOrderItems]
+    Variant --> OrderItem
+    OrderItem --> Invoice[Invoices]
+    Customer --> WarrantyTicket[WarrantyTickets]
+    Imei --> WarrantyTicket
+    Customer --> RepairTicket[RepairTickets]
+    RepairTicket --> RepairChecklist[RepairChecklists]
 ```
 
 ---
 
-## 3. Lịch trình File di trú (Flyway Migrations Timeline)
-Các file migration được đặt trong thư mục: `src/main/resources/db/migration/` của project Spring Boot. Quy tắc đặt tên tuân thủ: `V<Version>__<Mô_tả>.sql`.
+## 3. Quy trình Thực thi Migrations trong Dự án
 
-### V1.0__Initial_Schema.sql (Khởi tạo toàn bộ cấu trúc)
-Nội dung file này chứa toàn bộ các câu lệnh `CREATE TABLE`, `ALTER TABLE` tạo khóa ngoại và check constraints đã được định nghĩa trong `DATABASE_DICTIONARY.md` và `DATABASE_CONSTRAINT.md`. 
-Nội dung file được chia làm các khối lệnh SQL theo đúng thứ tự phụ thuộc nêu ở Mục 2.
+### 3.1 Tạo Migration mới (Developer Workflow)
+Khi có sự thay đổi mô hình dữ liệu trong Domain Layer (`PSP.Domain/Modules/`) hoặc cấu hình Fluent API (`PSP.Infrastructure/Data/Configurations/`):
 
-### V1.1__Initial_Indexes.sql (Tạo các chỉ mục tăng tốc)
-Chứa các lệnh tạo index từ tài liệu `DATABASE_INDEX.md` (bao gồm index khóa ngoại, index tìm kiếm B-Tree và index HNSW cho Vector RAG). Việc tách index sang file riêng giúp kiểm soát và tắt bật index dễ dàng mà không ảnh hưởng tới cấu trúc bảng chính.
+```bash
+dotnet ef migrations add <MigrationName>   --project src/backend/PSP.Infrastructure   --startup-project src/backend/PSP.API
+```
 
-### V1.2__Seed_System_Data.sql (Dữ liệu nền tảng ban đầu)
-Nạp dữ liệu cơ sở thiết yếu để chạy ứng dụng lần đầu (Chi tiết ở tài liệu `SEED_DATA.md`), bao gồm:
-* Kích hoạt quyền (Permissions) mặc định cho hệ thống.
-* Tạo vai trò (Roles: Admin, Manager, Cashier, Inventory, Technical).
-* Tạo tài khoản quản trị tối cao (Admin User) mặc định liên kết chi nhánh chính.
-* Cấu hình các phương thức thanh toán khả dụng.
+### 3.2 Áp dụng Migration vào Cơ sở dữ liệu
+* **Môi trường Phát triển (Development):**
+  ```bash
+  dotnet ef database update     --project src/backend/PSP.Infrastructure     --startup-project src/backend/PSP.API
+  ```
+* **Môi trường Tự động Hóa Kiểm thử (Integration Tests):**
+  Kiểm thử tích hợp sử dụng `Testcontainers.MsSql` để tự động khởi tạo container SQL Server 2022 tạm thời và thực thi `context.Database.MigrateAsync()` lúc bootstrap, bảo đảm 259/259 bài test luôn chạy trên cấu trúc CSDL thực tế.
+* **Môi trường Production (CI/CD Pipeline):**
+  Sinh script SQL migration tự động để kiểm duyệt trước khi chạy trên server:
+  ```bash
+  dotnet ef migrations script     --idempotent     --project src/backend/PSP.Infrastructure     --startup-project src/backend/PSP.API     --output migrations.sql
+  ```
 
 ---
 
-## 4. Quy trình triển khai Migration (Deployment Flow)
-
-### 4.1 Môi trường Phát triển (Local / Development)
-1. **Cấu hình Spring Boot application.yml:**
-   ```yaml
-   spring:
-     datasource:
-       url: jdbc:postgresql://localhost:5432/phone_store_db
-       username: postgres
-       password: yourpassword
-     flyway:
-       enabled: true
-       baseline-on-migrate: true
-       baseline-version: 0
+## 4. Kiểm soát An toàn và Dự phòng Rủi ro (Resilience Guidelines)
+1. **Idempotency Migration Script:** Lệnh sinh script `--idempotent` bao bọc từng bước migration trong khối kiểm tra bảng `__EFMigrationsHistory` để ngăn chặn việc chạy lặp lại gây lỗi.
+2. **Khóa Lạc Quan (RowVersion Concurrency Token):** 13 thực thể trọng yếu sở hữu cột `RowVersion byte[] [Timestamp]` để bắt kịp thời các xung đột ghi đồng thời (Concurrency Conflicts) qua `DbUpdateConcurrencyException`.
+3. **Sao lưu Dự phòng:** Trước khi áp dụng migration lớn trên Production, thực hiện lệnh Backup Full Database:
+   ```sql
+   BACKUP DATABASE [PhoneServicePlatform] 
+   TO DISK = 'C:\Backups\PSP_PreMigration.bak' 
+   WITH FORMAT, INIT, COMPRESSION;
    ```
-2. Khi khởi chạy dự án (`mvn spring-boot:run` hoặc click run trong IDE), Flyway tự động đối chiếu các file `.sql` trong classpath và database, sau đó thực hiện migrate những thay đổi chưa được áp dụng.
-
-### 4.2 Môi trường Kiểm thử & Production
-* **Nguyên tắc không chỉnh sửa file migration cũ:** Khi một file migration đã được deploy lên Testing hoặc Production, **tuyệt đối không chỉnh sửa nội dung file đó**. Nếu cấu trúc database thay đổi, bắt buộc phải tạo một file migration mới với phiên bản tăng dần (ví dụ: `V1.3__Add_new_column_to_customers.sql`).
-* **Sao lưu tự động (Backup):** Trước khi chạy các tiến trình migration lớn trên Production, hệ thống CI/CD kích hoạt lệnh sao lưu nhanh (Database Snapshot) sử dụng `pg_dump` để đề phòng trường hợp lỗi phát sinh.
-
----
-
-## 5. Kế hoạch khôi phục khi gặp sự cố (Rollback & Failure Recovery Plan)
-Khi một file migration chạy bị lỗi giữa chừng, Flyway sẽ ghi nhận trạng thái `FAILED` vào bảng quản trị `flyway_schema_history` và chặn đứng mọi hoạt động khởi động của ứng dụng Spring Boot.
-
-### 5.1 Quy trình sửa đổi lỗi Migration
-1. **Xác định lỗi:** Đọc log khởi chạy của Spring Boot để tìm chính xác lỗi cú pháp SQL hoặc vi phạm ràng buộc dữ liệu thực tế.
-2. **Khôi phục thủ công (Rollback):** Do PostgreSQL hỗ trợ Transactional DDL, hầu hết các lệnh lỗi trong file migration sẽ tự động được rollback. Trường hợp ngoại lệ cần can thiệp thủ công:
-   * Chạy script rollback tương ứng bằng công cụ quản trị (e.g. pgAdmin, DBeaver) để đưa database về trạng thái của version trước đó.
-   * Xóa bản ghi bị lỗi trong bảng lịch sử Flyway:
-     ```sql
-     DELETE FROM flyway_schema_history WHERE success = false;
-     ```
-3. **Cập nhật lại file SQL:** Sửa lỗi trong file `.sql` đang phát triển và khởi chạy lại dự án Spring Boot để Flyway thực thi lại.
-4. **Đối với Production:** Sử dụng công cụ của Flyway Command Line hoặc viết script migration bù đắp (để drop/alter ngược lại) thay vì sửa đổi file cũ trực tiếp.

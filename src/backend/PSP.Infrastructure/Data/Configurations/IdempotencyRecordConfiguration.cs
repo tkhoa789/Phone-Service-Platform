@@ -10,5 +10,7 @@ public class IdempotencyRecordConfiguration : IEntityTypeConfiguration<Idempoten
     {
         builder.HasIndex(x => x.IdentityKey)
                .IsUnique();
+
+        builder.HasIndex(x => x.CreatedAt);
     }
 }

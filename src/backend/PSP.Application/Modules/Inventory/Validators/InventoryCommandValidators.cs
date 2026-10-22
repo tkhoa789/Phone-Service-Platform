@@ -34,6 +34,6 @@ public class UpdateImeiStatusCommandValidator : AbstractValidator<UpdateImeiStat
         RuleFor(x => x.Status)
             .NotEmpty().WithMessage("Trạng thái IMEI không được để trống.")
             .Must(status => Enum.TryParse<ImeiStatus>(status, true, out _))
-            .WithMessage("Trạng thái IMEI không hợp lệ. Các giá trị được chấp nhận: InStock, Sold, Repairing, WarrantyHold, Disposed.");
+            .WithMessage("Trạng thái IMEI không hợp lệ. Các giá trị được chấp nhận: InStock, Sold, Repairing, WarrantyHold, Disposed, WrittenOff.");
     }
 }

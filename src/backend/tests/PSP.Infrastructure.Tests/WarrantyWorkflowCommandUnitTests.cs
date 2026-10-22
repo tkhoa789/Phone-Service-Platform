@@ -263,6 +263,52 @@ public class WarrantyWorkflowCommandUnitTests : IDisposable
     }
 
     [Fact]
+    public async Task ReplaceDevice_WhenNewImeiHasWarehouse_DeductsInventoryAndRecordsLedgerTransaction_Success()
+    {
+        using var context = CreateDbContext();
+        var warehouseId = Guid.NewGuid();
+        var warehouse = new WarehouseEntity { Id = warehouseId, BranchId = _branchId, Code = "KHO-01", Name = "Kho Tổng Q1" };
+        var inventory = new InventoryEntity { Id = Guid.NewGuid(), WarehouseId = warehouseId, ProductVariantId = _variantId, Quantity = 5, MinimumStock = 1 };
+        context.Warehouses.Add(warehouse);
+        context.Inventories.Add(inventory);
+
+        var newImeiEntity = await context.Imeis.FirstAsync(i => i.Imei == _newImei);
+        newImeiEntity.WarehouseId = warehouseId;
+        context.Imeis.Update(newImeiEntity);
+        await context.SaveChangesAsync();
+
+        var ticket = CreateTestTicket(context);
+        var uow = new UnitOfWork(context);
+        var handler = new WarrantyCommandHandlers(uow, currentUserService: _mockCurrentUserService.Object);
+
+        var command = new ReplaceDeviceCommand(
+            ticket.Id,
+            _newImei,
+            "Lỗi bo mạch chính không nhận sóng, đủ điều kiện đổi mới 1-1 BR-905",
+            ticket.RowVersion
+        );
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.Should().BeTrue();
+
+        // Verify inventory deducted
+        var updatedInventory = await context.Inventories.AsNoTracking().FirstAsync(inv => inv.Id == inventory.Id);
+        updatedInventory.Quantity.Should().Be(4);
+
+        // Verify ledger transaction recorded
+        var txns = await context.InventoryTransactions.AsNoTracking().Where(t => t.ReferenceId == ticket.Id).ToListAsync();
+        txns.Should().HaveCount(1);
+        var txn = txns[0];
+        txn.WarehouseId.Should().Be(warehouseId);
+        txn.ProductVariantId.Should().Be(_variantId);
+        txn.ImeiId.Should().Be(newImeiEntity.Id);
+        txn.Type.Should().Be(InventoryTransactionType.SALE);
+        txn.QuantityChange.Should().Be(-1);
+        txn.CostSnapshot.Should().Be(0m);
+    }
+
+    [Fact]
     public async Task ReplaceDevice_WhenNewImeiNotInStock_ThrowsBadRequest()
     {
         using var context = CreateDbContext();

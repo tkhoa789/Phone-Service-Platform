@@ -157,7 +157,7 @@ namespace PSP.Infrastructure.Tests
             var branch = new BranchEntity { Id = _currentBranchId, Name = "Branch" };
 
             var product = new ProductVariantEntity { Id = Guid.NewGuid(), ProductId = productBase.Id, Name = "Screen", SalePrice = 100, Sku = "SKU" + Guid.NewGuid().ToString().Substring(0, 8) };
-            var user = new UserEntity { Id = _currentUserId, FullName = "Tech", Email = "tech" + Guid.NewGuid().ToString().Substring(0, 8) + "@test.com", BranchId = _currentBranchId };
+            var user = new UserEntity { Id = _currentUserId, FullName = "Tech", Username = "tech_" + Guid.NewGuid().ToString().Substring(0, 8), Email = "tech" + Guid.NewGuid().ToString().Substring(0, 8) + "@test.com", BranchId = _currentBranchId };
             var customer = new CustomerEntity { Id = Guid.NewGuid(), FullName = "Cus", Phone = Guid.NewGuid().ToString().Substring(0, 10), Code = "CUS" + Guid.NewGuid().ToString().Substring(0, 8) };
             var ticket = new RepairTicketEntity { Id = Guid.NewGuid(), Code = "T" + Guid.NewGuid().ToString().Substring(0, 4), BranchId = branch.Id, ReceivedById = user.Id, Status = RepairTicketStatus.Repairing, CustomerId = customer.Id, ProductVariantId = product.Id };
             

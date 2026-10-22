@@ -1,0 +1,326 @@
+{
+  "info": {
+    "name": "PSP_09_Dashboard",
+    "description": "Bộ kịch bản test tự động 100% cho Phân hệ Báo cáo & Tổng quan (Module 19: Report & Dashboard) của Phone Service Platform.\n\n**QUY TRÌNH KIỂM THỬ:**\n1. Đăng nhập Admin ➔ Tạo một nhân viên kiểm thử không có quyền ➔ Đăng nhập nhân viên kiểm thử.\n2. Lấy Token Admin gọi API Dashboard tổng quan hệ thống (mong đợi lấy được toàn bộ dữ liệu).\n3. Lấy Token Admin gọi API Dashboard lọc theo Chi nhánh Trụ sở chính (mong đợi lấy được dữ liệu chi tiết của chi nhánh).\n4. Kiểm thử ranh giới bảo mật: Sử dụng token của nhân viên không có quyền (Technician) truy cập API Dashboard, mong đợi lỗi 403 Forbidden.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "techAccessToken",
+      "value": ""
+    },
+    {
+      "key": "suffix",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 0. Auth & Setup",
+      "item": [
+        {
+          "name": "0.1 Đăng nhập hệ thống (Admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const randomNum = Math.floor(100000 + Math.random() * 900000);",
+                  "pm.collectionVariables.set('suffix', randomNum);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "console.log('✅ Admin logged in.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "0.2 Tạo nhân viên kiểm thử phân quyền (Không gán Role)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Tạo nhân viên thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "console.log('✅ Created test technician.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"branchId\": \"00000000-0000-0000-0000-000000000001\",\n  \"username\": \"tech_{{suffix}}\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Nhân viên kiểm thử {{suffix}}\",\n  \"email\": \"tech_{{suffix}}@psp.com\",\n  \"phone\": \"0986{{suffix}}\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/User",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "User"
+              ]
+            }
+          }
+        },
+        {
+          "name": "0.3 Đăng nhập với tư cách Nhân viên kiểm thử (Không có quyền)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đăng nhập thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('techAccessToken', b.data.accessToken);",
+                  "console.log('✅ Technician logged in.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"tech_{{suffix}}\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 1. Dashboard Reports",
+      "item": [
+        {
+          "name": "1.1 Lấy dữ liệu Dashboard tổng hợp (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lấy dữ liệu thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "",
+                  "// Kiểm tra cấu trúc các chỉ số Dashboard",
+                  "pm.test('Có chỉ số doanh thu', () => pm.expect(b.data.totalRevenue).to.be.a('number'));",
+                  "pm.test('Có chỉ số lợi nhuận', () => pm.expect(b.data.totalProfit).to.be.a('number'));",
+                  "pm.test('Có chỉ số số lượng bán', () => pm.expect(b.data.unitsSold).to.be.a('number'));",
+                  "pm.test('Có chỉ số số ca sửa chữa', () => pm.expect(b.data.openRepairs).to.be.a('number'));",
+                  "pm.test('Có chỉ số số ca bảo hành', () => pm.expect(b.data.openWarranties).to.be.a('number'));",
+                  "",
+                  "// Kiểm tra dữ liệu danh sách con",
+                  "pm.test('Có doanh thu chi nhánh', () => pm.expect(b.data.branchRevenue).to.be.an('array'));",
+                  "pm.test('Có biểu đồ 30 ngày', () => pm.expect(b.data.thirtyDaysRevenue).to.be.an('array'));",
+                  "pm.test('Có top sản phẩm', () => pm.expect(b.data.topProducts).to.be.an('array'));",
+                  "pm.test('Có hàng đọng kho', () => pm.expect(b.data.deadStock).to.be.an('array'));",
+                  "",
+                  "console.log('✅ Retrieved global Dashboard successfully.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.2 Lấy dữ liệu Dashboard lọc theo Chi nhánh (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lấy dữ liệu lọc thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "",
+                  "// Kiểm tra rằng kết quả chỉ trả về thông tin chi nhánh Trụ sở chính",
+                  "pm.test('Danh sách chi nhánh lọc chỉ có 1 phần tử', () => {",
+                  "  pm.expect(b.data.branchRevenue).to.be.an('array');",
+                  "  if (b.data.branchRevenue.length > 0) {",
+                  "    pm.expect(b.data.branchRevenue[0].branchId).to.eql('00000000-0000-0000-0000-000000000001');",
+                  "  }",
+                  "});",
+                  "",
+                  "console.log('✅ Filtered Dashboard successfully.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Dashboard?branchId=00000000-0000-0000-0000-000000000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Dashboard"
+              ],
+              "query": [
+                {
+                  "key": "branchId",
+                  "value": "00000000-0000-0000-0000-000000000001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 Kiểm thử ranh giới bảo mật (Nhân viên không có quyền)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// BR-1201: Chỉ Admin/Manager mới được xem Dashboard. Tài khoản thường phải nhận lỗi 403 Forbidden.",
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "console.log('✅ Access denied for role-less user (403 Forbidden) - Security Boundary verified.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{techAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Dashboard"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

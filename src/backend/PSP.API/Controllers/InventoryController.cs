@@ -84,7 +84,7 @@ public class InventoryController : BaseApiController
     }
 
     /// <summary>
-    /// API Cập nhật trạng thái vòng đời của một mã số IMEI (InStock, Sold, Repairing, WarrantyHold, Disposed).
+    /// API Cập nhật trạng thái vòng đời của một mã số IMEI (InStock, Sold, Repairing, WarrantyHold, Disposed, WrittenOff).
     /// PUT: /api/Inventory/imei/{imei}/status
     /// </summary>
     [Authorize(Policy = Permissions.IMEI.Manage)]

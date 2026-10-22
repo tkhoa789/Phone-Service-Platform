@@ -63,4 +63,37 @@ public class LocalFileStorageServiceTests
             File.Delete(filePath);
         }
     }
+
+    [Theory]
+    [InlineData("../../appsettings.json")]
+    [InlineData("../../../etc/passwd")]
+    [InlineData("..\\..\\Windows\\System32\\cmd.exe")]
+    public async Task DeleteFileAsync_WithPathTraversal_ThrowsSecurityException(string maliciousPath)
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<System.Security.SecurityException>(() =>
+            _service.DeleteFileAsync(maliciousPath, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WithValidPathInsideUploads_DeletesFile()
+    {
+        // Arrange
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+        if (!Directory.Exists(uploadsDir))
+        {
+            Directory.CreateDirectory(uploadsDir);
+        }
+
+        var fileName = $"test-delete-{Guid.NewGuid():N}.png";
+        var fullPath = Path.Combine(uploadsDir, fileName);
+        await File.WriteAllTextAsync(fullPath, "dummy content");
+        Assert.True(File.Exists(fullPath));
+
+        // Act
+        await _service.DeleteFileAsync($"/uploads/{fileName}", CancellationToken.None);
+
+        // Assert
+        Assert.False(File.Exists(fullPath));
+    }
 }

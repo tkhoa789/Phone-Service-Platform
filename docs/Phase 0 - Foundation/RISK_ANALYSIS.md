@@ -402,7 +402,7 @@ Không thể triển khai.
 
 ---
 
-## INF-02 PostgreSQL lỗi
+## INF-02 Microsoft SQL Server 2022 lỗi / Sự cố Kết nối CSDL
 
 **Giảm thiểu**
 

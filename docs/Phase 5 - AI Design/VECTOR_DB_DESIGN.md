@@ -16,7 +16,7 @@ Dữ liệu tri thức được phân chia thành các "Collection" (tương t�
 
 ### 2.1 Collection: `knowledge_base`
 Chứa tất cả các tài liệu, quy trình, chính sách chung của công ty.
-* **Vector Size:** Phụ thuộc vào Embedding Model (ví dụ: `1536` nếu dùng model của OpenAI hoặc BAAI/bge-m3, `768` hoặc `1024` nếu dùng model khác). Sẽ chốt ở `EMBEDDING_DESIGN.md`.
+* **Vector Size:** Chuẩn hóa cố định **`768`** chiều nhúng tương ứng với mô hình `nomic-embed-text` được triển khai qua Ollama Embedding Service.
 * **Distance Metric:** `Cosine` (Cosine Similarity - Phù hợp nhất cho NLP Embeddings).
 
 ### 2.2 Payload Structure (Cấu trúc siêu dữ liệu)
@@ -68,5 +68,5 @@ ContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
 ```
 
 ## 5. Chiến lược Triển khai (Deployment)
-* **Môi trường:** Triển khai Qdrant thông qua Docker container trên server on-premise chung mạng nội bộ với Spring Boot và Ollama để giảm thiểu độ trễ mạng (Network Latency).
+* **Môi trường:** Triển khai Qdrant thông qua Docker container trên server on-premise chung mạng nội bộ với ASP.NET Core 10 và Ollama để giảm thiểu độ trễ mạng (Network Latency).
 * **Backup:** Sử dụng cơ chế Snapshot của Qdrant để backup định kỳ Collection `knowledge_base` ra ổ đĩa lưu trữ.

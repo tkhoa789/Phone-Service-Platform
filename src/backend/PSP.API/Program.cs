@@ -46,7 +46,15 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "PSP_";
 });
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+{
+    var redisConnStr = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var options = ConfigurationOptions.Parse(redisConnStr);
+    options.AbortOnConnectFail = false;
+    options.ConnectTimeout = 3000;
+    options.SyncTimeout = 1000;
+    options.AsyncTimeout = 1000;
+    return ConnectionMultiplexer.Connect(options);
+});
 
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -54,6 +62,7 @@ builder.Services.AddHangfire(configuration => configuration
     .UseRecommendedSerializerSettings()
     .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddHangfireServer();
+builder.Services.AddScoped<PSP.Infrastructure.Jobs.IIdempotencyCleanupJob, PSP.Infrastructure.Jobs.IdempotencyCleanupJob>();
 
 // =====================================================================
 // CẤU HÌNH SWAGGER VỚI JWT AUTHENTICATION
@@ -95,20 +104,46 @@ builder.Services.AddSwaggerGen(options =>
 // =====================================================================
 builder.Services.AddCors(options =>
 {
-    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-    
-    // Fallback to localhost if misconfigured, to prevent complete lockout during dev
-    if (allowedOrigins == null || allowedOrigins.Length == 0)
-    {
-        allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173" };
-    }
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
     options.AddPolicy("StrictCorsPolicy", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrEmpty(origin)) return false;
+                try
+                {
+                    var uri = new Uri(origin);
+                    return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                           uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                           uri.Host.StartsWith("192.168.", StringComparison.OrdinalIgnoreCase) ||
+                           uri.Host.StartsWith("10.", StringComparison.OrdinalIgnoreCase) ||
+                           uri.Host.StartsWith("172.", StringComparison.OrdinalIgnoreCase) ||
+                           allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+                }
+                catch
+                {
+                    return false;
+                }
+            })
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
+        }
+        else
+        {
+            if (allowedOrigins.Length == 0)
+            {
+                allowedOrigins = new[] { "http://localhost:3000", "http://localhost:5173" };
+            }
+
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
     });
 });
 
@@ -135,10 +170,35 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // =====================================================================
-// CẤU HÌNH JWT AUTHENTICATION VỚI KIỂM TRA TRẠNG THÁI TÀI KHOẢN REAL-TIME
+// CẤU HÌNH JWT AUTHENTICATION VỚI FAIL-FAST STARTUP GUARD & CONFIG SYNC
 // =====================================================================
-var jwtSecret = builder.Configuration["Jwt:Secret"]
-    ?? throw new InvalidOperationException("Jwt:Secret chưa được cấu hình trong appsettings.json!");
+var jwtSecret = builder.Configuration["Jwt:Secret"];
+var aspnetEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+var isExplicitProduction = string.Equals(aspnetEnv, "Production", StringComparison.OrdinalIgnoreCase);
+
+if (builder.Environment.IsProduction() && isExplicitProduction && !System.Diagnostics.Debugger.IsAttached)
+{
+    if (string.IsNullOrWhiteSpace(jwtSecret) ||
+        jwtSecret.Contains("__PROD_") ||
+        Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+    {
+        throw new InvalidOperationException(
+            "CRITICAL SECURITY CONFIGURATION ERROR: Trong môi trường Production, 'Jwt:Secret' bắt buộc phải " +
+            "được cấu hình an toàn qua Biến môi trường (Environment Variable), không được để trống, không được " +
+            "chứa placeholder '__PROD_', và phải có độ dài tối thiểu 256-bit (>= 32 bytes UTF-8)!");
+    }
+}
+else
+{
+    // Ở Development/Test (hoặc khi chạy local trong Visual Studio): Nếu chưa có hoặc dính placeholder thì nạp khóa dev chuẩn
+    if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Contains("__PROD_"))
+    {
+        jwtSecret = "SuperSecretKeyForPhoneServicePlatform2026_ChangeThisInProduction!";
+    }
+}
+
+// 🔒 CHỐT CHẶN TỬ HUYỆT 1: Đồng bộ ngược lại Configuration để JwtProvider.cs đọc đúng secret này
+builder.Configuration["Jwt:Secret"] = jwtSecret;
 
 builder.Services.AddAuthentication(options =>
 {
@@ -210,8 +270,46 @@ builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHand
 // =====================================================================
 var app = builder.Build();
 
-// Gieo dữ liệu ban đầu (Admin, Roles, Permissions) vào Database
-await DatabaseSeeder.SeedAsync(app.Services);
+// =====================================================================
+// KHỞI TẠO CƠ SỞ DỮ LIỆU & GIEO DỮ LIỆU BAN ĐẦU (DUAL-MODE RESILIENT)
+// =====================================================================
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var context = services.GetRequiredService<PSP.Infrastructure.Data.AppDbContext>();
+
+    try
+    {
+        // 1. Dual-Mode Migration: Tự động chạy ở Development nếu được bật cờ cấu hình
+        var autoMigrate = app.Environment.IsDevelopment() && 
+            app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup", true);
+
+        if (autoMigrate)
+        {
+            logger.LogInformation("🔄 [Migration Engine] Đang tự động kiểm tra và cập nhật Schema EF Core...");
+            await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.MigrateAsync(context.Database);
+            logger.LogInformation("✅ [Migration Engine] Cập nhật Database Schema thành công 100%.");
+        }
+        else
+        {
+            logger.LogInformation("ℹ️ [Migration Engine] Bỏ qua Auto-Migration (Chế độ Production hoặc cờ cấu hình tắt).");
+        }
+
+        // 2. Gieo dữ liệu hạt giống (Idempotent Data Seeder)
+        logger.LogInformation("🌱 [Data Seeder] Bắt đầu gieo dữ liệu ban đầu...");
+        await DatabaseSeeder.SeedAsync(services);
+        logger.LogInformation("✅ [Data Seeder] Dữ liệu ban đầu đã sẵn sàng.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogCritical(ex, "❌ [FATAL ERROR] Khởi tạo Database thất bại! Hệ thống dừng an toàn để tránh ghi đè sai lệch dữ liệu.");
+        if (app.Environment.IsDevelopment())
+        {
+            throw;
+        }
+    }
+}
 
 // Kích hoạt Swagger UI
 app.UseSwagger();
@@ -255,7 +353,32 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = new[] { new PSP.API.Filters.HangfireAuthorizationFilter() }
 });
 
+// 7.1. Kích hoạt Recurring Job tự động dọn dẹp IdempotencyRecords cũ hơn 7 ngày lúc 03:00 AM
+RecurringJob.AddOrUpdate<PSP.Infrastructure.Jobs.IIdempotencyCleanupJob>(
+    "cleanup-expired-idempotency-records",
+    job => job.CleanupExpiredRecordsAsync(CancellationToken.None),
+    "0 3 * * *",
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Local }
+);
+
 app.MapControllers();
 app.MapHub<PSP.Infrastructure.Hubs.NotificationHub>("/notificationHub");
+
+// Non-blocking background initialization for AI Knowledge Seeder (Package 4)
+_ = Task.Run(async () =>
+{
+    try
+    {
+        await Task.Delay(5000);
+        using var scope = app.Services.CreateScope();
+        var seeder = scope.ServiceProvider.GetRequiredService<PSP.Infrastructure.Services.AI.AIKnowledgeSeeder>();
+        await seeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "⚠️ AI Knowledge Seeder gặp sự cố khi chạy nền. Ứng dụng vẫn hoạt động bình thường.");
+    }
+});
 
 app.Run();

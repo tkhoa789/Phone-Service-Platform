@@ -3,7 +3,7 @@
 ## Hệ thống quản lý chuỗi cửa hàng điện thoại tích hợp AI Assistant
 
 **Version:** 1.0
-**Database System:** PostgreSQL
+**Database System:** Microsoft SQL Server 2022 (EF Core 10, T-SQL)
 **Phase:** 2 - Database Design
 
 ---
@@ -177,22 +177,22 @@ ALTER TABLE repair_tickets ADD CONSTRAINT chk_repair_dates
 Để giữ gìn lịch sử giao dịch và tuân thủ BR-002, hệ thống sử dụng cơ chế xóa mềm:
 1. Thêm cột `is_deleted` (BOOLEAN, mặc định `false`) vào tất cả các bảng Master Data.
 2. Khi thực hiện xóa, ứng dụng sẽ gọi lệnh `UPDATE table SET is_deleted = true WHERE id = ?`.
-3. Để đảm bảo ràng buộc duy nhất (Unique Constraint) vẫn hoạt động khi có bản ghi bị xóa mềm (ví dụ: thêm lại sản phẩm có mã `code` đã xóa trước đó), chúng ta sử dụng **Partial Unique Index** trong PostgreSQL:
+3. Để đảm bảo ràng buộc duy nhất (Unique Constraint) vẫn hoạt động khi có bản ghi bị xóa mềm (ví dụ: thêm lại sản phẩm có mã `Code` đã xóa trước đó), chúng ta sử dụng **Filtered Unique Index** trong Microsoft SQL Server 2022 (được cấu hình chuẩn hóa qua EF Core Fluent API với `.HasFilter("[IsDeleted] = 0")`):
 
 ```sql
--- Ví dụ cấu hình Unique Index cho sản phẩm: Chỉ ràng buộc duy nhất trên các bản ghi CHƯA bị xóa
-CREATE UNIQUE INDEX uk_products_code_active 
-ON products (code) 
-WHERE is_deleted = false;
+-- Cấu hình Filtered Unique Index cho sản phẩm: Chỉ ràng buộc duy nhất trên các bản ghi CHƯA bị xóa mềm
+CREATE UNIQUE NONCLUSTERED INDEX [UK_Products_Code_Active] 
+ON [Products] ([Code]) 
+WHERE [IsDeleted] = 0;
 
 -- Tương tự cho biến thể sản phẩm (SKU)
-CREATE UNIQUE INDEX uk_variants_sku_active 
-ON product_variants (sku) 
-WHERE is_deleted = false;
+CREATE UNIQUE NONCLUSTERED INDEX [UK_ProductVariants_Sku_Active] 
+ON [ProductVariants] ([Sku]) 
+WHERE [IsDeleted] = 0;
 
 -- Ràng buộc số điện thoại khách hàng đang hoạt động
-CREATE UNIQUE INDEX uk_customers_phone_active 
-ON customers (phone) 
-WHERE is_deleted = false;
+CREATE UNIQUE NONCLUSTERED INDEX [UK_Customers_Phone_Active] 
+ON [Customers] ([Phone]) 
+WHERE [IsDeleted] = 0;
 ```
 Cơ chế này cho phép người dùng xóa mềm một khách hàng cũ và đăng ký lại khách hàng mới sử dụng đúng số điện thoại đó mà không gặp lỗi vi phạm ràng buộc duy nhất tại cơ sở dữ liệu.

@@ -18,14 +18,14 @@ public interface IStoreAssistant
     Task<string> AnalyzeInsightAsync(string prompt, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gọi mô hình AI trò chuyện tự nhiên kết hợp tri thức RAG.
+    /// Gọi mô hình AI trò chuyện tự nhiên kết hợp tri thức RAG và kiểm soát phân quyền Tool Calling.
     /// </summary>
-    Task<string> ChatAsync(string systemPrompt, string userMessage, List<string> ragContexts, CancellationToken cancellationToken = default);
+    Task<string> ChatAsync(string systemPrompt, string userMessage, List<string> ragContexts, AISecurityContext? securityContext = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gọi mô hình AI và trả về kết quả dạng luồng (Streaming).
+    /// Gọi mô hình AI và trả về kết quả dạng luồng (Streaming) có kiểm soát phân quyền Tool Calling.
     /// </summary>
-    IAsyncEnumerable<string> ChatStreamAsync(string systemPrompt, string userMessage, List<string> ragContexts, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> ChatStreamAsync(string systemPrompt, string userMessage, List<string> ragContexts, AISecurityContext? securityContext = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cắt nhỏ, tạo vector và lưu tài liệu tri thức vào Vector DB (Qdrant).

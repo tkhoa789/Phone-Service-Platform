@@ -11,8 +11,28 @@ function generateCorrelationId() {
   });
 }
 
-// API Base URL - relative '/api' works with Vite proxy, or direct http://localhost:5000/api
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// API Base URL - reads VITE_API_BASE_URL from .env, falls back to VITE_API_URL, or relative '/api' for Vite/Nginx proxy
+export const resolveApiBaseUrl = (): string => {
+  // Dynamic Network Guard: When running in a browser accessed via a LAN/Wi-Fi IP (e.g., 192.168.x.x from phone/tablet),
+  // using absolute 'http://localhost:5000' would fail on the mobile device.
+  // Using relative '/api' routes the traffic through Vite's dev proxy cleanly across all network devices without CORS.
+  if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    return '/api';
+  }
+
+  let url = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '/api').trim();
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  return url.endsWith('/api') ? url : `${url}/api`;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 export const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -61,8 +81,10 @@ axiosClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     // Inject Correlation ID
-    if (config.headers && !config.headers['X-Request-ID']) {
-      config.headers['X-Request-ID'] = generateCorrelationId();
+    if (config.headers) {
+      const correlationId = (config.headers['X-Correlation-ID'] as string) || (config.headers['X-Request-ID'] as string) || generateCorrelationId();
+      config.headers['X-Correlation-ID'] = correlationId;
+      config.headers['X-Request-ID'] = correlationId; // giữ tương thích ngược
     }
     return config;
   },
@@ -93,7 +115,7 @@ axiosClient.interceptors.response.use(
 
     const originalRequest = error.config;
     const status = error.response.status;
-    const correlationId = originalRequest?.headers?.['X-Request-ID'] || 'UNKNOWN';
+    const correlationId = originalRequest?.headers?.['X-Correlation-ID'] || originalRequest?.headers?.['X-Request-ID'] || 'UNKNOWN';
 
     // 2. 401 Unauthorized & Token Rotation
     if (status === 401 && !originalRequest._retry) {

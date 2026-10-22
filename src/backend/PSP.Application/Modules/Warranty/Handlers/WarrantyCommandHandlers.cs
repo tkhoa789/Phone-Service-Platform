@@ -660,9 +660,46 @@ public class WarrantyCommandHandlers :
         }
 
         // b) Máy mới -> Sold, rời kho
+        Guid? newImeiWarehouseId = newImeiEntity.WarehouseId;
         newImeiEntity.Status = ImeiStatus.Sold;
         newImeiEntity.WarehouseId = null;
         imeiRepo.Update(newImeiEntity);
+
+        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
+        string actorName = _currentUserService?.Username ?? "Nhân viên";
+
+        // Trừ số lượng tồn kho và ghi sổ cái giao dịch (InventoryTransactionEntity)
+        if (newImeiWarehouseId.HasValue)
+        {
+            var inventoryRepo = _unitOfWork.Repository<InventoryEntity>();
+            var inventories = await inventoryRepo.FindAsync(
+                x => x.WarehouseId == newImeiWarehouseId.Value && x.ProductVariantId == newImeiEntity.ProductVariantId,
+                cancellationToken);
+            var inventory = inventories.FirstOrDefault();
+            if (inventory != null && inventory.Quantity > 0)
+            {
+                inventory.Quantity -= 1;
+                inventoryRepo.Update(inventory);
+            }
+
+            var variantRepo = _unitOfWork.Repository<ProductVariantEntity>();
+            var variant = await variantRepo.GetByIdAsNoTrackingAsync(newImeiEntity.ProductVariantId, cancellationToken);
+
+            var transactionRepo = _unitOfWork.Repository<InventoryTransactionEntity>();
+            var transaction = new InventoryTransactionEntity
+            {
+                WarehouseId = newImeiWarehouseId.Value,
+                ProductVariantId = newImeiEntity.ProductVariantId,
+                ImeiId = newImeiEntity.Id,
+                Type = InventoryTransactionType.SALE,
+                QuantityChange = -1,
+                CostSnapshot = variant?.CostPrice,
+                ReferenceId = ticket.Id,
+                ActorId = actorId ?? Guid.Empty,
+                CreatedAt = DateTime.UtcNow
+            };
+            await transactionRepo.AddAsync(transaction, cancellationToken);
+        }
 
         // c) Cập nhật phiếu bảo hành
         ticket.Imei = cleanNewImei;
@@ -673,9 +710,6 @@ public class WarrantyCommandHandlers :
         ticket.Note = string.IsNullOrEmpty(ticket.Note)
             ? $"[Đổi máy mới 1-1 BR-905] Thu hồi {oldImei} -> Cấp mới {cleanNewImei}. Lý do: {reasonDesc}"
             : $"{ticket.Note} | [Đổi máy mới 1-1 BR-905] Thu hồi {oldImei} -> Cấp mới {cleanNewImei}. Lý do: {reasonDesc}";
-
-        Guid? actorId = Guid.TryParse(_currentUserService?.UserId, out var aId) ? aId : null;
-        string actorName = _currentUserService?.Username ?? "Nhân viên";
 
         var history = new WarrantyHistoryEntity
         {

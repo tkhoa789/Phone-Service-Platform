@@ -9,6 +9,7 @@ using Microsoft.SemanticKernel.Embeddings;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using PSP.Application.Common.Interfaces;
+using PSP.Infrastructure.Services.AI.Plugins;
 
 namespace PSP.Infrastructure.Services;
 
@@ -48,8 +49,15 @@ public class StoreAssistant : IStoreAssistant
     /// <summary>
     /// Gửi hội thoại chat thông thường kèm theo ngữ cảnh RAG và lịch sử.
     /// </summary>
-    public async Task<string> ChatAsync(string systemPrompt, string userMessage, List<string> ragContexts, CancellationToken cancellationToken = default)
+    public async Task<string> ChatAsync(
+        string systemPrompt, 
+        string userMessage, 
+        List<string> ragContexts, 
+        AISecurityContext? securityContext = null, 
+        CancellationToken cancellationToken = default)
     {
+        AISecurityContextHolder.Current = securityContext;
+
         var contextText = (ragContexts != null && ragContexts.Any()) 
             ? string.Join("\n\n", ragContexts) 
             : "Không có tài liệu tri thức nào liên quan.";
@@ -63,15 +71,28 @@ User Message: {userMessage}
 
 Trả lời:";
 
-        var result = await _kernel.InvokePromptAsync(fullPrompt, cancellationToken: cancellationToken);
+        var executionSettings = new PromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
+        var arguments = new KernelArguments(executionSettings);
+        var result = await _kernel.InvokePromptAsync(fullPrompt, arguments, cancellationToken: cancellationToken);
         return result.ToString();
     }
 
     /// <summary>
     /// Gửi hội thoại chat và trả về kết quả dạng luồng (Streaming).
     /// </summary>
-    public async IAsyncEnumerable<string> ChatStreamAsync(string systemPrompt, string userMessage, List<string> ragContexts, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> ChatStreamAsync(
+        string systemPrompt, 
+        string userMessage, 
+        List<string> ragContexts, 
+        AISecurityContext? securityContext = null, 
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        AISecurityContextHolder.Current = securityContext;
+
         var contextText = (ragContexts != null && ragContexts.Any()) 
             ? string.Join("\n\n", ragContexts) 
             : "Không có tài liệu tri thức nào liên quan.";
@@ -85,12 +106,28 @@ User Message: {userMessage}
 
 Trả lời:";
 
-        var stream = _kernel.InvokePromptStreamingAsync(fullPrompt, cancellationToken: cancellationToken);
+        var executionSettings = new PromptExecutionSettings
+        {
+            FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
+        };
+
+        var arguments = new KernelArguments(executionSettings);
+        var stream = _kernel.InvokePromptStreamingAsync(fullPrompt, arguments, cancellationToken: cancellationToken);
+
         await foreach (var chunk in stream)
         {
             if (chunk != null)
             {
-                yield return chunk.ToString();
+                var text = chunk.ToString();
+                // 🛡️ CHỐT CHẶN TỬ HUYỆT 3: Lọc sạch metadata nội bộ của Function Calling (JSON/Tool Call markers)
+                if (!string.IsNullOrEmpty(text) &&
+                    !text.StartsWith("{\"name\":") &&
+                    !text.StartsWith("{\"arguments\":") &&
+                    !text.StartsWith("{\"tool_calls\":") &&
+                    !text.Contains("[TOOL_CALL]"))
+                {
+                    yield return text;
+                }
             }
         }
     }
@@ -127,9 +164,15 @@ Trả lời:";
                 var chunkText = chunks[i];
                 var embedding = await embeddingService.GenerateEmbeddingAsync(chunkText, cancellationToken: cancellationToken);
 
+                // 🛡️ CHỐT CHẶN DETERMINISTIC GUID (IDEMPOTENT UPSERT):
+                // Tạo ID cố định từ nội dung để Qdrant tự động Update bản ghi cũ thay vì Insert trùng lặp
+                using var md5 = System.Security.Cryptography.MD5.Create();
+                var hashBytes = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{sourceType}:{title}:{i}"));
+                var pointGuid = new Guid(hashBytes);
+
                 var point = new PointStruct
                 {
-                    Id = Guid.NewGuid(),
+                    Id = pointGuid,
                     Vectors = embedding.ToArray(),
                     Payload = 
                     {
@@ -149,7 +192,7 @@ Trả lời:";
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Không thể nạp tri thức vào Qdrant Vector DB (Cổng 6333). Vui lòng đảm bảo Docker Qdrant đang chạy: {ex.Message}", ex);
+            throw new InvalidOperationException($"Không thể nạp tri thức vào Qdrant Vector DB (Cổng gRPC 6334). Vui lòng đảm bảo Docker Qdrant đang chạy: {ex.Message}", ex);
         }
     }
 

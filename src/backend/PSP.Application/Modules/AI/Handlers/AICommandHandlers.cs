@@ -129,8 +129,8 @@ public class SendAIMessageCommandHandler : IRequestHandler<SendAIMessageCommand,
         // 6. Xây dựng System Prompt kiên cố tích hợp danh tính & ranh giới bảo mật bất biến
         var systemPrompt = _aiAuthService.BuildSecureSystemPrompt(securityContext);
 
-        // 7. Gửi prompt sang Ollama (Qwen)
-        var rawResponse = await _storeAssistant.ChatAsync(systemPrompt, request.Message, safeRagContexts, cancellationToken);
+        // 7. Gửi prompt sang Ollama (Qwen) kết hợp Context bảo mật RBAC
+        var rawResponse = await _storeAssistant.ChatAsync(systemPrompt, request.Message, safeRagContexts, securityContext, cancellationToken);
 
         // 8. Quét kiểm duyệt đầu ra hậu thực thi (Post-Execution Leakage Sanitizer)
         var safeResponseText = _aiAuthService.SanitizeOutput(rawResponse, securityContext);
@@ -269,8 +269,8 @@ public class SendAIMessageStreamCommandHandler : IStreamRequestHandler<SendAIMes
         // 6. Xây dựng System Prompt kiên cố
         var systemPrompt = _aiAuthService.BuildSecureSystemPrompt(securityContext);
 
-        // 7. Thực hiện stream từ LLM
-        var stream = _storeAssistant.ChatStreamAsync(systemPrompt, request.Message, safeRagContexts, cancellationToken);
+        // 7. Thực hiện stream từ LLM kết hợp Context bảo mật RBAC
+        var stream = _storeAssistant.ChatStreamAsync(systemPrompt, request.Message, safeRagContexts, securityContext, cancellationToken);
         
         var fullResponseBuilder = new System.Text.StringBuilder();
 

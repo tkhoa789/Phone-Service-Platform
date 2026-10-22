@@ -77,7 +77,7 @@ export const SystemSettingsPage: React.FC = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const fileId = response.data?.data;
-      const fileUrl = typeof fileId === 'string' ? `/api/FileAttachment/${fileId}/download` : (fileId?.filePath || URL.createObjectURL(file));
+      const fileUrl = typeof fileId === 'string' ? `/api/FileAttachment/public/${fileId}/download` : (fileId?.filePath || URL.createObjectURL(file));
       setFormData((prev) => ({ ...prev, systemLogoUrl: fileUrl }));
       toast.success('Đã tải ảnh logo lên thành công!');
     } catch {

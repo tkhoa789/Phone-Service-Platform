@@ -3,7 +3,7 @@
 ## Hệ thống quản lý chuỗi cửa hàng điện thoại tích hợp AI Assistant
 
 **Version:** 1.0
-**Database System:** PostgreSQL
+**Database System:** Microsoft SQL Server 2022 (T-SQL, EF Core 10) & Qdrant 1.12.0 (Vector DB)
 **Phase:** 2 - Database Design
 
 ---
@@ -18,8 +18,8 @@ Trong hệ thống quản lý chuỗi cửa hàng và tích hợp trợ lý AI, 
 ---
 
 ## 2. Quy tắc đánh chỉ mục chung
-1. **Khóa chính (PK):** PostgreSQL tự động tạo index B-Tree cho các khóa chính. Không cần tạo thủ công.
-2. **Khóa ngoại (FK):** PostgreSQL **không** tự động tạo index cho khóa ngoại. Tất cả khóa ngoại trong hệ thống bắt buộc phải được đánh index B-Tree để tránh quét toàn bảng (Sequential Scan) khi thực hiện các phép liên kết bảng (`JOIN`).
+1. **Khóa chính (PK):** SQL Server tự động tạo Clustered B-Tree Index cho các khóa chính.
+2. **Khóa ngoại (FK):** SQL Server không tự động đánh chỉ mục cho Foreign Keys. Do đó, tất cả 72 Khóa ngoại (Restrict) trong hệ thống đều được cấu hình Non-Clustered B-Tree Index qua EF Core Fluent API để tối ưu hóa triệt để hiệu năng các phép `JOIN` và ngăn ngừa Deadlock / Table Scan.
 3. **Các bảng có tần suất ghi cực cao (e.g. `audit_logs`, `login_histories`, `inventory_transactions`):** Hạn chế đánh quá nhiều index để tránh làm chậm tiến trình `INSERT`.
 4. **Xóa mềm (Soft Delete):** Kết hợp điều kiện `WHERE is_deleted = false` trong các index tìm kiếm để giảm kích thước index và tăng tốc độ lọc dữ liệu đang hoạt động.
 
@@ -131,28 +131,22 @@ CREATE INDEX idx_audit_logs_timeline
 ON audit_logs(created_at DESC);
 ```
 
-### 3.4 Chỉ mục Vector Embedding phục vụ RAG (AI RAG Optimization)
-Để hỗ trợ AI Assistant thực hiện tìm kiếm ngữ nghĩa trên các tài liệu quy trình, hướng dẫn và quy tắc nghiệp vụ lưu trong bảng `ai_embeddings` với tốc độ phản hồi tính bằng mili-giây, chúng ta áp dụng chỉ mục chuyên biệt cho vector:
+### 3.4 Chỉ mục Vector Embedding phục vụ RAG (Qdrant Vector Database)
+Để tối ưu hóa tìm kiếm ngữ nghĩa cho hệ thống AI Assistant với tốc độ phản hồi tính bằng mili-giây và giảm tải triệt để cho cơ sở dữ liệu quan hệ, toàn bộ vector nhúng 768 chiều (`nomic-embed-text`) được quản lý độc lập tại **Qdrant Vector Database v1.12.0** với chỉ mục HNSW chuyên biệt:
 
-```sql
--- Kích hoạt extension pgvector trước khi chạy
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- Đánh chỉ mục HNSW (Hierarchical Navigable Small World) sử dụng khoảng cách Cosine (Cosine Distance)
--- Đây là giải pháp tìm kiếm láng giềng gần nhất (ANN) tối ưu nhất trong pgvector
-CREATE INDEX idx_ai_embeddings_vector_hnsw 
-ON ai_embeddings USING hnsw (vector_data vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
-```
-*Lưu ý:* Cấu hình `m = 16` (số lượng liên kết tối đa của mỗi node) và `ef_construction = 64` (kích thước danh sách động khi xây dựng đồ thị) giúp cân bằng hoàn hảo giữa hiệu năng tìm kiếm RAG của AI và bộ nhớ tiêu thụ trên PostgreSQL.
+* **Collection:** `store-knowledge`
+* **Vector Dimension:** 768 (`nomic-embed-text`)
+* **Distance Metric:** `Cosine`
+* **HNSW Index Parameters:** `m = 16`, `ef_construct = 100` (đảm bảo độ chính xác truy xuất Top-K ngữ cảnh > 95% với thời gian phản hồi < 15ms).
+* **Payload Filtering:** Hỗ trợ lọc theo `category` (warranty, pos, inventory, technical) và quyền truy cập.
 
 ---
 
 ## 4. Kế hoạch bảo trì Index
-* **Mất phân mảnh Index:** Theo thời gian, thao tác `UPDATE` và `DELETE` sẽ làm phình và phân mảnh chỉ mục. Hệ thống sẽ cấu hình một Background Job định kỳ (hàng tuần vào ban đêm) để thực hiện lệnh bảo dưỡng:
+* **Bảo trì và Chống phân mảnh Index trong SQL Server:** Theo thời gian, các giao dịch POS và xuất nhập kho phát sinh phân mảnh B-Tree. Hệ thống áp dụng quy trình bảo dưỡng tự động hàng tuần:
   ```sql
-  REINDEX TABLE inventories;
-  REINDEX TABLE sales_order_items;
-  REINDEX TABLE imeis;
+  ALTER INDEX ALL ON [Inventories] REBUILD WITH (ONLINE = ON);
+  ALTER INDEX ALL ON [SalesOrderItems] REBUILD WITH (ONLINE = ON);
+  ALTER INDEX ALL ON [Imeis] REBUILD WITH (ONLINE = ON);
   ```
-* **Giám sát Index không sử dụng:** Thực hiện giám sát hiệu quả của chỉ mục qua bảng hệ thống `pg_stat_user_indexes`. Nếu chỉ mục nào có tỉ lệ quét (`idx_scan`) bằng 0 sau 3 tháng vận hành thì tiến hành loại bỏ để giải phóng bộ nhớ và tăng tốc độ ghi dữ liệu.
+* **Giám sát Hiệu quả Index:** Giám sát truy cập chỉ mục định kỳ qua Dynamic Management Views (DMVs) của SQL Server: `sys.dm_db_index_usage_stats` và `sys.dm_db_missing_index_details` để tinh chỉnh kịp thời.

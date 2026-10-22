@@ -223,28 +223,24 @@ Trợ lý ảo nội bộ hỗ trợ tra cứu, phân tích, gợi ý và tự �
 
 ### 8.1 Backend
 
-* Java 21
-* Spring Boot 3
-* Spring Security
-* Spring Data JPA
-* Hibernate
-* Maven
+* C# 14 / .NET 10 LTS
+* ASP.NET Core 10 Web API
+* Entity Framework Core 10
+* MediatR 12.5 (CQRS & Pipeline Behaviors)
+* FluentValidation 12 & Mapster 10
+* Serilog Structured Logging
 
-### 8.2 Database
+### 8.2 Database & Caching
 
-* PostgreSQL
+* Microsoft SQL Server 2022 Enterprise (49 Bảng CSDL, 40 EF Core Migrations)
+* Redis 7 (Distributed Cache & Two-Tier Idempotency Distributed Lock)
 
-### 8.3 Cache / Session / Messaging
+### 8.3 AI Subsystem & Vector Database
 
-* Redis
-
-### 8.4 AI Layer
-
-* Ollama
-* Qwen
-* LangChain4j
-* Qdrant
-* Embedding model
+* Ollama (Dual-Model Strategy: krith/qwen2.5-14b-instruct:IQ3_XXS & qwen2.5:7b-instruct:q4_K_M)
+* Microsoft Semantic Kernel & OllamaSharp
+* Qdrant 1.12.0 Vector Database (Collection: store-knowledge, Cosine Distance)
+* nomic-embed-text (768 chiều nhúng / dimensions)
 
 ### 8.5 Frontend
 
@@ -384,7 +380,7 @@ Hoàn thiện tài liệu hệ thống, hướng dẫn cài đặt và triển k
 
 ### Phase 13 – Deployment
 
-Đóng gói và triển khai bằng Docker, PostgreSQL, Redis, Ollama, Qdrant.
+Đóng gói và triển khai bằng Docker Compose (Microsoft SQL Server 2022, Redis 7, Qdrant 1.12.0, Ollama, Backend .NET 10, Frontend React 19).
 
 ---
 

@@ -1,4 +1,4 @@
-import { axiosClient } from '../utils/axiosClient';
+import { axiosClient, resolveApiBaseUrl } from '../utils/axiosClient';
 import type { ApiResponse } from '../types/api.types';
 
 export interface SendAiMessageCommand {
@@ -28,7 +28,7 @@ export const aiService = {
 
   sendMessageStream: async function* (command: SendAiMessageCommand): AsyncGenerator<string | { type: 'conversationId', id: string }, void, unknown> {
     const token = localStorage.getItem('token');
-    const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+    const API_BASE_URL = resolveApiBaseUrl();
     const response = await fetch(`${API_BASE_URL}/AI/chat-stream`, {
       method: 'POST',
       headers: {
@@ -81,7 +81,7 @@ export const aiService = {
   },
 
   ingestDocument: async (title: string, content: string, category: string): Promise<void> => {
-    await axiosClient.post('/AI/ingest', { title, content, category });
+    await axiosClient.post('/AI/ingest', { title, content, sourceType: category, category });
   },
 
   getConversations: async (): Promise<any[]> => {

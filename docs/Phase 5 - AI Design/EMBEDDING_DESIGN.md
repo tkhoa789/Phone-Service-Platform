@@ -15,19 +15,19 @@ Hệ thống yêu cầu một mô hình Embedding mạnh mẽ, đặc biệt ph�
 
 Dựa trên yêu cầu hệ thống hoạt động on-premise hoàn toàn, ta sử dụng các Open-source Embedding Models chạy cục bộ.
 
-**Đề xuất Model chính:** `BAAI/bge-m3` hoặc `keepitreal/vietnamese-sbert` (phục vụ đặc thù tiếng Việt).
-* **BAAI/bge-m3 (Của Beijing Academy of Artificial Intelligence):** Hỗ trợ đa ngôn ngữ (Multilingual), hiểu tiếng Việt xuất sắc, kiến trúc M3 hỗ trợ đa biểu diễn.
-* **Vector Dimension (Số chiều):** `1024` (phụ thuộc config cụ thể của bge-m3). Dimension này phải khớp với cấu hình Vector Size của Qdrant ở `VECTOR_DB_DESIGN.md`.
+**Đề xuất Model chính:** `nomic-embed-text` (qua Ollama Embedding API) (phục vụ đặc thù tiếng Việt).
+* **nomic-embed-text (Nomic AI):** Mô hình nhúng ngôn ngữ hiệu năng cao, tối ưu hóa toàn diện cho việc truy vấn RAG tiếng Việt và văn bản nghiệp vụ.
+* **Vector Dimension (Số chiều):** `768` (chuẩn hóa theo model nomic-embed-text). Dimension này phải khớp với cấu hình Vector Size của Qdrant ở `VECTOR_DB_DESIGN.md`.
 
 ## 3. Triển khai Embedding Model
 
 ### 3.1 Chạy Model cục bộ
 Trong môi trường Production, không nên gọi Embedding qua internet (như OpenAI) để bảo mật tài liệu nội bộ.
-LangChain4j cung cấp giải pháp In-Process Embedding Models, cho phép chạy model (định dạng ONNX) trực tiếp trong JVM Spring Boot.
+Hệ thống sử dụng Ollama Embedding API để sinh vector 768 chiều đồng bộ với Qdrant Vector Database.
 
 ### 3.2 Tích hợp bằng LangChain4j (In-Process Embedding)
 
-Cấu hình Spring Boot: Thêm dependency `langchain4j-embeddings-bge-m3`.
+Cấu hình Backend ASP.NET Core: Tích hợp HttpClient / OllamaSharp gọi trực tiếp endpoint `POST /api/embeddings` của Ollama.
 
 ```java
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -39,7 +39,7 @@ public class EmbeddingConfig {
     @Bean
     public EmbeddingModel embeddingModel() {
         // Tải model trực tiếp trong JVM, không cần deploy service riêng.
-        // Cần máy chủ có đủ RAM (Model bge-m3 ONNX cần ~2GB RAM).
+        // Model nomic-embed-text yêu cầu ~600MB VRAM/RAM, tốc độ sinh embedding < 20ms/chunk.
         return new BgeM3EmbeddingModel();
     }
 }

@@ -40,20 +40,37 @@ public class IdempotencyService : IIdempotencyService
             WriteIndented = false
         });
 
-        var record = new IdempotencyRecordEntity
-        {
-            IdentityKey = _identityKey,
-            RequestHash = _requestHash ?? string.Empty,
-            ResponseBody = serializedResponse
-        };
+        // 1. Kiểm tra xem bản ghi đã được Middleware tạo trước đó (ở trạng thái IN_PROGRESS) chưa
+        var existingRecord = _context.IdempotencyRecords.Local.FirstOrDefault(x => x.IdentityKey == _identityKey)
+            ?? _context.IdempotencyRecords.FirstOrDefault(x => x.IdentityKey == _identityKey);
 
-        _context.IdempotencyRecords.Add(record);
+        if (existingRecord != null)
+        {
+            // Nếu đã có: Cập nhật đè ResponseBody và Hash (UPDATE) thay vì chèn mới (ADD)
+            existingRecord.ResponseBody = serializedResponse;
+            existingRecord.RequestHash = _requestHash ?? string.Empty;
+            existingRecord.UpdatedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            // Nếu chưa có (chạy bình thường trên Redis): Mới thực hiện Add mới
+            var record = new IdempotencyRecordEntity
+            {
+                IdentityKey = _identityKey,
+                RequestHash = _requestHash ?? string.Empty,
+                ResponseBody = serializedResponse,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.IdempotencyRecords.Add(record);
+        }
     }
 
     public string? GetAttachedRecordBody()
     {
-        // _context.IdempotencyRecords.Local.FirstOrDefault? Or we can just store it in a field.
-        var localRecord = _context.IdempotencyRecords.Local.FirstOrDefault(x => x.IdentityKey == _identityKey);
+        var localRecord = _context.IdempotencyRecords.Local.FirstOrDefault(x => x.IdentityKey == _identityKey)
+            ?? _context.IdempotencyRecords.FirstOrDefault(x => x.IdentityKey == _identityKey);
         return localRecord?.ResponseBody;
     }
 }

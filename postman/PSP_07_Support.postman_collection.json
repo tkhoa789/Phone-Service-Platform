@@ -1,0 +1,463 @@
+{
+  "info": {
+    "name": "PSP_07_Support",
+    "description": "Bộ kịch bản test tự động cho Phân hệ Hỗ trợ (Module 17: Notification & FileAttachment) của Phone Service Platform.\n\n**HƯỚNG DẪN:**\n1. Import file này vào Postman.\n2. Chạy request Đăng nhập (Admin) đầu tiên để tự động lấy và lưu accessToken và userId.\n3. Thử nghiệm upload file bằng cách chọn một file thật từ máy tính của bạn ở request Upload File.\n4. Mở tệp client HTML trên Desktop để xem popup real-time khi gọi Send Notification.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "attachmentId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 0. Auth",
+      "item": [
+        {
+          "name": "Đăng nhập hệ thống (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('code = SUCCESS', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.test('Có accessToken', () => pm.expect(b.data.accessToken).to.not.be.empty);",
+                  "pm.collectionVariables.set('accessToken', b.data.accessToken);",
+                  "pm.collectionVariables.set('refreshToken', b.data.refreshToken);",
+                  "const user = b.data.user;",
+                  "if (user) {",
+                  "    const id = user.id || user.Id;",
+                  "    pm.collectionVariables.set('userId', id);",
+                  "    console.log('Saved userId:', id);",
+                  "}",
+                  "console.log('✅ Đăng nhập thành công, đã lưu Token.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 1. Notifications",
+      "item": [
+        {
+          "name": "[200] Gửi thông báo khẩn (Admin/Manager)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Gửi thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('notificationId', b.data);",
+                  "console.log('Saved notificationId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"title\": \"Cảnh báo khẩn từ hệ thống\",\n  \"content\": \"Yêu cầu kiểm kho chi nhánh Quận 1 ngay lập tức. Tồn kho có biến động!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/Notification/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Notification",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách thông báo của tôi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lấy danh sách thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Notification?pageIndex=1&pageSize=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Notification"
+              ],
+              "query": [
+                {
+                  "key": "pageIndex",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy số lượng thông báo chưa đọc",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lấy số lượng chưa đọc thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Notification/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Notification",
+                "unread-count"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Đánh dấu thông báo là đã đọc",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đánh dấu thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Notification/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Notification",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Đánh dấu đọc tất cả thông báo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Đánh dấu tất cả thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Notification/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Notification",
+                "read-all"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📎 2. FileAttachments",
+      "item": [
+        {
+          "name": "[200] Upload File đính kèm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Upload thành công', () => pm.expect(b.code).to.eql('SUCCESS'));",
+                  "pm.collectionVariables.set('attachmentId', b.data);",
+                  "console.log('Saved attachmentId:', b.data);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "entityName",
+                  "value": "Products",
+                  "type": "text"
+                },
+                {
+                  "key": "entityId",
+                  "value": "{{userId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "description": "Hãy chọn một file ảnh hoặc pdf bất kỳ từ máy tính của bạn",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/FileAttachment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "FileAttachment"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Lấy danh sách File đính kèm theo thực thể",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Lấy danh sách thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/FileAttachment/Products/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "FileAttachment",
+                "Products",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "[200] Xóa File đính kèm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Xóa thành công', () => pm.expect(b.code).to.eql('SUCCESS'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/FileAttachment/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "FileAttachment",
+                "{{attachmentId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

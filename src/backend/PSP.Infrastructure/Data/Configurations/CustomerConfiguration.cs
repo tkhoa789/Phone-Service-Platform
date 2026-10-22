@@ -37,6 +37,17 @@ public class CustomerConfiguration : IEntityTypeConfiguration<CustomerEntity>
         builder.Property(e => e.Address)
             .HasMaxLength(255);
 
+        builder.Property(e => e.RewardPoints)
+            .HasDefaultValue(0);
+
+        builder.Property(e => e.TotalSpent)
+            .HasColumnType("decimal(18,2)")
+            .HasDefaultValue(0m);
+
+        builder.Property(e => e.MemberTier)
+            .HasMaxLength(20)
+            .HasDefaultValue("BRONZE");
+
         builder.Property(e => e.RowVersion)
             .IsRowVersion();
     }

@@ -399,22 +399,26 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -427,13 +431,22 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BranchId");
 
-                    b.ToTable("Users");
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasFilter("[Email] IS NOT NULL AND [Email] <> ''");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasFilter("[Username] IS NOT NULL AND [Username] <> ''");
+
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("PSP.Domain.Modules.Auth.Entities.UserRoleEntity", b =>
@@ -543,7 +556,10 @@ namespace PSP.Infrastructure.Migrations
 
                     b.Property<string>("MemberTier")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("BRONZE");
 
                     b.Property<string>("Phone")
                         .IsRequired()
@@ -551,7 +567,9 @@ namespace PSP.Infrastructure.Migrations
                         .HasColumnType("nvarchar(15)");
 
                     b.Property<int>("RewardPoints")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -560,8 +578,10 @@ namespace PSP.Infrastructure.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<decimal>("TotalSpent")
+                        .ValueGeneratedOnAdd()
                         .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,2)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -624,6 +644,8 @@ namespace PSP.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
 
                     b.HasIndex("IdentityKey")
                         .IsUnique();
@@ -3316,7 +3338,8 @@ namespace PSP.Infrastructure.Migrations
 
                     b.HasOne("PSP.Domain.Modules.Sales.Entities.InvoiceEntity", "Invoice")
                         .WithMany()
-                        .HasForeignKey("InvoiceId");
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("PSP.Domain.Modules.Auth.Entities.UserEntity", "User")
                         .WithMany()

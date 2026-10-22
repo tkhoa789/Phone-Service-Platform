@@ -1,0 +1,307 @@
+{
+	"info": {
+		"_postman_id": "84a7e93b-16d9-4fa2-bfcd-9b89e197ae6a",
+		"name": "PSP_10_AI (Auto Test)",
+		"description": "Postman Collection for automated testing of Module 20 AI & RAG integration in Phone Service Platform.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Login Admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Response code is SUCCESS\", function () {",
+							"    pm.expect(jsonData.code).to.eql(\"SUCCESS\");",
+							"});",
+							"",
+							"if (jsonData.code === 'SUCCESS') {",
+							"    pm.collectionVariables.set('bearer_token', jsonData.data.accessToken);",
+							"    pm.test(\"Bearer Token is saved to collection variable\", function () {",
+							"        pm.expect(jsonData.data.accessToken).to.not.be.null;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin@123\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/Auth/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"Auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Ingest Document (Tri thuc bao hanh)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Ingest returns true (success)\", function () {",
+							"    var responseBody = pm.response.json();",
+							"    pm.expect(responseBody).to.be.true;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"title\": \"Chinh sach bao hanh mat kinh va pin PSP 2026\",\n  \"sourceType\": \"Warranty\",\n  \"sourceUrl\": \"file:///D:/chinh_sach_bao_hanh.md\",\n  \"content\": \"Chinh sach bao hanh PSP nam 2026: Thay mat kinh cuong luc dien thoai iPhone duoc bao hanh nut vo 3 thang. Thay pin dien thoai dung luong cao duoc bao hanh chay no, phong pin trong 9 thang. Khong bao hanh neu co dau hieu can thiep vao phan cung tu ben thu ba.\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/AI/ingest",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"AI",
+						"ingest"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Chat RAG (Hoi dap chinh sach vua nap)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"AI returned response text\", function () {",
+							"    pm.expect(jsonData.response).to.not.be.empty;",
+							"});",
+							"",
+							"pm.test(\"Response contains warranty period matching context (9 months for battery or 3 months for glass)\", function () {",
+							"    var text = jsonData.response.toLowerCase();",
+							"    var containsCorrectInfo = text.includes(\"3 thang\") || text.includes(\"9 thang\") || text.includes(\"3\") || text.includes(\"9\");",
+							"    pm.expect(containsCorrectInfo).to.be.true;",
+							"});",
+							"",
+							"if (jsonData.conversationId) {",
+							"    pm.collectionVariables.set('conversation_id', jsonData.conversationId);",
+							"    pm.test(\"Conversation ID saved\", function () {",
+							"        pm.expect(jsonData.conversationId).to.not.be.null;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"message\": \"Pin thay o PSP duoc bao hanh bao nhieu thang?\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/AI/chat",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"AI",
+						"chat"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. List Conversations",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is an array of conversations\", function () {",
+							"    var responseData = pm.response.json();",
+							"    pm.expect(responseData).to.be.an(\"array\");",
+							"    pm.expect(responseData.length).to.be.above(0);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/AI/conversations",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"AI",
+						"conversations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5. Get Conversation Detail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response contains chat history messages\", function () {",
+							"    var responseData = pm.response.json();",
+							"    pm.expect(responseData).to.be.an(\"array\");",
+							"    pm.expect(responseData.length).to.be.above(1);",
+							"    pm.expect(responseData[0].role).to.eql(\"user\");",
+							"    pm.expect(responseData[1].role).to.eql(\"assistant\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{bearer_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/AI/conversations/{{conversation_id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"AI",
+						"conversations",
+						"{{conversation_id}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "bearer_token",
+			"value": ""
+		},
+		{
+			"key": "conversation_id",
+			"value": ""
+		}
+	]
+}

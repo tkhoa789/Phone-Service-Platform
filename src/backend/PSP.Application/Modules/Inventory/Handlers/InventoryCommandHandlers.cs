@@ -59,14 +59,16 @@ public class InventoryCommandHandlers :
     }
 
     /// <summary>
-    /// Xử lý cập nhật trạng thái của mã IMEI (InStock, Sold, Repairing, WarrantyHold, Disposed).
+    /// Xử lý cập nhật trạng thái của mã IMEI (InStock, Sold, Repairing, WarrantyHold, Disposed, WrittenOff).
     /// </summary>
     public async Task<bool> Handle(UpdateImeiStatusCommand request, CancellationToken cancellationToken)
     {
         var imeiRepo = _unitOfWork.Repository<ImeiEntity>();
 
+        string cleanImei = request.Imei?.Trim() ?? string.Empty;
+
         // Tìm mã IMEI trong hệ thống (Tra cứu theo Unique Index Imei)
-        var existing = await imeiRepo.FindAsync(i => i.Imei == request.Imei, cancellationToken);
+        var existing = await imeiRepo.FindAsync(i => i.Imei == cleanImei, cancellationToken);
         var imei = existing.FirstOrDefault();
         
         if (imei == null)
@@ -86,15 +88,57 @@ public class InventoryCommandHandlers :
         }
 
         // Chuyển đổi chuỗi String sang Enum
-        if (Enum.TryParse<ImeiStatus>(request.Status, true, out var targetStatus))
+        if (!Enum.TryParse<ImeiStatus>(request.Status, true, out var targetStatus))
         {
-            imei.Status = targetStatus;
-            imeiRepo.Update(imei);
-            
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            throw new BadRequestException($"Trạng thái IMEI không hợp lệ: {request.Status}");
+        }
+
+        // 1. Chặn tuyệt đối các trạng thái kết thúc (Terminal States: Disposed, WrittenOff)
+        if (imei.Status == ImeiStatus.Disposed || imei.Status == ImeiStatus.WrittenOff)
+        {
+            if (targetStatus != imei.Status)
+            {
+                throw new BadRequestException("Thiết bị ở trạng thái thanh lý hoặc xuất hủy không thể chuyển sang trạng thái khác.");
+            }
+        }
+
+        // 2. Kiểm tra FSM State Transition Guard theo Ma trận FSM Bảng 3.4
+        if (!IsValidImeiTransition(imei.Status, targetStatus))
+        {
+            throw new BadRequestException($"Không thể chuyển trạng thái IMEI từ '{imei.Status}' sang '{targetStatus}'.");
+        }
+
+        if (imei.Status == targetStatus)
+        {
             return true;
         }
 
-        return false;
+        imei.Status = targetStatus;
+        imeiRepo.Update(imei);
+        
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Ma trận kiểm tra tính hợp lệ của việc chuyển đổi trạng thái IMEI (FSM Bảng 3.4).
+    /// </summary>
+    private static bool IsValidImeiTransition(ImeiStatus current, ImeiStatus target)
+    {
+        if (current == target)
+        {
+            return true;
+        }
+
+        return current switch
+        {
+            ImeiStatus.InStock => target is ImeiStatus.Sold or ImeiStatus.Repairing or ImeiStatus.Disposed or ImeiStatus.WrittenOff,
+            ImeiStatus.Sold => target is ImeiStatus.Repairing or ImeiStatus.WarrantyHold,
+            ImeiStatus.Repairing => target is ImeiStatus.InStock or ImeiStatus.Sold or ImeiStatus.WrittenOff,
+            ImeiStatus.WarrantyHold => target is ImeiStatus.Sold or ImeiStatus.Repairing or ImeiStatus.Disposed or ImeiStatus.WrittenOff,
+            ImeiStatus.Disposed => false,
+            ImeiStatus.WrittenOff => false,
+            _ => false
+        };
     }
 }

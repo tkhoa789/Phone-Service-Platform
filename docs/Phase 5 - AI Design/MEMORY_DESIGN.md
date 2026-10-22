@@ -10,7 +10,7 @@
 ## 1. Khái quát Chat Memory
 Vì LLM bản chất là phi trạng thái (stateless - không nhớ ngữ cảnh các câu hỏi trước), hệ thống cần một cơ chế lưu trữ và tiêm (inject) lịch sử trò chuyện vào mỗi câu hỏi (prompt) để tạo cảm giác AI có "trí nhớ".
 
-Trong LangChain4j, khái niệm này gọi là **ChatMemory**.
+Trong Semantic Kernel & ASP.NET Core 10, khái niệm này gọi là **ChatMemory**.
 
 ## 2. Loại Memory (Memory Type)
 
@@ -20,12 +20,12 @@ Hệ thống sử dụng **TokenWindowChatMemory**.
 
 ## 3. Lưu trữ Bộ nhớ (Memory Persistence)
 
-Bộ nhớ hội thoại trong quá trình chạy (Runtime) sẽ được LangChain4j duy trì trong RAM, nhưng cần phải lưu trữ lâu dài xuống Database để:
+Bộ nhớ hội thoại trong quá trình chạy (Runtime) sẽ được Semantic Kernel & ASP.NET Core 10 duy trì trong RAM, nhưng cần phải lưu trữ lâu dài xuống Database để:
 1. Nhân viên có thể xem lại lịch sử chat ngày hôm qua, tuần trước.
 2. Ứng dụng khởi động lại không bị mất ngữ cảnh của phiên chat đang dang dở.
 
 ### 3.1 Giao diện ChatMemoryStore
-Thực thi interface `ChatMemoryStore` của LangChain4j, ghi nhận xuống PostgreSQL (bảng `ai_messages` và `ai_conversations` ở Phase 2).
+Thực thi interface `ChatMemoryStore` của Semantic Kernel & ASP.NET Core 10, ghi nhận xuống Microsoft SQL Server 2022 (bảng `Messages` và `Conversations` ở Phase 2).
 
 ```java
 @Component
@@ -54,7 +54,7 @@ public class PostgresChatMemoryStore implements ChatMemoryStore {
 
 ### 3.2 Phân tách Hội thoại (Conversation Segregation)
 * Mỗi phiên chat được định danh bằng một `Conversation ID` (UUID).
-* `memoryId` trong kiến trúc LangChain4j chính là `Conversation ID`.
+* `memoryId` trong kiến trúc Semantic Kernel & ASP.NET Core 10 chính là `Conversation ID`.
 * Khi Frontend mở một Tab chat mới, Backend tạo một `Conversation ID` mới. AI sẽ không bị nhầm lẫn giữa các luồng công việc khác nhau của nhân viên.
 * **Bảo mật:** Backend phải luôn kiểm tra `Conversation ID` thuộc sở hữu của User ID đang request (thông qua JWT token) trước khi cho phép truy xuất/cập nhật `ChatMemory`.
 
